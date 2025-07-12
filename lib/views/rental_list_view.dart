@@ -30,19 +30,6 @@ class _RentalListViewState extends State<RentalListView> {
     super.dispose();
   }
 
-  void submitSerialNumber(int rentalId, String serialNumber) async {
-    try {
-      await ApiService().submitSerialNumber(rentalId, serialNumber);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Serial number submitted successfully!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to submit serial number: $e')),
-      );
-    }
-  }
-
   String _mapDriverId(String driverId) {
     const driverMap = {
       'I': 'Isaiah',
@@ -53,6 +40,13 @@ class _RentalListViewState extends State<RentalListView> {
       'B': 'Byron',
     };
     return driverMap[driverId] ?? driverId;
+  }
+
+  Future<void> _refreshRentals() async {
+    // Refresh the rental data by calling the API again
+    setState(() {
+      futureRentals = ApiService().fetchRentalsByDriver(widget.driverId);
+    });
   }
 
   @override
@@ -75,18 +69,21 @@ class _RentalListViewState extends State<RentalListView> {
           List<Rental> rentals = snapshot.data!;
           serialControllers = List.generate(rentals.length, (index) => TextEditingController());
 
-          return ListView.builder(
-            itemCount: rentals.length,
-            itemBuilder: (context, index) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: RentalCard(
-                  rental: rentals[index],
-                  serialController: serialControllers[index],
-                  onSubmitSerial: submitSerialNumber,
-                ),
-              );
-            },
+          return RefreshIndicator(
+            onRefresh: _refreshRentals, // Trigger the refresh action here
+            child: ListView.builder(
+              itemCount: rentals.length,
+              itemBuilder: (context, index) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: RentalCard(
+                    rental: rentals[index],
+                    serialController: serialControllers[index],
+                    onRefresh: _refreshRentals,
+                  ),
+                );
+              },
+            ),
           );
         },
       ),

@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'views/rental_list_view.dart';
+import 'views/driver_selection_screen.dart';
 
 void main() {
-  runApp(RentalApp(driverId: 'K'));  // Pass the correct driverId ("K")
+  runApp(const RentalApp());
 }
 
 class RentalApp extends StatelessWidget {
-  final String driverId;
-
-  const RentalApp({super.key, required this.driverId});  // Accept driverId in constructor
+  const RentalApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -17,7 +15,7 @@ class RentalApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: RentalListView(driverId: driverId),  // Pass driverId to RentalListView
+      home: const DriverSelectionScreen(),
     );
   }
 }
