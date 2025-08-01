@@ -7,7 +7,7 @@ pluginManagement {
         return flutterSdkPath
     }()
 
-    includeBuild("C:/Users/offic/OneDrive/Documents/MaxReachPro/program_files/flutter/packages/flutter_tools/gradle")
+    includeBuild("C:/flutter/flutter/packages/flutter_tools/gradle")
 
     repositories {
         google()

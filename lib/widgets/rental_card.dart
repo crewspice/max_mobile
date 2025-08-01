@@ -132,6 +132,21 @@ class RentalCard extends StatelessWidget {
     }
   }
 
+  Future<void> _handlePickupComplete(BuildContext context) async {
+    var apiService = ApiService();
+    bool success = await apiService.recordPickup(rental.rentalId);
+
+    if (success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Pickup completed successfully.")),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Failed to complete pickup. Please try again.")),
+      );
+    }
+  }
+
 
   Future<File> compressImage(File file) async {
     Uint8List imageBytes = await file.readAsBytes();
@@ -220,7 +235,7 @@ class RentalCard extends StatelessWidget {
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left Side - Exactly the Same as Before
+                // Left Side - Status Icon + Lift Type
                 Column(
                   children: [
                     Image.asset(
@@ -240,12 +255,11 @@ class RentalCard extends StatelessWidget {
                   ],
                 ),
                 SizedBox(width: 10),
-                // Two-Part Spread
+                // Right Side Layout
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Customer Name Title Spanning Only the Spread
                       Center(
                         child: Text(
                           rental.customer ?? 'Unknown',
@@ -259,7 +273,7 @@ class RentalCard extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Left Page - Address Information
+                          // Left Column - Address + Serial
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -298,7 +312,7 @@ class RentalCard extends StatelessWidget {
                             ),
                           ),
                           SizedBox(width: 10),
-                          // Right Page - New Details
+                          // Right Column - Contacts + Action Buttons
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -338,30 +352,47 @@ class RentalCard extends StatelessWidget {
                                       ),
                                     ],
                                   ),
-                                // Camera Button Below Site Contact
-                                SizedBox(height: 10),
-                                ElevatedButton(
-                                  onPressed: () => _handlePhotoUpload(context),
-                                  child: Text('Take Photo'),
-                                ),
-                                if (rental.status == 'Upcoming') ...[
-                                  SizedBox(height: 10),
-                                  ElevatedButton.icon(
-                                    onPressed: () async {
-                                      File? image = await _pickImage();
-                                      if (image != null) {
-                                        String serialNumber = serialController.text.trim(); // Get serial number dynamically
-                                        File compressedImage = await compressImage(image);
-                                        var apiService = ApiService();
-                                        bool success = await apiService.uploadPhoto(compressedImage, rental.rentalId, serialNumber);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(content: Text(success ? 'Photo uploaded successfully!' : 'Failed to upload photo.')),
-                                        );
-                                      }
-                                    },
-                                    icon: Icon(Icons.upload),
-                                    label: Text('Upload Photo'),
-                                  ),
+
+                                // Unified conditional button group
+                                ...[
+                                  if (rental.status == 'Upcoming') ...[
+                                    SizedBox(height: 10),
+                                    ElevatedButton(
+                                      onPressed: () => _handlePhotoUpload(context),
+                                      child: Text('Take Photo'),
+                                    ),
+                                    SizedBox(height: 10),
+                                    ElevatedButton.icon(
+                                      onPressed: () async {
+                                        File? image = await _pickImage();
+                                        if (image != null) {
+                                          String serialNumber = serialController.text.trim();
+                                          File compressedImage = await compressImage(image);
+                                          var apiService = ApiService();
+                                          bool success = await apiService.uploadPhoto(
+                                            compressedImage,
+                                            rental.rentalId,
+                                            serialNumber,
+                                          );
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(success
+                                                  ? 'Photo uploaded successfully!'
+                                                  : 'Failed to upload photo.'),
+                                            ),
+                                          );
+                                        }
+                                      },
+                                      icon: Icon(Icons.upload),
+                                      label: Text('Upload Photo'),
+                                    ),
+                                  ] else if (rental.status == 'Called Off') ...[
+                                    SizedBox(height: 10),
+                                    ElevatedButton(
+                                      onPressed: () => _handlePickupComplete(context),
+                                      child: Text('Complete'),
+                                    ),
+                                  ]
                                 ],
                               ],
                             ),
@@ -378,4 +409,5 @@ class RentalCard extends StatelessWidget {
       ),
     );
   }
+
 }

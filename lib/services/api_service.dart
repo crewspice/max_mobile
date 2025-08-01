@@ -7,7 +7,8 @@ import '../models/rental.dart';
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
-  final String baseUrl = "http://api.maxhighreach.com:8080/rentals";
+  final String baseUrl = "http://5.78.73.173:8080/rentals";
+  final String userUrl = "http://5.78.73.173:8080/user";
 
   /// Fetch rentals by driver ID
   Future<List<Rental>> fetchRentalsByDriver(String driverId) async {
@@ -35,7 +36,6 @@ class ApiService {
       ..fields['rentalId'] = rentalId.toString()
       ..fields['serialNumber'] = serialNumber;
 
-    // Get MIME type for the file
     String? mimeType = lookupMimeType(imageFile.path);
     var fileStream = http.ByteStream(imageFile.openRead());
     var length = await imageFile.length();
@@ -73,7 +73,7 @@ class ApiService {
       ..files.add(await http.MultipartFile.fromPath(
         'photoFile',
         imageFile.path,
-        contentType: MediaType('image', 'jpeg'), // import 'package:http_parser/http_parser.dart';
+        contentType: MediaType('image', 'jpeg'),
       ));
 
     try {
@@ -92,8 +92,33 @@ class ApiService {
     }
   }
 
+  Future<bool> recordPickup(int rentalId) async {
+    final String url = '$baseUrl/recordPickup';
 
-  // Method to validate serial number
+    try {
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'rentalId': rentalId.toString(),
+        },
+      );
+
+      if (response.statusCode == 200) {
+        print('Pickup recorded successfully.');
+        return true;
+      } else {
+        print('Failed to record pickup: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error during pickup: $e');
+      return false;
+    }
+  }
+
   Future<bool> validateSerialNumber(String serialNumber) async {
     final String apiUrl = '$baseUrl/validateSerialNumber?serialNumber=$serialNumber';
 
@@ -112,4 +137,27 @@ class ApiService {
     }
   }
 
+  Future<List<String>> fetchAllUserNames() async {
+    final String url = '$userUrl/all-names';
+    print('📡 Sending GET request to: $url');
+
+    try {
+      final response = await http.get(Uri.parse(url));
+      print('📥 Status Code: ${response.statusCode}');
+      print('📥 Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(response.body);
+        List<String> names = data.map((e) => e.toString()).toList();
+        print('✅ Parsed names: $names');
+        return names;
+      } else {
+        print('❌ Failed to fetch names: ${response.statusCode}');
+        throw Exception('Failed to fetch names');
+      }
+    } catch (e) {
+      print('🔥 Exception while fetching names: $e');
+      return [];
+    }
+  }
 }
