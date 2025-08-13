@@ -124,6 +124,7 @@ class RentalCard extends StatelessWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("All steps completed successfully!")),
         );
+        await onRefresh();
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Failed to upload delivery info.")),
@@ -140,6 +141,7 @@ class RentalCard extends StatelessWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Pickup completed successfully.")),
       );
+      await onRefresh();
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Failed to complete pickup. Please try again.")),
@@ -223,6 +225,31 @@ class RentalCard extends StatelessWidget {
         throw 'Could not launch Google Maps or Geo scheme for address: $address';
       }
     }
+  }
+
+  void _showRentalPhoto(BuildContext context) {
+    final imageUrl = 'http://5.78.73.173:8080/images/deliveries/rental_${rental.rentalId}.jpg';
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delivery Photo'),
+          content: Image.network(
+            imageUrl,
+            errorBuilder: (context, error, stackTrace) {
+              return Text('Image not found or failed to load.');
+            },
+          ),
+          actions: [
+            TextButton(
+              child: Text('Close'),
+              onPressed: () => Navigator.of(context).pop(),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -381,12 +408,20 @@ class RentalCard extends StatelessWidget {
                                                   : 'Failed to upload photo.'),
                                             ),
                                           );
+                                          if (success) {
+                                            await onRefresh();
+                                          }
                                         }
                                       },
                                       icon: Icon(Icons.upload),
                                       label: Text('Upload Photo'),
                                     ),
                                   ] else if (rental.status == 'Called Off') ...[
+                                    SizedBox(height: 10),
+                                    ElevatedButton(
+                                      onPressed: () => _showRentalPhoto(context),
+                                      child: Text('See Photo'),
+                                    ),
                                     SizedBox(height: 10),
                                     ElevatedButton(
                                       onPressed: () => _handlePickupComplete(context),
