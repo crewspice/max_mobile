@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'views/login_screen.dart';
+import 'views/driver_selection_screen.dart';
 
 void main() {
   runApp(const RentalApp());
@@ -15,7 +15,7 @@ class RentalApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: const LoginScreen(), // 👈 Launches login screen first
+      home: const DriverSelectionScreen(), // 👈 Launches login screen first
     );
   }
 }

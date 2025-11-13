@@ -7,7 +7,7 @@ class DriverSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const driverMap = {
-      'I': 'Isaiah',
+      'JS': 'Jacob',
       'K': 'Kaleb',
       'A': 'Adrian',
       'JC': 'Jackson',
