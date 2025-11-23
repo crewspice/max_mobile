@@ -58,7 +58,7 @@ class RentalCard extends StatelessWidget {
       final compressed = await _compressImage(file);
       final api = ApiService();
       final success =
-          await api.recordDeliveryWithPhoto(compressed, stop.id, serial);
+          await api.recordDeliveryWithPhoto(compressed, stop.id, serial, stop.truck ?? "null", stop.driverId ?? "null");
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')));
       if (success) await onRefresh();
@@ -67,11 +67,20 @@ class RentalCard extends StatelessWidget {
 
   Future<void> _handlePickupComplete(BuildContext context) async {
     final api = ApiService();
-    final success = await api.recordPickup(stop.id);
+
+    final success = await api.recordPickup(
+      stop.id,
+      stop.truck ?? "null",   // or "TRUCK101"
+      stop.driverId ?? "null",   // or "Jake"
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(success ? 'Pickup completed!' : 'Failed')));
+      SnackBar(content: Text(success ? 'Pickup completed!' : 'Failed')),
+    );
+
     if (success) await onRefresh();
   }
+
 
   void _showRentalPhoto(BuildContext context) {
     final imageUrl = 'http://5.78.73.173:8080/images/deliveries/rental_${stop.id}.jpg';
@@ -96,7 +105,6 @@ class RentalCard extends StatelessWidget {
       },
     );
   }
-
 
 
 
@@ -125,79 +133,111 @@ class RentalCard extends StatelessWidget {
 
     // Action buttons
     List<Widget> actionButtons = [];
+
+    // ==============================================
+    // UPCOMING → show delivery buttons (side by side)
+    // ==============================================
     if (stop.status == 'Upcoming') {
-      actionButtons.addAll([
-        ElevatedButton(
-          onPressed: requiresSerial
-              ? () => _handlePhotoUpload(context)
-              : () async {
-                  // If lift type is 33rt or 45b, bypass serial
-                  final file = await _pickImage();
-                  if (file != null) {
-                    final compressed = await _compressImage(file);
-                    final api = ApiService();
-                    final success = await api.recordDeliveryWithPhoto(
-                        compressed, stop.id, ''); // empty serial
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content:
-                            Text(success ? 'Photo uploaded!' : 'Upload failed')));
-                    if (success) await onRefresh();
-                  }
-                },
-          child: const Text('Take Photo'),
+      actionButtons.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // ---- Take Photo button ----
+            SizedBox(
+              width: 140,   // ← fixed/capped width
+              child: ElevatedButton(
+                onPressed: requiresSerial
+                    ? () => _handlePhotoUpload(context)
+                    : () async {
+                        final file = await _pickImage();
+                        if (file != null) {
+                          final compressed = await _compressImage(file);
+                          final api = ApiService();
+                          final success = await api.recordDeliveryWithPhoto(
+                            compressed,
+                            stop.id,
+                            '',
+                            stop.truck ?? "null",
+                            stop.driverId ?? "null",
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
+                          );
+                          if (success) await onRefresh();
+                        }
+                      },
+                child: const Text('Take Photo'),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // ---- Upload Photo button ----
+            SizedBox(
+              width: 160,   // ← fixed/capped width
+              child: ElevatedButton.icon(
+                onPressed: requiresSerial
+                    ? () async {
+                        final file = await _pickImage(camera: false);
+                        if (file != null) {
+                          final compressed = await _compressImage(file);
+                          final api = ApiService();
+                          final success = await api.recordDeliveryWithPhoto(
+                            compressed,
+                            stop.id,
+                            serialController.text.trim(),
+                            stop.truck ?? "null",
+                            stop.driverId ?? "null",
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
+                          );
+                          if (success) await onRefresh();
+                        }
+                      }
+                    : () async {
+                        final file = await _pickImage(camera: false);
+                        if (file != null) {
+                          final compressed = await _compressImage(file);
+                          final api = ApiService();
+                          final success = await api.recordDeliveryWithPhoto(
+                            compressed,
+                            stop.id,
+                            '',
+                            stop.truck ?? "null",
+                            stop.driverId ?? "null",
+                          );
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
+                          );
+                          if (success) await onRefresh();
+                        }
+                      },
+                icon: const Icon(Icons.upload),
+                label: const Text('Upload Photo'),
+              ),
+            ),
+          ],
         ),
-        ElevatedButton.icon(
-          onPressed: requiresSerial
-              ? () async {
-                  final file = await _pickImage(camera: false);
-                  if (file != null) {
-                    final compressed = await _compressImage(file);
-                    final api = ApiService();
-                    final success = await api.recordDeliveryWithPhoto(
-                      compressed,
-                      stop.id,
-                      serialController.text.trim(),
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                    );
-                    if (success) await onRefresh();
-                  }
-                }
-              : () async {
-                  final file = await _pickImage(camera: false);
-                  if (file != null) {
-                    final compressed = await _compressImage(file);
-                    final api = ApiService();
-                    final success = await api.recordDeliveryWithPhoto(
-                      compressed,
-                      stop.id,
-                      '', // empty serial for bypass
-                    );
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                    );
-                    if (success) await onRefresh();
-                  }
-                },
-          icon: const Icon(Icons.upload),
-          label: const Text('Upload Photo'),
-        ),
-      ]);
-    } else if (stop.status == 'Called Off') {
+      );
+    }
+
+
+    // ==============================================
+    // CALLED OFF → show Complete + See Photo
+    // ==============================================
+    else if (stop.status == 'Called Off') {
       List<Widget> calledOffButtons = [];
 
-      // Only show "See Photo" if a photo exists
-      if (stop.hasPhoto) {
+    //  if (stop.hasPhoto) {
         calledOffButtons.add(
           ElevatedButton(
             onPressed: () => _showRentalPhoto(context),
             child: const Text('See Photo'),
           ),
         );
-      }
+   //   }
 
-      // "Complete" button always shows
       calledOffButtons.add(
         ElevatedButton(
           onPressed: () => _handlePickupComplete(context),
@@ -205,7 +245,6 @@ class RentalCard extends StatelessWidget {
         ),
       );
 
-      // Wrap in a centered row
       actionButtons.add(
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -219,8 +258,6 @@ class RentalCard extends StatelessWidget {
       );
     }
 
-
-
     return BaseCard(
       stop: stop,
       extraContent: [serialInput],
@@ -228,5 +265,6 @@ class RentalCard extends StatelessWidget {
       onRefresh: onRefresh,
     );
   }
+
 
 }

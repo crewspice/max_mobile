@@ -54,6 +54,7 @@ class ApiService {
           arrivalTime: stop.arrivalTime,
           departedTime: stop.departedTime,
           driverNumber: stop.driverNumber,
+          truck: stop.truck,
           hasPhoto: stop.hasPhoto,
           driverId: driverId, // ✅ Injected here
         );
@@ -106,17 +107,32 @@ class ApiService {
   }
 
 
-  Future<bool> recordDeliveryWithPhoto(File imageFile, int rentalId, String serialNumber) async {
-    final String url = '$baseUrl/recordDeliveryWithPhoto';
+  Future<bool> recordDeliveryWithPhoto(
+    File imageFile,
+    int rentalId,
+    String serialNumber,
+    String truck,
+    String driver,
+    {String? nullRouteId}
+  ) async {
+    final String url = '$routeUrl/recordDeliveryWithPhoto';
 
     var request = http.MultipartRequest('POST', Uri.parse(url))
       ..fields['rentalId'] = rentalId.toString()
       ..fields['serialNumber'] = serialNumber
-      ..files.add(await http.MultipartFile.fromPath(
-        'photoFile',
-        imageFile.path,
-        contentType: MediaType('image', 'jpeg'),
-      ));
+      ..fields['truck'] = truck
+      ..fields['driver'] = driver;
+
+    // Only send nullRouteId if it actually exists (same as pickup)
+    if (nullRouteId != null) {
+      request.fields['nullRouteId'] = nullRouteId;
+    }
+
+    request.files.add(await http.MultipartFile.fromPath(
+      'photoFile',
+      imageFile.path,
+      contentType: MediaType('image', 'jpeg'),
+    ));
 
     try {
       var response = await request.send();
@@ -129,13 +145,14 @@ class ApiService {
         return false;
       }
     } catch (e) {
-      print('Error during upload: $e');
+      print('Error during delivery upload: $e');
       return false;
     }
   }
 
-  Future<bool> recordPickup(int rentalId) async {
-    final String url = '$baseUrl/recordPickup';
+
+  Future<bool> recordPickup(int rentalId, String truck, String driver) async {
+    final String url = '$routeUrl/recordPickup';
 
     try {
       final response = await http.post(
@@ -145,6 +162,8 @@ class ApiService {
         },
         body: {
           'rentalId': rentalId.toString(),
+          'truck': truck,
+          'driver': driver,
         },
       );
 
@@ -161,18 +180,22 @@ class ApiService {
     }
   }
 
-  // Record a service with photo
+
   Future<bool> recordServiceWithPhoto(
     File imageFile,
-    int serviceId, {
+    int serviceId,
+    String truck,
+    String driver, {
     String? serialNumber,
   }) async {
-    final String url = '$baseUrl/recordServiceWithPhoto';
+    final String url = '$routeUrl/recordServiceWithPhoto';
 
     var request = http.MultipartRequest('POST', Uri.parse(url))
-      ..fields['serviceId'] = serviceId.toString();
+      ..fields['serviceId'] = serviceId.toString()
+      ..fields['truck'] = truck
+      ..fields['driver'] = driver;
 
-    // Only include serialNumber if it exists and is non-empty
+    // Optional serial number
     if (serialNumber != null && serialNumber.isNotEmpty) {
       request.fields['serialNumber'] = serialNumber;
     }
@@ -180,7 +203,7 @@ class ApiService {
     // Add photo file
     request.files.add(
       await http.MultipartFile.fromPath(
-        'photoFile', // removed the space
+        'photoFile',
         imageFile.path,
         contentType: MediaType('image', 'jpeg'),
       ),
@@ -203,35 +226,40 @@ class ApiService {
     }
   }
 
-  Future<bool> recordHQReturnById(int hqId) async {
-    final String url = '$routeUrl/hq/$hqId';
-    print('📡 Preparing to delete HQ stop with ID: $hqId');
-    print('🔗 URL: $url'); // <-- print the full URL
+  Future<bool> recordHQReturn(int hqId, String truck, String driver) async {
+    final String url = '$routeUrl/hqComplete';
+
+    print('📡 Preparing to record HQ return with ID: $hqId');
+    print('🔗 URL: $url');
 
     try {
-      final response = await http.delete(
+      final response = await http.post(
         Uri.parse(url),
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: {
+          'hqId': hqId.toString(),
+          'truck': truck,
+          'driver': driver,
         },
       );
 
-      print('📤 HTTP DELETE sent to $url'); // optional extra debug
+      print('📤 HTTP POST sent to $url');
 
       if (response.statusCode == 200) {
-        print('✅ HQ stop deleted successfully.');
+        print('✅ HQ return recorded successfully.');
         return true;
       } else {
-        print('❌ Failed to delete HQ stop: ${response.statusCode}');
-        print('📄 Response body: ${response.body}'); // optional for debugging
+        print('❌ Failed to record HQ return: ${response.statusCode}');
+        print('📄 Response body: ${response.body}');
         return false;
       }
     } catch (e) {
-      print('🔥 Error during HQ stop deletion: $e');
+      print('🔥 Error during HQ return: $e');
       return false;
     }
   }
-
 
 
   Future<bool> validateSerialNumber(String serialNumber) async {

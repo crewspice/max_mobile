@@ -83,6 +83,8 @@ class ServiceCard extends StatelessWidget {
         compressed,
         stop.id,
         serialNumber: requiresSerial ? serial : null, // ✅ now safe
+        stop.truck ?? "null",
+        stop.driverId ?? "null"
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,7 +101,11 @@ class ServiceCard extends StatelessWidget {
 
   Future<void> _handlePickupComplete(BuildContext context) async {
     final api = ApiService();
-    final success = await api.recordPickup(stop.id);
+    final success = await api.recordPickup(
+      stop.id, 
+      stop.truck ?? "null",
+      stop.driverId ?? "null"
+    );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(success ? 'Pickup completed!' : 'Failed')),
     );
@@ -158,20 +164,20 @@ class ServiceCard extends StatelessWidget {
     List<Widget> actionButtons = [];
 
     // Row 1: See Photo (only if stop.hasPhoto)
-    if (stop.hasPhoto) {
-      actionButtons.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              onPressed: () => _showServicePhoto(context),
-              child: const Text("See Photo"),
-            ),
-          ],
-        ),
-      );
-      actionButtons.add(const SizedBox(height: 8));
-    }
+   // if (stop.hasPhoto) {
+    actionButtons.add(
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          ElevatedButton(
+            onPressed: () => _showServicePhoto(context),
+            child: const Text("See Photo"),
+          ),
+        ],
+      ),
+    );
+    actionButtons.add(const SizedBox(height: 8));
+   // }
 
     // Row 2: Take Photo + Upload Photo (always available)
     actionButtons.add(

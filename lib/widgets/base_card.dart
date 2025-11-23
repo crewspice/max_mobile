@@ -131,7 +131,10 @@ class BaseCard extends StatelessWidget {
                     builder: (_) => const Center(child: CircularProgressIndicator()),
                   );
 
-                  final success = await api.recordHQReturnById(stop.id);
+                  final success = await api.recordHQReturn(
+                    stop.id, 
+                    stop.truck ?? "null", 
+                    stop.driverId ?? "null");
 
                   // Remove loading indicator
                   Navigator.of(context).pop();

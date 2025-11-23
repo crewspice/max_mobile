@@ -43,12 +43,76 @@ class _RentalListViewState extends State<RentalListView> {
     };
     return driverMap[driverId] ?? driverId;
   }
+Future<void> _refreshRentals() async {
+  setState(() {
+    futureStops = _fetchStopsForDriverWithFallback(widget.driverId);
+  });
+}
 
-  Future<void> _refreshRentals() async {
-    setState(() {
-      futureStops = ApiService().fetchStopsByDriver(widget.driverId);
-    });
+// Fetch stops for one driver, but fallback to all drivers if empty/error
+Future<List<Stop>> _fetchStopsForDriverWithFallback(String driverId) async {
+  try {
+    final stops = await ApiService().fetchStopsByDriver(driverId);
+    if (stops.isNotEmpty) {
+      return stops; // normal route data exists → show it
+    }
+  } catch (_) {
+    // ignore errors for primary driver
   }
+
+  // fallback: fetch all drivers to build summary
+  const driverIds = ['JS', 'K', 'A', 'JC', 'J', 'B'];
+  Map<String, bool> driverHasRoutes = {};
+
+  for (var id in driverIds) {
+    try {
+      final s = await ApiService().fetchStopsByDriver(id);
+      driverHasRoutes[id] = s.isNotEmpty;
+    } catch (_) {
+      driverHasRoutes[id] = false;
+    }
+  }
+
+  // Build ghost summary stop objects
+  List<Stop> ghostStops = [
+    Stop(
+      id: -1,
+      orderId: -1,
+      type: 'GHOST_SUMMARY',
+      driverId: '',
+      liftType: '',
+      // optionally fill other fields if Stop requires them
+    )
+  ];
+
+  // attach summary as a property inside ghost stop
+  ghostStops[0] = ghostStops[0].copyWith(
+    driverId: _buildDriverSummary(driverHasRoutes),
+  );
+
+  return ghostStops;
+}
+
+// Helper to build summary string
+String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
+  const driverMap = {
+    'JS': 'Jacob',
+    'K': 'Kaleb',
+    'A': 'Adrian',
+    'JC': 'Jackson',
+    'J': 'John',
+    'B': 'Byron',
+  };
+
+  final withRoutes = driverHasRoutes.entries
+      .where((e) => e.value)
+      .map((e) => driverMap[e.key] ?? e.key)
+      .toList();
+
+  if (withRoutes.isEmpty) return "Nobody has routes";
+
+  return "${withRoutes.join(', ')} have routes";
+}
 
   @override
   Widget build(BuildContext context) {
