@@ -45,12 +45,35 @@ class RentalCard extends StatelessWidget {
     return await api.validateSerialNumber(serial);
   }
 
+  String computeSerial(String? liftType, String typed) {
+    if (liftType == null) return typed.trim();
+
+    final lower = liftType.toLowerCase().trim();
+
+    if (lower.startsWith("45")) return "45";
+    if (lower.startsWith("33")) return "33";
+
+    return typed.trim();
+  }
+
+
   Future<void> _handlePhotoUpload(BuildContext context) async {
-    final serial = serialController.text.trim();
+    String serial = serialController.text.trim();
     if (!await _validateSerial(serial)) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid or empty serial number')));
       return;
+    }
+
+    if (stop.liftType != null) {
+      final lower = stop.liftType!.toLowerCase();
+      if (lower.startsWith("45")) {
+        serial = "45";
+      } else if (lower.startsWith("33")) {
+        serial = "33";
+      } else {
+        serial = serialController.text.trim();
+      }
     }
 
     final file = await _pickImage();
@@ -110,9 +133,45 @@ class RentalCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+
+
     // Determine if serial is required
     final bool requiresSerial = stop.status == 'Upcoming' &&
         !(stop.liftType == '33rt' || stop.liftType == '45b');
+
+    final List<Widget> preInfoWidgets = [];
+
+    if (stop.locationNotes != null && stop.locationNotes!.trim().isNotEmpty) {
+      preInfoWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: Center(
+            child: Text(
+              stop.locationNotes!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (stop.preTripInstructions != null &&
+        stop.preTripInstructions!.trim().isNotEmpty) {
+      preInfoWidgets.add(
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Center(
+            child: Text(
+              "Pre-trip: ${stop.preTripInstructions}",
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+          ),
+        ),
+      );
+    }
+
 
     // Serial input field
     Widget serialInput = Container();
@@ -152,11 +211,22 @@ class RentalCard extends StatelessWidget {
                         final file = await _pickImage();
                         if (file != null) {
                           final compressed = await _compressImage(file);
+                          String serial = "i";
+                          if (stop.liftType != null) {
+                          final lower = stop.liftType!.toLowerCase();
+                            if (lower.startsWith("45")) {
+                              serial = "45";
+                            } else if (lower.startsWith("33")) {
+                              serial = "33";
+                            } else {
+                              serial = serialController.text.trim();
+                            }
+                          }
                           final api = ApiService();
                           final success = await api.recordDeliveryWithPhoto(
                             compressed,
                             stop.id,
-                            '',
+                            serial,
                             stop.truck ?? "null",
                             stop.driverId ?? "null",
                           );
@@ -182,10 +252,21 @@ class RentalCard extends StatelessWidget {
                         if (file != null) {
                           final compressed = await _compressImage(file);
                           final api = ApiService();
+                          String serial = "w";
+                          if (stop.liftType != null) {
+                            final lower = stop.liftType!.toLowerCase();
+                            if (lower.startsWith("45")) {
+                              serial = "45";
+                            } else if (lower.startsWith("33")) {
+                              serial = "33";
+                            } else {
+                              serial = serialController.text.trim();
+                            }
+                          }
                           final success = await api.recordDeliveryWithPhoto(
                             compressed,
                             stop.id,
-                            serialController.text.trim(),
+                            serial,
                             stop.truck ?? "null",
                             stop.driverId ?? "null",
                           );
@@ -200,10 +281,21 @@ class RentalCard extends StatelessWidget {
                         if (file != null) {
                           final compressed = await _compressImage(file);
                           final api = ApiService();
+                          String serial = "o";
+                          if (stop.liftType != null) {
+                            final lower = stop.liftType!.toLowerCase();
+                            if (lower.startsWith("45")) {
+                              serial = "45";
+                            } else if (lower.startsWith("33")) {
+                              serial = "33";
+                            } else {
+                              serial = serialController.text.trim();
+                            }
+                          }
                           final success = await api.recordDeliveryWithPhoto(
                             compressed,
                             stop.id,
-                            '',
+                            serial,
                             stop.truck ?? "null",
                             stop.driverId ?? "null",
                           );
@@ -260,7 +352,10 @@ class RentalCard extends StatelessWidget {
 
     return BaseCard(
       stop: stop,
-      extraContent: [serialInput],
+      extraContent: [
+        ...preInfoWidgets,
+        serialInput,
+      ],
       actionButtons: actionButtons,
       onRefresh: onRefresh,
     );

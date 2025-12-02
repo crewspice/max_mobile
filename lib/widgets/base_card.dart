@@ -92,14 +92,6 @@ class BaseCard extends StatelessWidget {
     }
   }
 
-  ButtonStyle _actionButtonStyle() => ElevatedButton.styleFrom(
-        backgroundColor: const Color(0xFF800020),
-        foregroundColor: Colors.white,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-      );
-
   @override
   Widget build(BuildContext context) {
     // 🔹 HQ Card
@@ -152,8 +144,8 @@ class BaseCard extends StatelessWidget {
                   }
                 },
                 icon: const Icon(Icons.check_circle_outline),
-                label: const Text("Complete HQ Return"),
-                style: _actionButtonStyle(),
+                label: const Text("I'm back"),
+  //              style: _actionButtonStyle(),
               ),
             ],
           ),

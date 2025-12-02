@@ -11,6 +11,19 @@ class ApiService {
   final String userUrl = "http://5.78.73.173:8080/user";
   final String routeUrl = "http://5.78.73.173:8080/routes";
 
+  /// Fetch all driver IDs/initials that have routes (excluding "null")
+  Future<List<String>> fetchDriversWithRoutes() async {
+    final response = await http.get(Uri.parse('$routeUrl/drivers'));
+
+    if (response.statusCode == 200) {
+      final List<dynamic> jsonList = jsonDecode(response.body);
+      // Ensure we return a list of strings
+      return jsonList.map((e) => e.toString()).toList();
+    } else {
+      throw Exception('Failed to fetch drivers with routes');
+    }
+  }
+
   /// Fetch rentals by driver ID
   Future<List<Stop>> fetchStopsByDriver(String driverId) async {
     final response = await http.get(
@@ -302,6 +315,24 @@ class ApiService {
       print('🔥 Exception while fetching names: $e');
       return [];
     }
+  }
+
+  Future<Map<String, dynamic>> fetchDriverStatistics(String driverId) async {
+    final response = await http.get(Uri.parse('$userUrl/driver-stats'));
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load driver statistics');
+    }
+
+    List<dynamic> statsList = jsonDecode(response.body);
+
+    // Find stats for the selected driver
+    final driverData = statsList.firstWhere(
+      (item) => item['driver'] == driverId,
+      orElse: () => {"driver": driverId, "driverSeconds": 0, "monthTotalSeconds": 0},
+    );
+
+    return driverData;
   }
 
   
