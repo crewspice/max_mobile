@@ -11,12 +11,14 @@ class RentalCard extends StatelessWidget {
   final Stop stop;
   final TextEditingController serialController;
   final Future<void> Function() onRefresh;
+  final void Function(Stop updatedStop)? onNotesUpdated;
 
   const RentalCard({
     Key? key,
     required this.stop,
     required this.serialController,
     required this.onRefresh,
+    required this.onNotesUpdated,
   }) : super(key: key);
 
   Future<File?> _pickImage({bool camera = true}) async {
@@ -131,235 +133,254 @@ class RentalCard extends StatelessWidget {
 
 
 
-  @override
-  Widget build(BuildContext context) {
+@override
+Widget build(BuildContext context) {
+  // Determine if serial is required
+  final bool requiresSerial = stop.status == 'Upcoming' &&
+      !(stop.liftType == '33rt' || stop.liftType == '45b');
+
+  final List<Widget> preInfoWidgets = [];
 
 
-    // Determine if serial is required
-    final bool requiresSerial = stop.status == 'Upcoming' &&
-        !(stop.liftType == '33rt' || stop.liftType == '45b');
-
-    final List<Widget> preInfoWidgets = [];
-
-    if (stop.locationNotes != null && stop.locationNotes!.trim().isNotEmpty) {
-      preInfoWidgets.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 4.0),
+  // Notes row with flush-right edit icon
+  Widget notesRow = Padding(
+    padding: const EdgeInsets.only(bottom: 8.0),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
           child: Center(
             child: Text(
-              stop.locationNotes!,
+              stop.notes != null && stop.notes!.isNotEmpty
+                  ? stop.notes!
+                  : 'No notes yet',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontStyle: FontStyle.italic),
+              style: const TextStyle(
+                fontStyle: FontStyle.italic,
+                color: Colors.black87,
+              ),
             ),
           ),
         ),
-      );
-    }
-
-    if (stop.preTripInstructions != null &&
-        stop.preTripInstructions!.trim().isNotEmpty) {
-      preInfoWidgets.add(
         Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Center(
-            child: Text(
-              "Pre-trip: ${stop.preTripInstructions}",
-              textAlign: TextAlign.center,
-              style: const TextStyle(fontStyle: FontStyle.italic),
+          padding: const EdgeInsets.only(right: 10.0),
+          child: GestureDetector(
+            onTap: () async {
+              final controller = TextEditingController(text: stop.notes ?? '');
+
+              final updatedNotes = await showDialog<String>(
+                context: context,
+                barrierDismissible: false,
+                builder: (context) {
+                  return AlertDialog(
+                    title: const Text('Edit Notes'),
+                    content: TextField(
+                      controller: controller,
+                      maxLines: 5,
+                      autofocus: true,
+                      decoration: const InputDecoration(
+                        hintText: 'Enter notes here...',
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      ElevatedButton(
+                        onPressed: () => Navigator.pop(context, controller.text.trim()),
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (updatedNotes == null) return;
+
+              final api = ApiService();
+              final success = await api.updateRentalNotes(
+                rentalItemId: stop.id,
+                notes: updatedNotes,
+              );
+
+              if (success) {
+                final updatedStop = stop.copyWith(notes: updatedNotes);
+
+                // Call the parent callback instead of setState
+                if (onNotesUpdated != null) {
+                  onNotesUpdated!(updatedStop); // ✅ safe call
+                }
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Notes updated')),
+                );
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Failed to update notes')),
+                );
+              }
+
+            },
+            child: Image.asset(
+              'assets/notes.png',
+              width: 20,
+              height: 20,
             ),
           ),
         ),
-      );
-    }
-
-
-    // Serial input field
-    Widget serialInput = Container();
-    if (requiresSerial) {
-      serialInput = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6.0),
-        child: Center(
-          child: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.3,
-            child: TextField(
-              controller: serialController,
-              decoration: const InputDecoration(labelText: 'Serial Number'),
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Action buttons
-    List<Widget> actionButtons = [];
-
-    // ==============================================
-    // UPCOMING → show delivery buttons (side by side)
-    // ==============================================
-    if (stop.status == 'Upcoming') {
-      actionButtons.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // ---- Take Photo button ----
-            SizedBox(
-              width: 140,   // ← fixed/capped width
-              child: ElevatedButton(
-                onPressed: requiresSerial
-                    ? () => _handlePhotoUpload(context)
-                    : () async {
-                        final file = await _pickImage();
-                        if (file != null) {
-                          final compressed = await _compressImage(file);
-                          String serial = "i";
-                          if (stop.liftType != null) {
-                          final lower = stop.liftType!.toLowerCase();
-                            if (lower.startsWith("45")) {
-                              serial = "45";
-                            } else if (lower.startsWith("33")) {
-                              serial = "33";
-                            } else {
-                              serial = serialController.text.trim();
-                            }
-                          }
-                          final api = ApiService();
-                          final success = await api.recordDeliveryWithPhoto(
-                            compressed,
-                            stop.id,
-                            serial,
-                            stop.truck ?? "null",
-                            stop.driverId ?? "null",
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                          );
-                          if (success) await onRefresh();
-                        }
-                      },
-                child: const Text('Take Photo'),
-              ),
-            ),
-
-            const SizedBox(width: 10),
-
-            // ---- Upload Photo button ----
-            SizedBox(
-              width: 160,   // ← fixed/capped width
-              child: ElevatedButton.icon(
-                onPressed: requiresSerial
-                    ? () async {
-                        final file = await _pickImage(camera: false);
-                        if (file != null) {
-                          final compressed = await _compressImage(file);
-                          final api = ApiService();
-                          String serial = "w";
-                          if (stop.liftType != null) {
-                            final lower = stop.liftType!.toLowerCase();
-                            if (lower.startsWith("45")) {
-                              serial = "45";
-                            } else if (lower.startsWith("33")) {
-                              serial = "33";
-                            } else {
-                              serial = serialController.text.trim();
-                            }
-                          }
-                          final success = await api.recordDeliveryWithPhoto(
-                            compressed,
-                            stop.id,
-                            serial,
-                            stop.truck ?? "null",
-                            stop.driverId ?? "null",
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                          );
-                          if (success) await onRefresh();
-                        }
-                      }
-                    : () async {
-                        final file = await _pickImage(camera: false);
-                        if (file != null) {
-                          final compressed = await _compressImage(file);
-                          final api = ApiService();
-                          String serial = "o";
-                          if (stop.liftType != null) {
-                            final lower = stop.liftType!.toLowerCase();
-                            if (lower.startsWith("45")) {
-                              serial = "45";
-                            } else if (lower.startsWith("33")) {
-                              serial = "33";
-                            } else {
-                              serial = serialController.text.trim();
-                            }
-                          }
-                          final success = await api.recordDeliveryWithPhoto(
-                            compressed,
-                            stop.id,
-                            serial,
-                            stop.truck ?? "null",
-                            stop.driverId ?? "null",
-                          );
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                          );
-                          if (success) await onRefresh();
-                        }
-                      },
-                icon: const Icon(Icons.upload),
-                label: const Text('Upload Photo'),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-
-    // ==============================================
-    // CALLED OFF → show Complete + See Photo
-    // ==============================================
-    else if (stop.status == 'Called Off') {
-      List<Widget> calledOffButtons = [];
-
-    //  if (stop.hasPhoto) {
-        calledOffButtons.add(
-          ElevatedButton(
-            onPressed: () => _showRentalPhoto(context),
-            child: const Text('See Photo'),
-          ),
-        );
-   //   }
-
-      calledOffButtons.add(
-        ElevatedButton(
-          onPressed: () => _handlePickupComplete(context),
-          child: const Text('Complete'),
-        ),
-      );
-
-      actionButtons.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            for (var i = 0; i < calledOffButtons.length; i++) ...[
-              calledOffButtons[i],
-              if (i < calledOffButtons.length - 1) const SizedBox(width: 8),
-            ]
-          ],
-        ),
-      );
-    }
-
-    return BaseCard(
-      stop: stop,
-      extraContent: [
-        ...preInfoWidgets,
-        serialInput,
       ],
-      actionButtons: actionButtons,
-      onRefresh: onRefresh,
+    ),
+  );
+
+
+  // --- Serial input field ---
+  Widget serialInput = Container();
+  if (requiresSerial) {
+    serialInput = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Center(
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.3,
+          child: TextField(
+            controller: serialController,
+            decoration: const InputDecoration(labelText: 'Serial Number'),
+          ),
+        ),
+      ),
     );
   }
+
+  // --- Action buttons ---
+  List<Widget> actionButtons = [];
+
+  // UPCOMING → show delivery buttons
+  if (stop.status == 'Upcoming') {
+    actionButtons.add(
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          // Take Photo
+          SizedBox(
+            width: 140,
+            child: ElevatedButton(
+              onPressed: requiresSerial
+                  ? () => _handlePhotoUpload(context)
+                  : () async {
+                      final file = await _pickImage();
+                      if (file != null) {
+                        final compressed = await _compressImage(file);
+                        String serial = "i";
+                        if (stop.liftType != null) {
+                          final lower = stop.liftType!.toLowerCase();
+                          if (lower.startsWith("45")) serial = "45";
+                          else if (lower.startsWith("33")) serial = "33";
+                          else serial = serialController.text.trim();
+                        }
+                        final api = ApiService();
+                        final success = await api.recordDeliveryWithPhoto(
+                          compressed,
+                          stop.id,
+                          serial,
+                          stop.truck ?? "null",
+                          stop.driverId ?? "null",
+                        );
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                              content: Text(
+                                  success ? 'Photo uploaded!' : 'Upload failed')),
+                        );
+                        if (success) await onRefresh();
+                      }
+                    },
+              child: const Text('Take Photo'),
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          // Upload Photo
+          SizedBox(
+            width: 160,
+            child: ElevatedButton.icon(
+              onPressed: () async {
+                final file = await _pickImage(camera: false);
+                if (file != null) {
+                  final compressed = await _compressImage(file);
+                  String serial = "o";
+                  if (stop.liftType != null) {
+                    final lower = stop.liftType!.toLowerCase();
+                    if (lower.startsWith("45")) serial = "45";
+                    else if (lower.startsWith("33")) serial = "33";
+                    else serial = serialController.text.trim();
+                  }
+                  final api = ApiService();
+                  final success = await api.recordDeliveryWithPhoto(
+                    compressed,
+                    stop.id,
+                    serial,
+                    stop.truck ?? "null",
+                    stop.driverId ?? "null",
+                  );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content:
+                            Text(success ? 'Photo uploaded!' : 'Upload failed')),
+                  );
+                  if (success) await onRefresh();
+                }
+              },
+              icon: const Icon(Icons.upload),
+              label: const Text('Upload Photo'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // CALLED OFF → show Complete + See Photo
+  else if (stop.status == 'Called Off') {
+    List<Widget> calledOffButtons = [];
+
+    calledOffButtons.add(
+      ElevatedButton(
+        onPressed: () => _showRentalPhoto(context),
+        child: const Text('See Photo'),
+      ),
+    );
+
+    calledOffButtons.add(
+      ElevatedButton(
+        onPressed: () => _handlePickupComplete(context),
+        child: const Text('Complete'),
+      ),
+    );
+
+    actionButtons.add(
+      Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          for (var i = 0; i < calledOffButtons.length; i++) ...[
+            calledOffButtons[i],
+            if (i < calledOffButtons.length - 1) const SizedBox(width: 8),
+          ]
+        ],
+      ),
+    );
+  }
+
+  return BaseCard(
+    stop: stop,
+    extraContent: [
+      ...preInfoWidgets,
+      notesRow,
+      serialInput,
+    ],
+    actionButtons: actionButtons,
+    onRefresh: onRefresh,
+  );
+}
 
 
 }

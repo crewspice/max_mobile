@@ -23,13 +23,13 @@ class Stop {
   final String? streetAddress;
   final String? city;
   final String? liftType;
+  final String? serialNumber;
   final String? time;
   final String? orderedByContactName;
   final String? orderedByContactPhone;
   final String? siteContactName;
   final String? siteContactPhone;
-  final String? locationNotes;
-  final String? preTripInstructions;
+  final String? notes;
   final double? latitude;
   final double? longitude;
   final String? arrivalTime;
@@ -53,6 +53,7 @@ class Stop {
     this.streetAddress,
     this.city,
     this.liftType,
+    this.serialNumber,
     this.newSiteName,
     this.newStreetAddress,
     this.newCity,
@@ -62,8 +63,7 @@ class Stop {
     this.orderedByContactPhone,
     this.siteContactName,
     this.siteContactPhone,
-    this.locationNotes,
-    this.preTripInstructions,
+    this.notes,
     this.latitude,
     this.longitude,
     this.arrivalTime,
@@ -90,6 +90,7 @@ class Stop {
     String? streetAddress,
     String? city,
     String? liftType,
+    String? serialNumber,
     String? newSiteName,
     String? newStreetAddress,
     String? newCity,
@@ -99,8 +100,7 @@ class Stop {
     String? orderedByContactPhone,
     String? siteContactName,
     String? siteContactPhone,
-    String? locationNotes,
-    String? preTripInstructions,
+    String? notes,
     double? latitude,
     double? longitude,
     String? arrivalTime,
@@ -124,6 +124,7 @@ class Stop {
       streetAddress: streetAddress ?? this.streetAddress,
       city: city ?? this.city,
       liftType: liftType ?? this.liftType,
+      serialNumber: serialNumber ?? this.serialNumber,
       newSiteName: newSiteName ?? this.newSiteName,
       newStreetAddress: newStreetAddress ?? this.newStreetAddress,
       newCity: newCity ?? this.newCity,
@@ -135,9 +136,8 @@ class Stop {
           orderedByContactPhone ?? this.orderedByContactPhone,
       siteContactName: siteContactName ?? this.siteContactName,
       siteContactPhone: siteContactPhone ?? this.siteContactPhone,
-      locationNotes: locationNotes ?? this.locationNotes,
-      preTripInstructions:
-          preTripInstructions ?? this.preTripInstructions,
+      notes:
+          notes ?? this.notes,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
       arrivalTime: arrivalTime ?? this.arrivalTime,
@@ -165,6 +165,7 @@ class Stop {
       streetAddress: json['streetAddress'],
       city: json['city'],
       liftType: json['liftType'],
+      serialNumber: json['serialNumber'],
       newSiteName: json['newSiteName'],
       newStreetAddress: json['newStreetAddress'],
       newCity: json['newCity'],
@@ -174,8 +175,7 @@ class Stop {
       orderedByContactPhone: json['orderedByContactNumber'],
       siteContactName: json['siteContactName'],
       siteContactPhone: json['siteContactNumber'],
-      locationNotes: json['locationNotes'],
-      preTripInstructions: json['preTripInstructions'],
+      notes: json['notes'],
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       arrivalTime: json['arrivalTime'],
@@ -202,6 +202,7 @@ class Stop {
       "streetAddress": streetAddress,
       "city": city,
       "liftType": liftType,
+      "serialNumber" : serialNumber,
       "newSiteName": newSiteName,
       "newStreetAddress": newStreetAddress,
       "newCity": newCity,
@@ -211,8 +212,7 @@ class Stop {
       "orderedByContactPhone": orderedByContactPhone,
       "siteContactName": siteContactName,
       "siteContactPhone": siteContactPhone,
-      "locationNotes": locationNotes,
-      "preTripInstructions": preTripInstructions,
+      "notes": notes,
       "latitude": latitude,
       "longitude": longitude,
       "arrivalTime": arrivalTime,

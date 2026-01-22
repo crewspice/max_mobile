@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/stop.dart';
 import 'package:intl/intl.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
 
 class BaseCard extends StatelessWidget {
@@ -270,32 +271,60 @@ class BaseCard extends StatelessWidget {
                                     stop.siteName!,
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                        color: Color(0xFF800020),
-                                        decoration: TextDecoration.none),
+                                      color: Color(0xFF800020),
+                                      decoration: TextDecoration.none,
+                                    ),
                                   ),
                                 ),
+
                               if (stop.streetAddress != null && stop.streetAddress!.isNotEmpty)
                                 GestureDetector(
                                   onTap: () => _launchMaps(
-                                      "${stop.siteName ?? ''}, ${stop.streetAddress}"),
+                                    "${stop.siteName ?? ''}, ${stop.streetAddress}",
+                                  ),
                                   child: Text(
                                     stop.streetAddress!,
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                        color: Color(0xFF800020),
-                                        decoration: TextDecoration.none),
+                                      color: Color(0xFF800020),
+                                      decoration: TextDecoration.none,
+                                    ),
                                   ),
                                 ),
+
                               if (stop.city != null && stop.city!.isNotEmpty)
                                 GestureDetector(
                                   onTap: () => _launchMaps(
-                                      "${stop.siteName ?? ''}, ${stop.streetAddress ?? ''}, ${stop.city}"),
+                                    "${stop.siteName ?? ''}, ${stop.streetAddress ?? ''}, ${stop.city}",
+                                  ),
                                   child: Text(
                                     stop.city!,
                                     textAlign: TextAlign.center,
                                     style: const TextStyle(
-                                        color: Color(0xFF800020),
-                                        decoration: TextDecoration.none),
+                                      color: Color(0xFF800020),
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ),
+                              if (stop.serialNumber != null && stop.serialNumber!.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 8),
+                                  child: Column(
+                                    children: [
+
+                                      const SizedBox(height: 6),
+
+                                      // 2️⃣ Orbitron Extra Bold, futuristic
+                                      Text(
+                                        "#${stop.serialNumber}",
+                                        textAlign: TextAlign.center,
+                                        style: GoogleFonts.orbitron(
+                                          color: Colors.black87,
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                             ],
@@ -303,6 +332,7 @@ class BaseCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
+
 
                       // Contacts
                       Expanded(

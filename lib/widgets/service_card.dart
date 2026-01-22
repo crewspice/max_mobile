@@ -264,14 +264,9 @@ class ServiceCard extends StatelessWidget {
                       "\"${stop.reason!}\"",
                       style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
-                  if (stop.locationNotes != null)
+                  if (stop.notes != null)
                     Text(
-                      stop.locationNotes!,
-                      style: const TextStyle(fontStyle: FontStyle.italic),
-                    ),
-                  if (stop.preTripInstructions != null)
-                    Text(
-                      "Pre-trip: ${stop.preTripInstructions}",
+                      "${stop.notes}",
                       style: const TextStyle(fontStyle: FontStyle.italic),
                     ),
                   serialInput,
@@ -290,15 +285,9 @@ class ServiceCard extends StatelessWidget {
                 style: const TextStyle(fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),
-            if (stop.locationNotes != null)
+            if (stop.notes != null)
               Text(
-                stop.locationNotes!,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
-              ),
-            if (stop.preTripInstructions != null)
-              Text(
-                "Pre-trip: ${stop.preTripInstructions}",
+                "${stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),
@@ -309,6 +298,12 @@ class ServiceCard extends StatelessWidget {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            if (stop.newStreetAddress?.isNotEmpty == true)
+              Text(
+                "New Site:",
+                style: const TextStyle(fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
             if (stop.newSiteName?.isNotEmpty == true)
               Text(
                 stop.newSiteName!,
@@ -335,15 +330,9 @@ class ServiceCard extends StatelessWidget {
                 style: const TextStyle(fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),
-            if (stop.locationNotes != null)
+            if (stop.notes != null)
               Text(
-                stop.locationNotes!,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
-              ),
-            if (stop.preTripInstructions != null)
-              Text(
-                "Pre-trip: ${stop.preTripInstructions}",
+                "${stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),
@@ -360,15 +349,9 @@ class ServiceCard extends StatelessWidget {
                 style: const TextStyle(fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),
-            if (stop.locationNotes != null)
+            if (stop.notes != null)
               Text(
-                stop.locationNotes!,
-                style: const TextStyle(fontStyle: FontStyle.italic),
-                textAlign: TextAlign.center,
-              ),
-            if (stop.preTripInstructions != null)
-              Text(
-                "Pre-trip: ${stop.preTripInstructions}",
+                "${stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic),
                 textAlign: TextAlign.center,
               ),

@@ -147,6 +147,11 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
                     stop: stop,
                     serialController: serialControllers[index],
                     onRefresh: _refreshRentals,
+                    onNotesUpdated: (updatedStop) {
+                      setState(() {
+                        stops[index] = updatedStop;
+                      });
+                    }
                   );
                 } else if (stop.type == 'SERVICE') {
                   return ServiceCard(

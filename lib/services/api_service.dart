@@ -51,6 +51,7 @@ class ApiService {
           streetAddress: stop.streetAddress,
           city: stop.city,
           liftType: stop.liftType,
+          serialNumber: stop.serialNumber,
           newSiteName: stop.newSiteName,
           newStreetAddress: stop.newStreetAddress,
           newCity: stop.newCity,
@@ -60,8 +61,7 @@ class ApiService {
           orderedByContactPhone: stop.orderedByContactPhone,
           siteContactName: stop.siteContactName,
           siteContactPhone: stop.siteContactPhone,
-          locationNotes: stop.locationNotes,
-          preTripInstructions: stop.preTripInstructions,
+          notes: stop.notes,
           latitude: stop.latitude,
           longitude: stop.longitude,
           arrivalTime: stop.arrivalTime,
@@ -333,6 +333,37 @@ class ApiService {
     );
 
     return driverData;
+  }
+  
+  Future<bool> updateRentalNotes({
+    required int rentalItemId,
+    required String notes,
+  }) async {
+    final uri = Uri.parse('$baseUrl/$rentalItemId/notes');
+
+    print('➡️ SENDING REQUEST');
+    print('URL: $uri');
+    print('BODY: $notes');
+
+    try {
+      final response = await http.put( // or patch
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'notes': notes,
+        }),
+      );
+
+      print('⬅️ RESPONSE STATUS: ${response.statusCode}');
+      print('⬅️ RESPONSE BODY: ${response.body}');
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ HTTP ERROR: $e');
+      return false;
+    }
   }
 
   
