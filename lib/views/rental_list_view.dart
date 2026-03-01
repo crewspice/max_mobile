@@ -117,7 +117,6 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Tasks for: ${_mapDriverId(widget.driverId)}")),
       body: FutureBuilder<List<Stop>>(
         future: futureStops,
         builder: (context, snapshot) {
