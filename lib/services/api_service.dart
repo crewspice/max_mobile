@@ -4,12 +4,15 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart';
 import 'package:mime/mime.dart';
 import '../models/stop.dart';
+import '../models/lift.dart';
+import '../models/lift_maintenance_history.dart';
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
   final String baseUrl = "http://5.78.73.173:8080/rentals";
   final String userUrl = "http://5.78.73.173:8080/user";
   final String routeUrl = "http://5.78.73.173:8080/routes";
+  final String maintenanceUrl = "http://5.78.73.173:8080/maintenance";
 
   /// Fetch all driver IDs/initials that have routes (excluding "null")
   Future<List<String>> fetchDriversWithRoutes() async {
@@ -365,6 +368,74 @@ class ApiService {
       return false;
     }
   }
+
+  Future<List<dynamic>> fetchMaintenanceLifts() async {
+    final res = await http.get(Uri.parse('$maintenanceUrl/lifts'));
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load lifts');
+    }
+
+    return jsonDecode(res.body);
+  }
+
+  Future<List<Lift>> fetchLifts() async {
+    final response =
+        await http.get(Uri.parse('http://5.78.73.173:8080/maintenance/lifts'));
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => Lift.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load lifts');
+    }
+  }
+
+
+  Future<void> submitPreventiveMaintenance({
+    required int liftId,
+    required String notes,
+    required String completedByInitial,
+  }) async {
+
+
+    final res = await http.post(
+      Uri.parse('$maintenanceUrl/pm'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'liftId': liftId,
+        'notes': notes,
+        'completedByInitial': completedByInitial,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to submit PM');
+    }
+  }
+
+  Future<LiftMaintenanceHistory> fetchLiftMaintenanceHistory(int liftId) async {
+    final response = await http.get(
+      Uri.parse('$maintenanceUrl/history/$liftId'),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonMap = jsonDecode(response.body);
+      return LiftMaintenanceHistory.fromJson(jsonMap);
+    } else {
+      throw Exception('Failed to load lift maintenance history');
+    }
+  }
+
+  Future<void> registerDevice(String userId, String token) async {
+  await http.post(
+    Uri.parse('$userUrl/register-device'),
+    body: {
+      'userId': userId,
+      'token': token,
+    },
+  );
+}
 
   
 }
