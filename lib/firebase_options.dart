@@ -53,7 +53,7 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyA0GDMqG-JCLfvJf_J-E7UJJMkgxOodLVA',
+    apiKey: ,
     appId: '1:676931689264:android:59604424264479e23dc6f5',
     messagingSenderId: '676931689264',
     projectId: 'maxhighreach-mobile',
