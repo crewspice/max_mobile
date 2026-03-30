@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/api_service.dart';
 import 'home_screen.dart';
 import 'rental_list_view.dart';
+import 'dart:io';
 
 class UserSelectionScreen extends StatefulWidget {
   const UserSelectionScreen({super.key});
@@ -77,12 +78,30 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
       debugPrint('Push permission settings: $settings');
     }
 
-    // Get FCM token
+    // 🔴 IMPORTANT: wait for APNS token on iOS
+    if (Platform.isIOS) {
+      String? apnsToken;
+
+      for (int i = 0; i < 10; i++) {
+        apnsToken = await messaging.getAPNSToken();
+        if (apnsToken != null) break;
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      if (apnsToken == null) {
+        debugPrint('❌ APNS token not available yet');
+        return;
+      }
+
+      debugPrint('✅ APNS token = $apnsToken');
+    }
+
+    // ✅ Now it is safe to ask for FCM token
     final token = await messaging.getToken();
+
     debugPrint('FCM token for $userId = $token');
 
     if (token != null) {
-      // Register/move device token to this user
       await ApiService().registerDevice(userId, token);
     }
   }
@@ -96,7 +115,11 @@ class _UserSelectionScreenState extends State<UserSelectionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Select User')),
+      backgroundColor: Colors.purple[50],
+      appBar: AppBar(
+        title: const Text('Select User'),
+        backgroundColor: Colors.purple[50],
+        ),
       body: FutureBuilder<List<String>>(
         future: futureUsersWithRoutes,
         builder: (context, snapshot) {

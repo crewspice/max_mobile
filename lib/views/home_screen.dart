@@ -36,8 +36,10 @@ class _HomeScreenState extends State<HomeScreen> {
         userNames[widget.currentUserId] ?? widget.currentUserId;
 
     return Scaffold(
+      backgroundColor: Colors.purple[50],
       appBar: AppBar(
         // Show full name
+        backgroundColor: Colors.purple[50],
         title: Text('Welcome, $currentUserName'),
 
         // Switch user button
@@ -73,6 +75,7 @@ class _HomeScreenState extends State<HomeScreen> {
       body: pages[_selectedIndex],
 
       bottomNavigationBar: BottomNavigationBar(
+        backgroundColor: Colors.purple[50],
         currentIndex: _selectedIndex,
         items: const [
           BottomNavigationBarItem(

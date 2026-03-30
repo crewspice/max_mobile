@@ -5,7 +5,9 @@ import 'package:path/path.dart';
 import 'package:mime/mime.dart';
 import '../models/stop.dart';
 import '../models/lift.dart';
-import '../models/lift_maintenance_history.dart';
+import '../models/lift_maintenance_snapshot.dart';
+import '../models/lift_pm_history_item.dart';
+import '../models/lift_maintenance_history_item.dart';
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
@@ -394,17 +396,13 @@ class ApiService {
 
   Future<void> submitPreventiveMaintenance({
     required int liftId,
-    required String notes,
     required String completedByInitial,
   }) async {
-
-
     final res = await http.post(
       Uri.parse('$maintenanceUrl/pm'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'liftId': liftId,
-        'notes': notes,
         'completedByInitial': completedByInitial,
       }),
     );
@@ -414,28 +412,88 @@ class ApiService {
     }
   }
 
-  Future<LiftMaintenanceHistory> fetchLiftMaintenanceHistory(int liftId) async {
+  Future<void> submitMaintenanceIssue({
+    required int liftId,
+    required String notes,
+    required String createdByInitial,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$maintenanceUrl/issue'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'liftId': liftId,
+        'notes': notes,
+        'createdByInitial': createdByInitial,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to submit maintenance issue');
+    }
+  }
+
+  Future<LiftMaintenanceSnapshot> fetchLiftMaintenanceSnapshot(int liftId) async {
     final response = await http.get(
-      Uri.parse('$maintenanceUrl/history/$liftId'),
+      Uri.parse('$maintenanceUrl/snapshot/$liftId'),
     );
 
     if (response.statusCode == 200) {
       final jsonMap = jsonDecode(response.body);
-      return LiftMaintenanceHistory.fromJson(jsonMap);
+      return LiftMaintenanceSnapshot.fromJson(jsonMap);
     } else {
-      throw Exception('Failed to load lift maintenance history');
+      throw Exception('Failed to load lift maintenance snapshot');
     }
   }
 
   Future<void> registerDevice(String userId, String token) async {
-  await http.post(
-    Uri.parse('$userUrl/register-device'),
-    body: {
-      'userId': userId,
-      'token': token,
-    },
-  );
-}
+    await http.post(
+      Uri.parse('$userUrl/register-device'),
+      body: {
+        'userId': userId,
+        'token': token,
+      },
+    );
+  }
 
+  Future<List<LiftPmHistoryItem>> fetchPmHistory(int liftId) async {
+    final response = await http.get(Uri.parse('$maintenanceUrl/pm-history/$liftId'));
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => LiftPmHistoryItem.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load PM history');
+    }
+  }
+
+  // -----------------------------
+  // New: Maintenance / issue history
+  // -----------------------------
+  Future<List<LiftMaintenanceHistoryItem>> fetchMaintenanceHistory(int liftId) async {
+    final response = await http.get(Uri.parse('$maintenanceUrl/issue-history/$liftId'));
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(response.body);
+      return data.map((e) => LiftMaintenanceHistoryItem.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load maintenance history');
+    }
+  }
+  
+  Future<void> resolveMaintenanceAction({
+    required int actionId,
+    required String resolvedByInitial,
+  }) async {
+    final res = await http.post(
+      Uri.parse('$maintenanceUrl/issue/resolve'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'actionId': actionId,
+        'resolvedByInitial': resolvedByInitial,
+      }),
+    );
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to resolve maintenance action');
+    }
+  }
   
 }

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/stop.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
+import '../widgets/hold_to_confirm_button.dart';
 
 class RentalCard extends StatelessWidget {
   final Stop stop;
@@ -351,20 +352,35 @@ Widget build(BuildContext context) {
     );
 
     calledOffButtons.add(
-      ElevatedButton(
-        onPressed: () => _handlePickupComplete(context),
-        child: const Text('Complete'),
+      SizedBox(
+        width: double.infinity,
+        child: HoldToConfirmButton(
+          icon: const Icon(Icons.check),
+          label: 'Complete',
+          holdDuration: const Duration(seconds: 2),
+          onConfirmed: () => _handlePickupComplete(context),
+        ),
       ),
     );
 
     actionButtons.add(
       Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          for (var i = 0; i < calledOffButtons.length; i++) ...[
-            calledOffButtons[i],
-            if (i < calledOffButtons.length - 1) const SizedBox(width: 8),
-          ]
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _showRentalPhoto(context),
+              child: const Text('See Photo'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: HoldToConfirmButton(
+              icon: const Icon(Icons.check),
+              label: 'Complete',
+              holdDuration: const Duration(seconds: 1),
+              onConfirmed: () => _handlePickupComplete(context),
+            ),
+          ),
         ],
       ),
     );

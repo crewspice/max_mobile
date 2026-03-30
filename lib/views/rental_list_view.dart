@@ -117,6 +117,7 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.purple[50],
       body: FutureBuilder<List<Stop>>(
         future: futureStops,
         builder: (context, snapshot) {

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 import '../models/stop.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../widgets/hold_to_confirm_button.dart';
 import '../services/api_service.dart';
 
 class BaseCard extends StatelessWidget {
@@ -21,20 +22,42 @@ class BaseCard extends StatelessWidget {
 
 
   Future<void> _launchDialer(String phone) async {
-    if (phone.isEmpty) return;
-    final uri = Uri(scheme: 'tel', path: phone);
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (phone.trim().isEmpty) return;
+    final url = 'tel:$phone';
+    if (await canLaunchUrlString(url)) {
+      await launchUrlString(url, mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint('Could not launch dialer for: $phone');
     }
   }
 
   Future<void> _launchMaps(String query) async {
-    if (query.isEmpty) return;
-    final uri = Uri.parse(
-        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (query.trim().isEmpty) return;
+
+    final geoUrl = 'geo:0,0?q=${Uri.encodeComponent(query)}';
+    final webUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
+
+    // Try geo: first (direct Maps app)
+    if (await canLaunchUrlString(geoUrl)) {
+      await launchUrlString(geoUrl, mode: LaunchMode.externalApplication);
+      return;
     }
+
+    // Fallback to web URL
+    if (await canLaunchUrlString(webUrl)) {
+      await launchUrlString(webUrl, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    debugPrint('No app or browser available to launch maps for: $query');
+  }
+
+  String get stopAddress {
+    final parts = [
+      stop.streetAddress,
+      stop.city,
+    ].where((s) => s != null && s.isNotEmpty).join(', ');
+    return parts;
   }
 
   String _getServiceIcon() {
@@ -96,6 +119,7 @@ class BaseCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 🔹 HQ Card
+    // 🔹 HQ Card
     if (stop.liftType == "HQ") {
       return Card(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -113,21 +137,26 @@ class BaseCard extends StatelessWidget {
                 fit: BoxFit.contain,
               ),
               const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () async {
+              HoldToConfirmButton(
+                icon: const Icon(Icons.check_circle_outline),
+                label: "I'm back",
+                holdDuration: const Duration(seconds: 1),
+                onConfirmed: () async {
                   final api = ApiService();
 
-                  // Optional: show a loading indicator during deletion
+                  // Show loading indicator
                   showDialog(
                     context: context,
                     barrierDismissible: false,
-                    builder: (_) => const Center(child: CircularProgressIndicator()),
+                    builder: (_) =>
+                        const Center(child: CircularProgressIndicator()),
                   );
 
                   final success = await api.recordHQReturn(
-                    stop.id, 
-                    stop.truck ?? "null", 
-                    stop.driverId ?? "null");
+                    stop.id,
+                    stop.truck ?? "null",
+                    stop.driverId ?? "null",
+                  );
 
                   // Remove loading indicator
                   Navigator.of(context).pop();
@@ -144,9 +173,6 @@ class BaseCard extends StatelessWidget {
                     await onRefresh();
                   }
                 },
-                icon: const Icon(Icons.check_circle_outline),
-                label: const Text("I'm back"),
-  //              style: _actionButtonStyle(),
               ),
             ],
           ),
@@ -263,71 +289,68 @@ class BaseCard extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.center,
-                            children: [
-                              if (stop.siteName != null && stop.siteName!.isNotEmpty)
-                                GestureDetector(
-                                  onTap: () => _launchMaps(stop.siteName!),
-                                  child: Text(
-                                    stop.siteName!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Color(0xFF800020),
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                ),
-
-                              if (stop.streetAddress != null && stop.streetAddress!.isNotEmpty)
-                                GestureDetector(
-                                  onTap: () => _launchMaps(
-                                    "${stop.siteName ?? ''}, ${stop.streetAddress}",
-                                  ),
-                                  child: Text(
-                                    stop.streetAddress!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Color(0xFF800020),
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                ),
-
-                              if (stop.city != null && stop.city!.isNotEmpty)
-                                GestureDetector(
-                                  onTap: () => _launchMaps(
-                                    "${stop.siteName ?? ''}, ${stop.streetAddress ?? ''}, ${stop.city}",
-                                  ),
-                                  child: Text(
-                                    stop.city!,
-                                    textAlign: TextAlign.center,
-                                    style: const TextStyle(
-                                      color: Color(0xFF800020),
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                ),
-                              if (stop.serialNumber != null && stop.serialNumber!.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 8),
-                                  child: Column(
-                                    children: [
-
-                                      const SizedBox(height: 6),
-
-                                      // 2️⃣ Orbitron Extra Bold, futuristic
-                                      Text(
-                                        "#${stop.serialNumber}",
-                                        textAlign: TextAlign.center,
-                                        style: GoogleFonts.orbitron(
-                                          color: Colors.black87,
-                                          fontSize: 15,
-                                          fontWeight: FontWeight.w500,
-                                        ),
+                              children: [
+                                if (stop.siteName != null && stop.siteName!.isNotEmpty)
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
+                                    },
+                                    child: Text(
+                                      stop.siteName!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFF800020),
+                                        decoration: TextDecoration.none,
                                       ),
-                                    ],
+                                    ),
                                   ),
-                                ),
-                            ],
+                                if (stop.streetAddress != null && stop.streetAddress!.isNotEmpty)
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
+                                    },
+                                    child: Text(
+                                      stop.streetAddress!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFF800020),
+                                        decoration: TextDecoration.none,
+                                      ),
+                                    ),
+                                  ),
+                                if (stop.city != null && stop.city!.isNotEmpty)
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
+                                    },
+                                    child: Text(
+                                      stop.city!,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: Color(0xFF800020),
+                                        decoration: TextDecoration.none,
+                                      ),
+                                    ),
+                                  ),
+                                if (stop.serialNumber != null && stop.serialNumber!.isNotEmpty)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 8),
+                                    child: Column(
+                                      children: [
+                                        const SizedBox(height: 6),
+                                        Text(
+                                          "#${stop.serialNumber}",
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.orbitron(
+                                            color: Colors.black87,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
                           ),
                         ),
                       ),

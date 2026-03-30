@@ -21,7 +21,11 @@ class _DriverStatisticsScreenState extends State<DriverStatisticsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Driver Statistics')),
+      backgroundColor: Colors.purple[50],
+      appBar: AppBar(
+        title: const Text('Driver Statistics'),
+        backgroundColor: Colors.purple[50],
+      ),
       body: FutureBuilder<Map<String, dynamic>>(
         future: futureStats,
         builder: (context, snapshot) {

@@ -62,7 +62,7 @@ class _RentalAppState extends State<RentalApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rental App',
-      theme: ThemeData(primarySwatch: Colors.blue),
+      theme: ThemeData(primarySwatch: Colors.yellow),
       home: const UserSelectionScreen(),
       debugShowCheckedModeBanner: false,
       routes: {
