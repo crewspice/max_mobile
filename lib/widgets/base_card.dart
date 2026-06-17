@@ -5,12 +5,14 @@ import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/hold_to_confirm_button.dart';
 import '../services/api_service.dart';
+import '../theme/app_colors.dart';
 
 class BaseCard extends StatelessWidget {
   final Stop stop;
   final List<Widget> extraContent;
   final List<Widget> actionButtons;
   final Future<void> Function() onRefresh;
+  final bool completedView;
 
   const BaseCard({
     Key? key,
@@ -18,6 +20,7 @@ class BaseCard extends StatelessWidget {
     this.extraContent = const [],
     this.actionButtons = const [],
     required this.onRefresh, // now required
+    this.completedView = false,
   }) : super(key: key);
 
 
@@ -118,10 +121,23 @@ class BaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔹 HQ Card
-    // 🔹 HQ Card
+
+  final Color elementColor =
+      stop.type == "SERVICE"
+          ? AppColors.green
+          : (stop.status == "Upcoming"
+              ? AppColors.yellow
+              : AppColors.red);
+
+  final Color textColor =
+      completedView ? Colors.purple.shade50 : Colors.black87;
+
+  final Color iconColor =
+      completedView ? Colors.purple.shade50 : Colors.black87;
+
     if (stop.liftType == "HQ") {
       return Card(
+        color: AppColors.mainBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         elevation: 4,
         margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -135,45 +151,59 @@ class BaseCard extends StatelessWidget {
                 width: 120,
                 height: 120,
                 fit: BoxFit.contain,
+                color: AppColors.green,
+                colorBlendMode: BlendMode.srcIn,
               ),
               const SizedBox(height: 16),
-              HoldToConfirmButton(
-                icon: const Icon(Icons.check_circle_outline),
-                label: "I'm back",
-                holdDuration: const Duration(seconds: 1),
-                onConfirmed: () async {
-                  final api = ApiService();
+              if (!completedView) ...[
+                HoldToConfirmButton(
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: "I'm back",
+                  baseColor: AppColors.green,
+                  textColor: AppColors.mainBackground,
+                  progressColor: AppColors.yellow,
+                  holdDuration: const Duration(seconds: 1),
+                  onConfirmed: () async {
+                    final api = ApiService();
 
-                  // Show loading indicator
-                  showDialog(
-                    context: context,
-                    barrierDismissible: false,
-                    builder: (_) =>
-                        const Center(child: CircularProgressIndicator()),
-                  );
+                    // Show loading indicator
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (_) =>
+                          const Center(child: CircularProgressIndicator()),
+                    );
 
-                  final success = await api.recordHQReturn(
-                    stop.id,
-                    stop.truck ?? "null",
-                    stop.driverId ?? "null",
-                  );
+                    final success = await api.recordHQReturn(
+                      stop.id,
+                      stop.truck ?? "null",
+                      stop.driverId ?? "null",
+                    );
 
-                  // Remove loading indicator
-                  Navigator.of(context).pop();
+                    // Remove loading indicator
+                    Navigator.of(context).pop();
 
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: Text(success
-                        ? '✅ HQ stop deleted successfully.'
-                        : '❌ Failed to delete HQ stop.'),
-                    backgroundColor: success ? Colors.green : Colors.red,
-                  ));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: AppColors.mainBackground,
+                        content: Text(
+                          success
+                              ? 'HQ stop deleted successfully.'
+                              : 'Failed to delete HQ stop.',
+                          style: TextStyle(
+                            color: success ? AppColors.green : AppColors.red,
+                          ),
+                        ),
+                      ),
+                    );
 
-                  // Trigger refresh callback if provided
-                  if (success) {
-                    await onRefresh();
-                  }
-                },
-              ),
+                    // Trigger refresh callback if provided
+                    if (success) {
+                      await onRefresh();
+                    }
+                  },
+                ),
+              ],
             ],
           ),
         ),
@@ -183,6 +213,7 @@ class BaseCard extends StatelessWidget {
 
     // 🔹 Normal Stop Card
     return Card(
+      color: AppColors.mainBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
@@ -197,8 +228,11 @@ class BaseCard extends StatelessWidget {
                 children: [
                   Text(
                     stop.name!,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: elementColor,
+                    )
                   ),
                   if (stop.time != null && stop.time!.isNotEmpty)
                     Padding(
@@ -233,10 +267,10 @@ class BaseCard extends StatelessWidget {
 
                           return "$formattedDate at $t";
                         }(),
-                        style: const TextStyle(
+                        style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w500,
-                            color: Colors.black87),
+                            color: elementColor),
                       ),
                     ),
                 ],
@@ -253,11 +287,11 @@ class BaseCard extends StatelessWidget {
                     if (stop.liftType != null && stop.liftType!.isNotEmpty)
                       Text(
                         stop.liftType!,
-                        style: const TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                            fontSize: 24, fontWeight: FontWeight.bold, color: elementColor),
                       ),
                     const SizedBox(height: 6),
-                    Image.asset(_getServiceIcon(), width: 60, height: 60),
+                    Image.asset(_getServiceIcon(), width: 60, height: 60, color: elementColor),
                     const SizedBox(height: 6),
                     Text(
                       stop.serviceType != null && stop.serviceType!.isNotEmpty
@@ -269,8 +303,8 @@ class BaseCard extends StatelessWidget {
                               : stop.status == "Called Off"
                                   ? "Pick Up"
                                   : ""),
-                      style: const TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500),
+                      style: TextStyle(
+                          fontSize: 12, fontWeight: FontWeight.w500, color: elementColor),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -298,8 +332,8 @@ class BaseCard extends StatelessWidget {
                                     child: Text(
                                       stop.siteName!,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Color(0xFF800020),
+                                      style: TextStyle(
+                                        color: elementColor,
                                         decoration: TextDecoration.none,
                                       ),
                                     ),
@@ -312,9 +346,20 @@ class BaseCard extends StatelessWidget {
                                     child: Text(
                                       stop.streetAddress!,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Color(0xFF800020),
+                                      style: TextStyle(
+                                        color: elementColor,
                                         decoration: TextDecoration.none,
+
+                                        // fontSize: 14,
+                                        // fontWeight: FontWeight.w700,
+
+                                        shadows: const [
+                                          Shadow(
+                                            color: Colors.black,
+                                            blurRadius: 3,
+                                            offset: Offset(0, 0),
+                                          ),
+                                        ],
                                       ),
                                     ),
                                   ),
@@ -326,8 +371,8 @@ class BaseCard extends StatelessWidget {
                                     child: Text(
                                       stop.city!,
                                       textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        color: Color(0xFF800020),
+                                      style: TextStyle(
+                                        color: elementColor,
                                         decoration: TextDecoration.none,
                                       ),
                                     ),
@@ -342,7 +387,7 @@ class BaseCard extends StatelessWidget {
                                           "#${stop.serialNumber}",
                                           textAlign: TextAlign.center,
                                           style: GoogleFonts.orbitron(
-                                            color: Colors.black87,
+                                            color: elementColor,
                                             fontSize: 15,
                                             fontWeight: FontWeight.w500,
                                           ),
@@ -370,16 +415,20 @@ class BaseCard extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text("Ask:",
-                                        style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text("Ask:",
+                                        style: TextStyle(fontWeight: FontWeight.bold, color: elementColor)),
                                     Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
                                       children: [
                                         Expanded(
-                                            child: Text(stop
-                                                    .orderedByContactName ??
-                                                '')),
+                                            child:
+                                              Text(
+                                                stop.orderedByContactName ?? '',
+                                                style: TextStyle(
+                                                  color: elementColor,
+                                                ),
+                                              )), 
                                         if (stop.orderedByContactPhone != null)
                                           Transform.translate(
                                             offset: const Offset(-6, -10),
@@ -390,6 +439,7 @@ class BaseCard extends StatelessWidget {
                                                 'assets/calling-off.png',
                                                 width: 28,
                                                 height: 28,
+                                                color: elementColor,
                                               ),
                                             ),
                                           ),
@@ -405,15 +455,20 @@ class BaseCard extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text("Site:",
-                                        style: TextStyle(fontWeight: FontWeight.bold)),
+                                    Text("Site:",
+                                        style: TextStyle(fontWeight: FontWeight.bold, color: elementColor)),
                                     Row(
                                       crossAxisAlignment:
                                           CrossAxisAlignment.center,
                                       children: [
                                         Expanded(
                                             child:
-                                                Text(stop.siteContactName ?? '')),
+                                              Text(
+                                                stop.siteContactName ?? '',
+                                                style: TextStyle(
+                                                  color: elementColor,
+                                                ),
+                                              )), 
                                         if (stop.siteContactPhone != null)
                                           Transform.translate(
                                             offset: const Offset(-6, -10),
@@ -424,6 +479,7 @@ class BaseCard extends StatelessWidget {
                                                 'assets/calling-off.png',
                                                 width: 28,
                                                 height: 28,
+                                                color: elementColor,
                                               ),
                                             ),
                                           ),

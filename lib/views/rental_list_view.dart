@@ -4,11 +4,19 @@ import '../models/stop.dart';
 import '../widgets/rental_card.dart';
 import '../widgets/service_card.dart';
 import '../widgets/base_card.dart';
+import '../theme/app_colors.dart';
 
 class RentalListView extends StatefulWidget {
   final String driverId;
+  final bool completed;
+  final bool unassigned;
 
-  const RentalListView({super.key, required this.driverId});
+  const RentalListView({
+    super.key,
+    required this.driverId,
+    this.completed = false,
+    this.unassigned = false,
+  });
 
   @override
   _RentalListViewState createState() => _RentalListViewState();
@@ -21,7 +29,11 @@ class _RentalListViewState extends State<RentalListView> {
   @override
   void initState() {
     super.initState();
-    futureStops = ApiService().fetchStopsByDriver(widget.driverId);
+    futureStops = ApiService().fetchStopsByDriver(
+      widget.driverId,
+      completed: widget.completed,
+      unassigned: widget.unassigned,
+    );
   }
 
   @override
@@ -52,7 +64,11 @@ Future<void> _refreshRentals() async {
 // Fetch stops for one driver, but fallback to all drivers if empty/error
 Future<List<Stop>> _fetchStopsForDriverWithFallback(String driverId) async {
   try {
-    final stops = await ApiService().fetchStopsByDriver(driverId);
+    final stops = await ApiService().fetchStopsByDriver(
+      driverId,
+      completed: widget.completed,
+      unassigned: widget.unassigned,
+    );
     if (stops.isNotEmpty) {
       return stops; // normal route data exists → show it
     }
@@ -117,16 +133,26 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.purple[50],
+      backgroundColor: AppColors.mainBackground,
       body: FutureBuilder<List<Stop>>(
         future: futureStops,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return Center(
+              child: Text(
+                '${snapshot.error}',
+                style: TextStyle(color: AppColors.green),
+              ),
+            );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(child: Text('No stops available.'));
+            return const Center(
+              child: Text(
+                'No stops available.',
+                style: TextStyle(color: AppColors.green),
+              ),
+            );
           }
 
           List<Stop> stops = snapshot.data!;
@@ -136,6 +162,8 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
           }
 
           return RefreshIndicator(
+            color: AppColors.main,
+            backgroundColor: AppColors.yellow,
             onRefresh: _refreshRentals,
             child: ListView.builder(
               itemCount: stops.length,
@@ -146,6 +174,8 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
                   return RentalCard(
                     stop: stop,
                     serialController: serialControllers[index],
+                    completedView: widget.completed,
+                    unassignedView: widget.unassigned,
                     onRefresh: _refreshRentals,
                     onNotesUpdated: (updatedStop) {
                       setState(() {
@@ -157,11 +187,14 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
                   return ServiceCard(
                     stop: stop,
                     onRefresh: _refreshRentals,
+                    completedView: widget.completed,
+                    unassignedView: widget.unassigned,
                   );
                 } else if (stop.liftType == 'HQ') {
                   return BaseCard(
                     stop: stop,
                     onRefresh: _refreshRentals, // refresh after HQ deletion
+                    completedView: widget.completed,
                   );
                 } else {
                   return const SizedBox.shrink();

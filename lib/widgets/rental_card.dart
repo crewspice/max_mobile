@@ -7,12 +7,15 @@ import '../models/stop.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../widgets/hold_to_confirm_button.dart';
+import '../theme/app_colors.dart';
 
 class RentalCard extends StatelessWidget {
   final Stop stop;
   final TextEditingController serialController;
   final Future<void> Function() onRefresh;
   final void Function(Stop updatedStop)? onNotesUpdated;
+  final bool completedView;
+  final bool unassignedView;
 
   const RentalCard({
     Key? key,
@@ -20,6 +23,8 @@ class RentalCard extends StatelessWidget {
     required this.serialController,
     required this.onRefresh,
     required this.onNotesUpdated,
+    this.completedView = false,
+    this.unassignedView = false,
   }) : super(key: key);
 
   Future<File?> _pickImage({bool camera = true}) async {
@@ -107,14 +112,26 @@ class RentalCard extends StatelessWidget {
     if (success) await onRefresh();
   }
 
-
   void _showRentalPhoto(BuildContext context) {
-    final imageUrl = 'http://5.78.73.173:8080/images/deliveries/rental_${stop.id}.jpg';
+    final Color elementColor =
+        stop.status == "Upcoming"
+            ? AppColors.yellow
+            : AppColors.red;
+
+    final imageUrl =
+        'http://5.78.73.173:8080/images/deliveries/rental_${stop.id}.jpg';
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Delivery Photo'),
+          title: Text(
+            'Delivery Photo',
+            style: TextStyle(
+              color: AppColors.main,
+            ),
+          ),
+          backgroundColor: elementColor,
           content: Image.network(
             imageUrl,
             errorBuilder: (context, error, stackTrace) {
@@ -123,7 +140,12 @@ class RentalCard extends StatelessWidget {
           ),
           actions: [
             TextButton(
-              child: Text('Close'),
+              child: Text(
+                'Close',
+                style: TextStyle(
+                  color: AppColors.main,
+                ),
+              ),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -132,8 +154,6 @@ class RentalCard extends StatelessWidget {
     );
   }
 
-
-
 @override
 Widget build(BuildContext context) {
   // Determine if serial is required
@@ -141,7 +161,10 @@ Widget build(BuildContext context) {
       !(stop.liftType == '33rt' || stop.liftType == '45b');
 
   final List<Widget> preInfoWidgets = [];
-
+  final Color elementColor =
+      stop.status == "Upcoming"
+          ? AppColors.yellow
+          : AppColors.red;
 
   // Notes row with flush-right edit icon
   Widget notesRow = Padding(
@@ -156,9 +179,9 @@ Widget build(BuildContext context) {
                   ? stop.notes!
                   : 'No notes yet',
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontStyle: FontStyle.italic,
-                color: Colors.black87,
+                color: elementColor,
               ),
             ),
           ),
@@ -168,28 +191,59 @@ Widget build(BuildContext context) {
           child: GestureDetector(
             onTap: () async {
               final controller = TextEditingController(text: stop.notes ?? '');
-
               final updatedNotes = await showDialog<String>(
                 context: context,
                 barrierDismissible: false,
                 builder: (context) {
                   return AlertDialog(
-                    title: const Text('Edit Notes'),
+                    backgroundColor: elementColor,
+
+                    title: const Text(
+                      'Edit Notes',
+                      style: TextStyle(
+                        color: AppColors.main,
+                      ),
+                    ),
+
                     content: TextField(
                       controller: controller,
                       maxLines: 5,
                       autofocus: true,
+                      cursorColor: AppColors.main,
+                      style: const TextStyle(
+                        color: AppColors.main,
+                      ),
                       decoration: const InputDecoration(
                         hintText: 'Enter notes here...',
+                        hintStyle: TextStyle(color: AppColors.main),
+
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.main),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AppColors.main,
+                            width: 2,
+                          ),
+                        ),
                       ),
                     ),
+
                     actions: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: AppColors.main),
+                        ),
                       ),
                       ElevatedButton(
-                        onPressed: () => Navigator.pop(context, controller.text.trim()),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.main,
+                          foregroundColor: elementColor,
+                        ),
+                        onPressed: () =>
+                            Navigator.pop(context, controller.text.trim()),
                         child: const Text('Save'),
                       ),
                     ],
@@ -227,6 +281,7 @@ Widget build(BuildContext context) {
               'assets/notes.png',
               width: 20,
               height: 20,
+              color: elementColor,
             ),
           ),
         ),
@@ -237,7 +292,7 @@ Widget build(BuildContext context) {
 
   // --- Serial input field ---
   Widget serialInput = Container();
-  if (requiresSerial) {
+  if (requiresSerial && !completedView && !unassignedView) {
     serialInput = Padding(
       padding: const EdgeInsets.symmetric(vertical: 6.0),
       child: Center(
@@ -245,7 +300,19 @@ Widget build(BuildContext context) {
           width: MediaQuery.of(context).size.width * 0.3,
           child: TextField(
             controller: serialController,
-            decoration: const InputDecoration(labelText: 'Serial Number'),
+            cursorColor: elementColor,
+            style: TextStyle(color: elementColor),
+            decoration: InputDecoration(
+              labelText: 'Serial Number',
+              labelStyle: TextStyle(color: elementColor),
+              floatingLabelStyle: TextStyle(color: elementColor),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: elementColor),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: elementColor, width: 2),
+              ),
+            ),
           ),
         ),
       ),
@@ -255,132 +322,161 @@ Widget build(BuildContext context) {
   // --- Action buttons ---
   List<Widget> actionButtons = [];
 
-  // UPCOMING → show delivery buttons
-  if (stop.status == 'Upcoming') {
+  // COMPLETED VIEW → read-only, but allow photo viewing
+  if (completedView) {
     actionButtons.add(
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Take Photo
-          SizedBox(
-            width: 140,
-            child: ElevatedButton(
-              onPressed: requiresSerial
-                  ? () => _handlePhotoUpload(context)
-                  : () async {
-                      final file = await _pickImage();
-                      if (file != null) {
-                        final compressed = await _compressImage(file);
-                        String serial = "i";
-                        if (stop.liftType != null) {
-                          final lower = stop.liftType!.toLowerCase();
-                          if (lower.startsWith("45")) serial = "45";
-                          else if (lower.startsWith("33")) serial = "33";
-                          else serial = serialController.text.trim();
-                        }
-                        final api = ApiService();
-                        final success = await api.recordDeliveryWithPhoto(
-                          compressed,
-                          stop.id,
-                          serial,
-                          stop.truck ?? "null",
-                          stop.driverId ?? "null",
-                        );
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                              content: Text(
-                                  success ? 'Photo uploaded!' : 'Upload failed')),
-                        );
-                        if (success) await onRefresh();
-                      }
-                    },
-              child: const Text('Take Photo'),
-            ),
+      SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: elementColor,
+            foregroundColor: AppColors.main,
           ),
-
-          const SizedBox(width: 10),
-
-          // Upload Photo
-          SizedBox(
-            width: 160,
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                final file = await _pickImage(camera: false);
-                if (file != null) {
-                  final compressed = await _compressImage(file);
-                  String serial = "o";
-                  if (stop.liftType != null) {
-                    final lower = stop.liftType!.toLowerCase();
-                    if (lower.startsWith("45")) serial = "45";
-                    else if (lower.startsWith("33")) serial = "33";
-                    else serial = serialController.text.trim();
-                  }
-                  final api = ApiService();
-                  final success = await api.recordDeliveryWithPhoto(
-                    compressed,
-                    stop.id,
-                    serial,
-                    stop.truck ?? "null",
-                    stop.driverId ?? "null",
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content:
-                            Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                  );
-                  if (success) await onRefresh();
-                }
-              },
-              icon: const Icon(Icons.upload),
-              label: const Text('Upload Photo'),
-            ),
-          ),
-        ],
+          onPressed: () async {
+            _showRentalPhoto(context);
+          },
+          child: const Text('See Photo'),
+        ),
       ),
     );
   }
 
+  else if (stop.status == 'Upcoming') {
+    if (!unassignedView) {
+      actionButtons.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Take Photo
+            SizedBox(
+              width: 140,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: elementColor,
+                  foregroundColor: AppColors.main,
+                ),
+                onPressed: requiresSerial
+                    ? () => _handlePhotoUpload(context)
+                    : () async {
+                        final file = await _pickImage();
+                        if (file != null) {
+                          final compressed = await _compressImage(file);
+                          String serial = "i";
+                          if (stop.liftType != null) {
+                            final lower = stop.liftType!.toLowerCase();
+                            if (lower.startsWith("45")) serial = "45";
+                            else if (lower.startsWith("33")) serial = "33";
+                            else serial = serialController.text.trim();
+                          }
+
+                          final api = ApiService();
+                          final success = await api.recordDeliveryWithPhoto(
+                            compressed,
+                            stop.id,
+                            serial,
+                            stop.truck ?? "null",
+                            stop.driverId ?? "null",
+                          );
+
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                success ? 'Photo uploaded!' : 'Upload failed',
+                              ),
+                            ),
+                          );
+
+                          if (success) await onRefresh();
+                        }
+                      },
+                child: const Text('Take Photo'),
+              ),
+            ),
+
+            const SizedBox(width: 10),
+
+            // Upload Photo
+            SizedBox(
+              width: 160,
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: elementColor,
+                  foregroundColor: AppColors.main,
+                ),
+                onPressed: () async {
+                  final file = await _pickImage(camera: false);
+                  if (file != null) {
+                    final compressed = await _compressImage(file);
+                    String serial = "o";
+
+                    if (stop.liftType != null) {
+                      final lower = stop.liftType!.toLowerCase();
+                      if (lower.startsWith("45")) serial = "45";
+                      else if (lower.startsWith("33")) serial = "33";
+                      else serial = serialController.text.trim();
+                    }
+
+                    final api = ApiService();
+                    final success = await api.recordDeliveryWithPhoto(
+                      compressed,
+                      stop.id,
+                      serial,
+                      stop.truck ?? "null",
+                      stop.driverId ?? "null",
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success ? 'Photo uploaded!' : 'Upload failed',
+                        ),
+                      ),
+                    );
+
+                    if (success) await onRefresh();
+                  }
+                },
+                icon: const Icon(Icons.upload),
+                label: const Text('Upload Photo'),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
   // CALLED OFF → show Complete + See Photo
   else if (stop.status == 'Called Off') {
-    List<Widget> calledOffButtons = [];
-
-    calledOffButtons.add(
-      ElevatedButton(
-        onPressed: () => _showRentalPhoto(context),
-        child: const Text('See Photo'),
-      ),
-    );
-
-    calledOffButtons.add(
-      SizedBox(
-        width: double.infinity,
-        child: HoldToConfirmButton(
-          icon: const Icon(Icons.check),
-          label: 'Complete',
-          holdDuration: const Duration(seconds: 2),
-          onConfirmed: () => _handlePickupComplete(context),
-        ),
-      ),
-    );
 
     actionButtons.add(
       Row(
         children: [
           Expanded(
             child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: elementColor,
+                foregroundColor: AppColors.main,
+              ),
               onPressed: () => _showRentalPhoto(context),
               child: const Text('See Photo'),
             ),
           ),
+
           const SizedBox(width: 8),
-          Expanded(
-            child: HoldToConfirmButton(
-              icon: const Icon(Icons.check),
-              label: 'Complete',
-              holdDuration: const Duration(seconds: 1),
-              onConfirmed: () => _handlePickupComplete(context),
+
+          if (!unassignedView)
+            Expanded(
+              child: HoldToConfirmButton(
+                icon: const Icon(Icons.check),
+                label: 'Complete',
+                baseColor: elementColor,
+                textColor: AppColors.main,
+                progressColor: elementColor,
+                holdDuration: const Duration(seconds: 1),
+                onConfirmed: () => _handlePickupComplete(context),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -395,6 +491,7 @@ Widget build(BuildContext context) {
     ],
     actionButtons: actionButtons,
     onRefresh: onRefresh,
+    completedView: completedView,
   );
 }
 

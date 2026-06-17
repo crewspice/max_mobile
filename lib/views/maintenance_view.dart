@@ -5,6 +5,7 @@ import '../models/lift_pm_history_item.dart';
 import '../models/lift_maintenance_history_item.dart';
 import '../services/api_service.dart';
 import '../widgets/hold_to_confirm_button.dart';
+import '../theme/app_colors.dart';
 
 class MaintenanceView extends StatefulWidget {
   final String currentUserId;
@@ -60,91 +61,153 @@ class _MaintenanceViewState extends State<MaintenanceView> {
 
         final lifts = snapshot.data!;
 
-        return Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 420),
-            child: Card(
-              color: Colors.purple[50],
-              elevation: 2,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: SingleChildScrollView(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_selectedLift != null) ...[
-                          const Center(
-                            child: Text(
-                              'Maintenance Snapshot',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 16),
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isTablet = constraints.maxWidth > 600;
 
-                          _buildSelectedLiftView(lifts),
-                      ] else
-                        // Show the autocomplete for initial selection
-                        Autocomplete<Lift>(
-                          displayStringForOption: (l) => l.serialNumber ?? '',
-                          optionsBuilder: (textEditingValue) {
-                            final query = textEditingValue.text.toLowerCase();
-                            if (query.isEmpty) return const Iterable<Lift>.empty();
-                            return lifts.where((l) => (l.serialNumber ?? '')
-                                .toLowerCase()
-                                .contains(query));
-                          },
-                          onSelected: (lift) {
-                            setState(() {
-                              _selectedLift = lift;
-                              _resetToggles();
-                              _snapshotFuture =
-                                  ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
-                            });
-                          },
-                          fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                            return TextField(
-                              controller: controller,
-                              focusNode: focusNode,
-                              textInputAction: TextInputAction.done,
-                              decoration: const InputDecoration(
-                                labelText: 'Lift serial number',
-                                border: OutlineInputBorder(),
-                              ),
-                            );
-                          },
-                          optionsViewBuilder: (context, onSelected, options) {
-                            return Align(
-                              alignment: Alignment.topLeft,
-                              child: Material(
-                                elevation: 4,
-                                child: SizedBox(
-                                  height: 220,
-                                  child: ListView.builder(
-                                    padding: EdgeInsets.zero,
-                                    itemCount: options.length,
-                                    itemBuilder: (context, index) {
-                                      final option = options.elementAt(index);
-                                      return ListTile(
-                                        title: Text(option.serialNumber ?? 'No serial'),
-                                        subtitle: Text(option.model ?? ''),
-                                        onTap: () => onSelected(option),
-                                      );
-                                    },
-                                  ),
+            return Center(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: isTablet ? 900 : 420, // 👈 KEY CHANGE
+                ),
+                child: Card(
+                  color: AppColors.mainBackground,
+                  elevation: 2,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (_selectedLift != null) ...[
+                            const Center(
+                              child: Text(
+                                'Maintenance Snapshot',
+                                style: TextStyle(
+                                  color: AppColors.yellow,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                            );
-                          },
-                        ),
-                    ],
+                            ),
+                            const SizedBox(height: 16),
+                            _buildSelectedLiftView(lifts),
+                          ] else
+                            Autocomplete<Lift>(
+                              displayStringForOption: (l) => l.serialNumber ?? '',
+                              optionsBuilder: (textEditingValue) {
+                                final query = textEditingValue.text.toLowerCase();
+                                if (query.isEmpty) {
+                                  return const Iterable<Lift>.empty();
+                                }
+                                return lifts.where((l) =>
+                                    (l.serialNumber ?? '')
+                                        .toLowerCase()
+                                        .contains(query));
+                              },
+                              onSelected: (lift) {
+                                setState(() {
+                                  _selectedLift = lift;
+                                  _resetToggles();
+                                  _snapshotFuture =
+                                      ApiService().fetchLiftMaintenanceSnapshot(
+                                          lift.liftId);
+                                });
+                              },
+                              fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                                return TextField(
+                                  controller: controller,
+                                  focusNode: focusNode,
+                                  textInputAction: TextInputAction.done,
+
+                                  cursorColor: AppColors.yellow,
+
+                                  style: const TextStyle(
+                                    color: AppColors.yellow, // typed text
+                                  ),
+
+                                  decoration: InputDecoration(
+                                    labelText: 'Lift serial number',
+                                    labelStyle: const TextStyle(
+                                      color: AppColors.yellow,
+                                    ),
+
+                                    hintStyle: TextStyle(
+                                      color: AppColors.yellow.withOpacity(0.5),
+                                    ),
+
+                                    enabledBorder: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: AppColors.yellow.withOpacity(0.6),
+                                      ),
+                                    ),
+
+                                    focusedBorder: const OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: AppColors.yellow,
+                                        width: 2,
+                                      ),
+                                    ),
+
+                                    border: OutlineInputBorder(
+                                      borderSide: BorderSide(
+                                        color: AppColors.yellow.withOpacity(0.4),
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                              optionsViewBuilder: (context, onSelected, options) {
+                                return Align(
+                                  alignment: Alignment.topLeft,
+                                  child: Material(
+                                    color: AppColors.main, // background of dropdown
+                                    elevation: 6,
+                                    child: SizedBox(
+                                      height: 220,
+                                      child: ListView.builder(
+                                        padding: EdgeInsets.zero,
+                                        itemCount: options.length,
+                                        itemBuilder: (context, index) {
+                                          final option = options.elementAt(index);
+
+                                          return ListTile(
+                                            tileColor: Colors.transparent,
+
+                                            title: Text(
+                                              option.serialNumber ?? 'No serial',
+                                              style: const TextStyle(
+                                                color: AppColors.yellow,
+                                              ),
+                                            ),
+
+                                            subtitle: Text(
+                                              option.model ?? '',
+                                              style: TextStyle(
+                                                color: AppColors.yellow.withOpacity(0.6),
+                                              ),
+                                            ),
+
+                                            hoverColor: AppColors.yellow.withOpacity(0.1),
+                                            splashColor: AppColors.yellow.withOpacity(0.2),
+
+                                            onTap: () => onSelected(option),
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
@@ -166,7 +229,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
         if (snapshot.hasError) {
           return const Text(
             'Failed to load snapshot',
-            style: TextStyle(color: Colors.red),
+            style: TextStyle(color: AppColors.red),
           );
         }
 
@@ -178,113 +241,139 @@ class _MaintenanceViewState extends State<MaintenanceView> {
             // ----------------------------
             // Top row: Autocomplete field + Record buttons
             // ----------------------------
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(
-                  flex: 2,
-                  child: Autocomplete<Lift>(
-                    displayStringForOption: (l) => l.serialNumber ?? '',
-                    optionsBuilder: (textEditingValue) {
-                      final query = textEditingValue.text.toLowerCase();
-                      if (query.isEmpty) return const Iterable<Lift>.empty();
-                      return lifts.where((l) => (l.serialNumber ?? '')
-                          .toLowerCase()
-                          .contains(query));
-                    },
-                    onSelected: (lift) {
-                      setState(() {
-                        _selectedLift = lift;
-                        _resetToggles();
-                        _snapshotFuture =
-                            ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
-                      });
-                    },
-                    fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
-                      controller.text = _selectedLift!.serialNumber ?? '';
-                      return TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        textInputAction: TextInputAction.done,
-                        onSubmitted: (_) {
-                          final text = controller.text.toLowerCase();
-                          final matches = lifts.where((l) =>
-                              (l.serialNumber ?? '').toLowerCase().contains(text));
-                          if (matches.isNotEmpty) {
-                            final lift = matches.first;
-                            setState(() {
-                              _selectedLift = lift;
-                              _resetToggles();
-                              _snapshotFuture =
-                                  ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
-                            });
-                          }
-                        },
-                        decoration: const InputDecoration(
-                          border: OutlineInputBorder(),
-                          isDense: true,
-                        ),
-                      );
-                    },
-                    optionsViewBuilder: (context, onSelected, options) {
-                      return Material(
-                        elevation: 4,
-                        child: SizedBox(
-                          height: 220,
-                          child: ListView.builder(
-                            padding: EdgeInsets.zero,
-                            itemCount: options.length,
-                            itemBuilder: (context, index) {
-                              final option = options.elementAt(index);
-                              return ListTile(
-                                title: Text(option.serialNumber ?? 'No serial'),
-                                subtitle: Text(option.model ?? ''),
-                                onTap: () => onSelected(option),
-                              );
-                            },
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: 2,
-                  child: HoldToConfirmButton(
-                    icon: const Icon(Icons.check),
-                    label: 'Record PM',
-                    onConfirmed: () async {
-                      await _submitPm();
-                      setState(() {
-                        _showIssueForm = false;
-                      });
-                    },
-                    holdDuration: const Duration(seconds: 2),
-                  ),
-                ),
-
-                const SizedBox(width: 8),
-
-                Expanded(
-                  flex: 2, // 👈 HERE
-                  child: ElevatedButton.icon(
-                    icon: const Icon(Icons.report_problem),
-                    label: const Text('Record Issue'),
-                    style: ElevatedButton.styleFrom(
-                      foregroundColor: _showIssueForm ? Colors.white : null,
-                      backgroundColor:
-                          _showIssueForm ? const Color(0xFF3B2F5C) : null,
-                    ),
-                    onPressed: () {
-                      setState(() {
-                        _showIssueForm = !_showIssueForm;
-                        if (_showIssueForm) {
-                          _showPmHistory = false;
-                          _showIssueHistory = false;
+                // ----------------------------
+                // Full-width Autocomplete
+                // ----------------------------
+                Autocomplete<Lift>(
+                  displayStringForOption: (l) => l.serialNumber ?? '',
+                  optionsBuilder: (textEditingValue) {
+                    final query = textEditingValue.text.toLowerCase();
+                    if (query.isEmpty) return const Iterable<Lift>.empty();
+                    return lifts.where((l) =>
+                        (l.serialNumber ?? '').toLowerCase().contains(query));
+                  },
+                  onSelected: (lift) {
+                    setState(() {
+                      _selectedLift = lift;
+                      _resetToggles();
+                      _snapshotFuture =
+                          ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
+                    });
+                  },
+                  fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
+                    controller.text = _selectedLift!.serialNumber ?? '';
+                    return TextField(
+                      style: const TextStyle(color: AppColors.yellow),
+                      cursorColor: AppColors.yellow,
+                      controller: controller,
+                      focusNode: focusNode,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) {
+                        final text = controller.text.toLowerCase();
+                        final matches = lifts.where((l) =>
+                            (l.serialNumber ?? '').toLowerCase().contains(text));
+                        if (matches.isNotEmpty) {
+                          final lift = matches.first;
+                          setState(() {
+                            _selectedLift = lift;
+                            _resetToggles();
+                            _snapshotFuture =
+                                ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
+                          });
                         }
-                      });
-                    },
-                  ),
+                      },
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.yellow),
+                        ),
+                        enabledBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.yellow),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.yellow, width: 2),
+                        ),
+                      ),
+                    );
+                  },
+                  optionsViewBuilder: (context, onSelected, options) {
+                    return Material(
+                      elevation: 4,
+                      color: AppColors.mainBackground,
+                      child: SizedBox(
+                        height: 220,
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          itemCount: options.length,
+                          itemBuilder: (context, index) {
+                            final option = options.elementAt(index);
+
+                            return ListTile(
+                              title: Text(
+                                option.serialNumber ?? 'No serial',
+                                style: const TextStyle(color: AppColors.yellow),
+                              ),
+                              subtitle: Text(
+                                option.model ?? '',
+                                style: const TextStyle(color: AppColors.yellow),
+                              ),
+                              onTap: () => onSelected(option),
+                            );
+                          },
+                        ),
+                      ),
+                    );
+                  },
+                ),
+
+                const SizedBox(height: 12),
+
+                // ----------------------------
+                // Buttons row
+                // ----------------------------
+                Row(
+                  children: [
+                    Expanded(
+                      child: HoldToConfirmButton(
+                        icon: const Icon(Icons.check),
+                        label: 'Record PM',
+                        baseColor: AppColors.main,
+                        textColor: AppColors.yellow,
+                        progressColor: AppColors.yellow,
+                        onConfirmed: () async {
+                          await _submitPm();
+                          setState(() {
+                            _showIssueForm = false;
+                          });
+                        },
+                        holdDuration: const Duration(seconds: 2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        icon: const Icon(Icons.report_problem),
+                        label: const Text('Record Issue'),
+                        style: ElevatedButton.styleFrom(
+                          foregroundColor: _showIssueForm ? AppColors.main : AppColors.yellow,
+                          backgroundColor:
+                              _showIssueForm ? AppColors.yellow : AppColors.main,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _showIssueForm = !_showIssueForm;
+                            if (_showIssueForm) {
+                              _showPmHistory = false;
+                              _showIssueHistory = false;
+                            }
+                          });
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -308,29 +397,42 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                 ),
                 const SizedBox(height: 8),
 
+
+
                 // --- Multi-line repair card ---
                 if (data.actionId != null)
+
                   _buildRepairCard(
                     title: 'Needs Repair',
                     isGood: false,
                     content: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Type: ${data.actionTypeName ?? ''}'),
+                        Text('Type: ${data.actionTypeName ?? ''}',
+                          style: const TextStyle(color: AppColors.red),
+                        ),
                         if (data.actionCreatedAt != null)
                           Text(
                             'Date: ${data.actionCreatedAt!.year.toString().padLeft(4, '0')}-'
                             '${data.actionCreatedAt!.month.toString().padLeft(2, '0')}-'
                             '${data.actionCreatedAt!.day.toString().padLeft(2, '0')}',
+                            style: const TextStyle(color: AppColors.red),
                           ),
                         if ((data.actionReportedBy ?? '').isNotEmpty)
-                          Text('Reported by: ${data.actionReportedBy}'),
+                          Text('Reported by: ${data.actionReportedBy}',
+                            style: const TextStyle(color: AppColors.red),
+                          ),
                         if ((data.actionNotes ?? '').isNotEmpty)
-                          Text('Notes: ${data.actionNotes}'),
+                          Text('Notes: ${data.actionNotes}',
+                            style: const TextStyle(color: AppColors.red),
+                          ),
                         const SizedBox(height: 6),
                         HoldToConfirmButton(
                           icon: const Icon(Icons.check),
                           label: 'Resolve',
+                          baseColor: AppColors.main,
+                          textColor: AppColors.red,
+                          progressColor: AppColors.red,
                           holdDuration: const Duration(seconds: 2),
                           onConfirmed: () async {
                             if (_selectedLift == null || data.actionId == null) return;
@@ -352,13 +454,24 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                               });
 
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Issue resolved successfully')),
+                                const SnackBar(
+                                  backgroundColor: AppColors.mainBackground,
+                                  content: Text(
+                                    'Issue resolved successfully',
+                                    style: TextStyle(color: AppColors.green),
+                                  ),
+                                ),
                               );
                             } catch (e) {
                               if (!mounted) return;
-
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed to resolve issue: $e')),
+                                SnackBar(
+                                  backgroundColor: AppColors.mainBackground,
+                                  content: Text(
+                                    'Failed to resolve issue: $e',
+                                    style: const TextStyle(color: AppColors.red),
+                                  ),
+                                ),
                               );
                             }
                           },
@@ -375,8 +488,8 @@ class _MaintenanceViewState extends State<MaintenanceView> {
               children: [
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: _showPmHistory ? Colors.white : null,
-                    backgroundColor: _showPmHistory ? const Color(0xFF3B2F5C) : null,
+                    foregroundColor: _showPmHistory ? AppColors.main : AppColors.yellow,
+                    backgroundColor: _showPmHistory ? AppColors.yellow : AppColors.main,
                   ),
                   onPressed: () {
                     setState(() {
@@ -393,8 +506,8 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: _showIssueHistory ? Colors.white : null,
-                    backgroundColor: _showIssueHistory ? const Color(0xFF3B2F5C) : null,
+                    foregroundColor: _showIssueHistory ? AppColors.main : AppColors.yellow,
+                    backgroundColor: _showIssueHistory ? AppColors.yellow : AppColors.main,
                   ),
                   onPressed: () {
                     setState(() {
@@ -434,7 +547,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2, // 👈 2 tiles per row (adjust as needed)
-                      childAspectRatio: 2.5, // 👈 controls tile shape
+                      childAspectRatio: 2.0, // 👈 controls tile shape
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                     ),
@@ -442,7 +555,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                     itemBuilder: (context, index) {
                       final pm = data[index];
                       return Card(
-                        color: const Color(0xFF3B2F5C), // 👈 dark purple
+                        color: AppColors.yellow, // 👈 dark purple
                         child: Padding(
                           padding: const EdgeInsets.all(8),
                           child: Column(
@@ -452,7 +565,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                 pm.completedByNickname ?? pm.completedByName ?? 'Unknown',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white, // 👈 white text
+                                  color: AppColors.mainBackground, // 👈 white text
                                 ),
                               ),
                               const SizedBox(height: 4),
@@ -462,7 +575,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                       '${pm.completedAt!.month.toString().padLeft(2, '0')}-'
                                       '${pm.completedAt!.day.toString().padLeft(2, '0')}'
                                     : '',
-                                style: const TextStyle(color: Colors.white),
+                                style: const TextStyle(color: AppColors.mainBackground),
                               ),
                             ],
                           ),
@@ -503,7 +616,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                     itemBuilder: (context, index) {
                       final issue = data[index];
                       return Card(
-                        color: const Color(0xFF3B2F5C),
+                        color: AppColors.yellow,
                         child: Padding(
                           padding: const EdgeInsets.all(8),
                           child: Builder(
@@ -526,9 +639,9 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                               (issue.notes != null && issue.notes!.isNotEmpty
                                                   ? issue.notes!
                                                   : 'Unknown'),
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontWeight: FontWeight.bold,
-                                            color: Colors.white,
+                                            color: AppColors.mainBackground,
                                           ),
                                           overflow: TextOverflow.ellipsis, // prevents overflow issues
                                         ),
@@ -538,7 +651,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                         Text(
                                           'x${issue.quantity}',
                                           style: const TextStyle(
-                                            color: Colors.white,
+                                            color: AppColors.mainBackground,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -550,7 +663,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                     const SizedBox(height: 4),
                                     Text(
                                       'By: $performer',
-                                      style: const TextStyle(color: Colors.white),
+                                      style: const TextStyle(color: AppColors.mainBackground),
                                     ),
                                   ],
 
@@ -564,7 +677,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                               : issue.partAction!, // fallback for anything else
                                       style: const TextStyle(
                                         fontStyle: FontStyle.italic,
-                                        color: Colors.white,
+                                        color: AppColors.mainBackground,
                                       ),
                                     ),
                                   ],
@@ -576,7 +689,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                       '${issue.performedAt!.month.toString().padLeft(2, '0')}-'
                                       '${issue.performedAt!.day.toString().padLeft(2, '0')}-'
                                       '${issue.performedAt!.year.toString().padLeft(4, '0')}',
-                                      style: const TextStyle(color: Colors.white),
+                                      style: const TextStyle(color: AppColors.mainBackground),
                                     ),
                                   ],
 
@@ -586,7 +699,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                       const SizedBox(height: 4),
                                       Text(
                                         '"${issue.notes}"',
-                                        style: const TextStyle(color: Colors.white),
+                                        style: const TextStyle(color: AppColors.yellow),
                                       ),
                                     ] else if (issue.actionTypeId == 60 &&
                                         cleanedNotes != null &&
@@ -594,7 +707,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                       const SizedBox(height: 4),
                                       Text(
                                         cleanedNotes,
-                                        style: const TextStyle(color: Colors.white),
+                                        style: const TextStyle(color: AppColors.yellow),
                                       ),
                                     ]
                                   ],
@@ -617,9 +730,20 @@ class _MaintenanceViewState extends State<MaintenanceView> {
               TextField(
                 controller: _notesController,
                 maxLines: 4,
+                style: const TextStyle(color: AppColors.yellow),
+                cursorColor: AppColors.yellow,
                 decoration: const InputDecoration(
                   labelText: 'Notes',
-                  border: OutlineInputBorder(),
+                  labelStyle: TextStyle(color: AppColors.yellow),
+                  border: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.yellow),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.yellow),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: AppColors.yellow, width: 2),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -627,6 +751,9 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                 width: double.infinity,
                 child: HoldToConfirmButton(
                   icon: const Icon(Icons.check),
+                  baseColor: AppColors.main,
+                  textColor: AppColors.yellow,
+                  progressColor: AppColors.yellow,
                   label: 'Submit',
                   onConfirmed: () async {
                     setState(() {
@@ -652,33 +779,41 @@ class _MaintenanceViewState extends State<MaintenanceView> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        // color: isGood ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isGood ? Colors.green : Colors.red),
+        border: Border.all(color: isGood ? AppColors.green : AppColors.red),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            isGood ? Icons.check_circle : Icons.warning,
-            color: isGood ? Colors.green : Colors.red,
+          // 🔹 Top row (icon + title)
+          Row(
+            children: [
+              Icon(
+                isGood ? Icons.check_circle : Icons.warning,
+                color: isGood ? AppColors.green : AppColors.red,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                title,
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: isGood ? AppColors.green : AppColors.red,
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 6),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isGood ? Colors.green : Colors.red,
-            ),
-          ),
-          const SizedBox(width: 12),
-          if (extraInfo != null)
-            Expanded(
-              child: Text(
-                extraInfo,
-                style: const TextStyle(fontWeight: FontWeight.normal, color: Colors.black87),
-                overflow: TextOverflow.ellipsis,
+
+          // 🔹 Extra info BELOW (wraps naturally)
+          if (extraInfo != null) ...[
+            const SizedBox(height: 6),
+            Text(
+              extraInfo,
+              style: TextStyle(
+                fontWeight: FontWeight.normal,
+                color: isGood ? AppColors.green : AppColors.red,
               ),
             ),
+          ],
         ],
       ),
     );
@@ -694,7 +829,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
       decoration: BoxDecoration(
         // color: isGood ? Colors.green.withOpacity(0.15) : Colors.red.withOpacity(0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: isGood ? Colors.green : Colors.red),
+        border: Border.all(color: isGood ? AppColors.green : AppColors.red),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -703,14 +838,14 @@ class _MaintenanceViewState extends State<MaintenanceView> {
             children: [
               Icon(
                 isGood ? Icons.check_circle : Icons.warning,
-                color: isGood ? Colors.green : Colors.red,
+                color: isGood ? AppColors.green : AppColors.red,
               ),
               const SizedBox(width: 6),
               Text(
                 title,
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
-                  color: isGood ? Colors.green : Colors.red,
+                  color: isGood ? AppColors.green : AppColors.red,
                 ),
               ),
             ],
@@ -742,8 +877,14 @@ class _MaintenanceViewState extends State<MaintenanceView> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preventative maintenance recorded'),
+        SnackBar(
+          backgroundColor: AppColors.mainBackground,
+          content: Text(
+            'Preventative maintenance recorded',
+            style: const TextStyle(
+              color: AppColors.green,
+            ),
+          ),
         ),
       );
     } catch (e) {
@@ -751,7 +892,13 @@ class _MaintenanceViewState extends State<MaintenanceView> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to submit PM: $e'),
+          backgroundColor: AppColors.mainBackground,
+          content: Text(
+            'Failed to submit PM: $e',
+            style: const TextStyle(
+              color: AppColors.red,
+            ),
+          ),
         ),
       );
     }
@@ -778,7 +925,11 @@ class _MaintenanceViewState extends State<MaintenanceView> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Issue recorded successfully'),
+          backgroundColor: AppColors.mainBackground,
+          content: Text(
+            'Issue recorded successfully',
+            style: TextStyle(color: AppColors.green),
+          ),
         ),
       );
     } catch (e) {
@@ -786,7 +937,11 @@ class _MaintenanceViewState extends State<MaintenanceView> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to submit issue: $e'),
+          backgroundColor: AppColors.mainBackground,
+          content: Text(
+            'Failed to submit issue: $e',
+            style: const TextStyle(color: AppColors.red),
+          ),
         ),
       );
     }

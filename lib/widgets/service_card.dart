@@ -6,13 +6,22 @@ import 'package:image_picker/image_picker.dart';
 import '../models/stop.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
+import '../theme/app_colors.dart';
 
 class ServiceCard extends StatelessWidget {
   final Stop stop;
   final TextEditingController serialController = TextEditingController();
   final Future<void> Function() onRefresh;
+  final bool completedView;
+  final bool unassignedView;
 
-  ServiceCard({Key? key, required this.stop, required this.onRefresh}) : super(key: key);
+  ServiceCard({
+    Key? key,
+    required this.stop,
+    required this.onRefresh,
+    this.completedView = false,
+    this.unassignedView = false,
+  }) : super(key: key);
 
   bool _requiresSerial(String serviceType) {
     return serviceType == "Change Out" || serviceType == "Service Change Out";
@@ -119,16 +128,27 @@ class ServiceCard extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Service Photo'),
+          title: Text(
+            'Delivery Photo',
+            style: TextStyle(
+              color: AppColors.main,
+            ),
+          ),
+          backgroundColor: AppColors.green,
           content: Image.network(
             imageUrl,
             errorBuilder: (context, error, stackTrace) {
-              return const Text('Image not found or failed to load.');
+              return Text('Image not found or failed to load.');
             },
           ),
           actions: [
             TextButton(
-              child: const Text('Close'),
+              child: Text(
+                'Close',
+                style: TextStyle(
+                  color: AppColors.main,
+                ),
+              ),
               onPressed: () => Navigator.of(context).pop(),
             ),
           ],
@@ -147,7 +167,7 @@ class ServiceCard extends StatelessWidget {
     final bool skipSerial = serviceType == "MOVE" || serviceType == "SERVICE";
 
     Widget serialInput = Container();
-    if (requiresSerial) {
+    if (!completedView && requiresSerial && !unassignedView) {
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 0.0),
         child: SizedBox(
@@ -163,67 +183,109 @@ class ServiceCard extends StatelessWidget {
     // Action buttons (universal)
     List<Widget> actionButtons = [];
 
-    // Row 1: See Photo (only if stop.hasPhoto)
-   // if (stop.hasPhoto) {
-    actionButtons.add(
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: () => _showServicePhoto(context),
-            child: const Text("See Photo"),
-          ),
-        ],
-      ),
-    );
-    actionButtons.add(const SizedBox(height: 8));
-   // }
-
-    // Row 2: Take Photo + Upload Photo (always available)
-    actionButtons.add(
-      Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          ElevatedButton(
-            onPressed: () => _handlePhotoUpload(context),
-            child: const Text('Take Photo'),
-          ),
-          const SizedBox(width: 8),
-            ElevatedButton.icon(
-              onPressed: () async {
-                final serial = serialController.text.trim();
-                if (requiresSerial && !await _validateSerial(serial)) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Invalid or empty serial number')),
-                  );
-                  return;
-                }
-
-                final file = await _pickImage(camera: false);
-                if (file != null) {
-                  final compressed = await _compressImage(file);
-                  final api = ApiService();
-                  final success = await api.uploadPhoto(
-                    compressed,
-                    stop.id,
-                    serialNumber: requiresSerial ? serial : null, // ✅ safe now
-                  );
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
-                  );
-                  if (success && onRefresh != null) await onRefresh!();
-                }
-              },
-
-              icon: const Icon(Icons.upload),
-              label: const Text('Upload Photo'),
+    // COMPLETED VIEW → only "See Photo"
+    if (completedView) {
+      actionButtons.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: AppColors.main,
+              ),
+              onPressed: () => _showServicePhoto(context),
+              child: const Text("See Photo"),
             ),
+          ],
+        ),
+      );
+    }
 
-        ],
-      ),
-    );
+    // ACTIVE VIEW → full controls
+    else {
+      // Row 1: See Photo (optional, you can keep or remove this if redundant)
+      actionButtons.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.green,
+                foregroundColor: AppColors.main,
+              ),
+              onPressed: () => _showServicePhoto(context),
+              child: const Text("See Photo"),
+            ),
+          ],
+        ),
+      );
 
+      actionButtons.add(const SizedBox(height: 8));
+      if (!unassignedView) {
+        // Row 2: Take + Upload
+        actionButtons.add(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: AppColors.main,
+                ),
+                onPressed: () => _handlePhotoUpload(context),
+                child: const Text('Take Photo'),
+              ),
 
+              const SizedBox(width: 8),
+
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.green,
+                  foregroundColor: AppColors.main,
+                ),
+                onPressed: () async {
+                  final serial = serialController.text.trim();
+
+                  if (requiresSerial && !await _validateSerial(serial)) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Invalid or empty serial number'),
+                      ),
+                    );
+                    return;
+                  }
+
+                  final file = await _pickImage(camera: false);
+                  if (file != null) {
+                    final compressed = await _compressImage(file);
+                    final api = ApiService();
+
+                    final success = await api.uploadPhoto(
+                      compressed,
+                      stop.id,
+                      serialNumber: requiresSerial ? serial : null,
+                    );
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          success ? 'Photo uploaded!' : 'Upload failed',
+                        ),
+                      ),
+                    );
+
+                    if (success) await onRefresh();
+                  }
+                },
+                icon: const Icon(Icons.upload),
+                label: const Text('Upload Photo'),
+              ),
+            ],
+          ),
+        );
+      }
+    }
 
     // --- Content setup (unchanged) ---
     Widget content = const SizedBox.shrink();

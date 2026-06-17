@@ -5,12 +5,18 @@ class HoldToConfirmButton extends StatefulWidget {
   final String label;
   final Icon icon;
   final Duration holdDuration;
+  final Color baseColor;
+  final Color progressColor;
+  final Color textColor;
 
   const HoldToConfirmButton({
     super.key,
     required this.onConfirmed,
     required this.label,
     required this.icon,
+    required this.baseColor,
+    required this.progressColor,
+    required this.textColor,
     this.holdDuration = const Duration(seconds: 2), // hardcode?
   });
 
@@ -47,7 +53,7 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
     _controller.dispose();
     super.dispose();
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -62,15 +68,25 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                icon: widget.icon,
-                label: Text(widget.label),
+                icon: IconTheme(
+                  data: IconThemeData(color: widget.textColor),
+                  child: widget.icon,
+                ),
+                label: Text(
+                  widget.label,
+                  style: TextStyle(color: widget.textColor),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: widget.baseColor,
+                ),
                 onPressed: () {},
               ),
             ),
+
             Positioned.fill(
               child: Center(
                 child: FractionallySizedBox(
-                  heightFactor: 0.83, // 👈 THIS controls height (80%)
+                  heightFactor: 0.83,
                   child: AnimatedBuilder(
                     animation: _controller,
                     builder: (context, child) {
@@ -80,10 +96,9 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
                         alignment: Alignment.centerLeft,
                         widthFactor: progress,
                         child: Container(
-                          color: Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withOpacity(0.3 + progress * 0.4),
+                          color: widget.progressColor.withOpacity(
+                            0.3 + progress * 0.4,
+                          ),
                         ),
                       );
                     },

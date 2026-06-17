@@ -8,6 +8,7 @@ import '../models/lift.dart';
 import '../models/lift_maintenance_snapshot.dart';
 import '../models/lift_pm_history_item.dart';
 import '../models/lift_maintenance_history_item.dart';
+import '../models/inventory_item.dart';
 import 'package:http_parser/http_parser.dart';
 
 class ApiService {
@@ -17,29 +18,42 @@ class ApiService {
   final String maintenanceUrl = "http://5.78.73.173:8080/maintenance";
 
   /// Fetch all driver IDs/initials that have routes (excluding "null")
-  Future<List<String>> fetchDriversWithRoutes() async {
-    final response = await http.get(Uri.parse('$routeUrl/drivers'));
+  Future<List<Map<String, dynamic>>> fetchUserSelection() async {
+    final response =
+        await http.get(Uri.parse('$userUrl/selection'));
 
-    if (response.statusCode == 200) {
-      final List<dynamic> jsonList = jsonDecode(response.body);
-      // Ensure we return a list of strings
-      return jsonList.map((e) => e.toString()).toList();
-    } else {
-      throw Exception('Failed to fetch drivers with routes');
+    if (response.statusCode != 200) {
+      throw Exception('Failed to fetch user selection');
     }
-  }
 
-  /// Fetch rentals by driver ID
-  Future<List<Stop>> fetchStopsByDriver(String driverId) async {
-    final response = await http.get(
-      Uri.parse("http://5.78.73.173:8080/routes/driver/$driverId")
-    );
+    final List<dynamic> jsonList = jsonDecode(response.body);
+
+    return jsonList.cast<Map<String, dynamic>>();
+  }
+  
+  /// Fetch route stops or completed stops by driver ID
+  Future<List<Stop>> fetchStopsByDriver(
+    String driverId, {
+    bool completed = false,
+    bool unassigned = false,
+  }) async {
+
+    String endpoint;
+
+    if (completed) {
+      endpoint = "$routeUrl/completed/$driverId";
+    } else if (unassigned) {
+      endpoint = "$routeUrl/stops/unassigned";
+    } else {
+      endpoint = "$routeUrl/driver/$driverId";
+    }
+
+    final response = await http.get(Uri.parse(endpoint));
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       List<dynamic> stopsJson = data['stops'] ?? [];
 
-      // Inject driverId into each Stop
       return stopsJson.map((json) {
         final stop = Stop.fromJson(json);
         return Stop(
@@ -74,15 +88,33 @@ class ApiService {
           driverNumber: stop.driverNumber,
           truck: stop.truck,
           hasPhoto: stop.hasPhoto,
-          driverId: driverId, // ✅ Injected here
+          driverId: driverId,
         );
       }).toList();
+
     } else {
-      throw Exception('Failed to load stops');
+      throw 'No route';
     }
   }
 
-    
+  Future<List<InventoryItem>> fetchInventoryByDriver(String driverId) async {
+    final response = await http.get(
+      Uri.parse("$routeUrl/driver/$driverId"),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load inventory');
+    }
+
+    final data = json.decode(response.body);
+
+    final List<dynamic> inventoryJson = data['inventory'] ?? [];
+
+    return inventoryJson
+        .map((json) => InventoryItem.fromJson(json))
+        .toList();
+  }
+
   /// Upload Photo with Rental ID and optional Serial Number
   Future<bool> uploadPhoto(File imageFile, int rentalId, {String? serialNumber}) async {
     final String uploadUrl = '$baseUrl/recordDeliveryWithPhoto';
@@ -344,6 +376,9 @@ class ApiService {
     required int rentalItemId,
     required String notes,
   }) async {
+    print("RAW NOTES: $notes");
+    print("JSON BODY: ${jsonEncode({'notes': notes})}");
+    print("CODE UNITS: ${notes.codeUnits}");
     final uri = Uri.parse('$baseUrl/$rentalItemId/notes');
 
     print('➡️ SENDING REQUEST');
@@ -495,5 +530,36 @@ class ApiService {
       throw Exception('Failed to resolve maintenance action');
     }
   }
-  
+
+  Future<bool> needsInspection(String truckId) async {
+    final url = '$maintenanceUrl/inspections/needs/$truckId';
+    print("CALLING: $url");
+
+    final res = await http.get(Uri.parse(url));
+
+    print("STATUS: ${res.statusCode}");
+    print("BODY: '${res.body}'");
+
+    return res.body.trim().toLowerCase() == 'true';
+  }
+
+  Future<bool> recordIssue({
+    required File image,
+    required String truckId,
+    required String driverId,
+    required String description,
+  }) async {
+    // Fake network delay
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Debug logging
+    print('recordIssue called');
+    print('truckId: $truckId');
+    print('driverId: $driverId');
+    print('description: $description');
+    print('image path: ${image.path}');
+
+    // Always succeed for now
+    return true;
+  }
 }
