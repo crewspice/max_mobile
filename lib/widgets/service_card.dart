@@ -303,13 +303,14 @@ class ServiceCard extends StatelessWidget {
                 children: [
                   const Text(
                     'to: ',
-                    style: TextStyle(fontSize: 20),
+                    style: TextStyle(fontSize: 20, color: AppColors.green),
                   ),
                   Text(
                     stop.newLiftType!,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
+                      color: AppColors.green,
                     ),
                   ),
                 ],
@@ -324,12 +325,12 @@ class ServiceCard extends StatelessWidget {
                   if (stop.reason != null)
                     Text(
                       "\"${stop.reason!}\"",
-                      style: const TextStyle(fontStyle: FontStyle.italic),
+                      style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                     ),
                   if (stop.notes != null)
                     Text(
                       "${stop.notes}",
-                      style: const TextStyle(fontStyle: FontStyle.italic),
+                      style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                     ),
                   serialInput,
                 ],
@@ -344,13 +345,13 @@ class ServiceCard extends StatelessWidget {
             if (stop.reason != null)
               Text(
                 "\"${stop.reason!}\"",
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (stop.notes != null)
               Text(
                 "${stop.notes}",
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (serialInput is! Container) Center(child: serialInput),
@@ -363,39 +364,39 @@ class ServiceCard extends StatelessWidget {
             if (stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 "New Site:",
-                style: const TextStyle(fontSize: 13),
+                style: const TextStyle(fontSize: 13, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (stop.newSiteName?.isNotEmpty == true)
               Text(
                 stop.newSiteName!,
                 style:
-                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 stop.newStreetAddress!,
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (stop.newCity?.isNotEmpty == true)
               Text(
                 stop.newCity!,
-                style: const TextStyle(fontSize: 16),
+                style: const TextStyle(fontSize: 16, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             const SizedBox(height: 8),
             if (stop.reason != null)
               Text(
                 "\"${stop.reason!}\"",
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (stop.notes != null)
               Text(
                 "${stop.notes}",
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             serialInput,
@@ -408,13 +409,13 @@ class ServiceCard extends StatelessWidget {
             if (stop.reason != null)
               Text(
                 "\"${stop.reason!}\"",
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             if (stop.notes != null)
               Text(
                 "${stop.notes}",
-                style: const TextStyle(fontStyle: FontStyle.italic),
+                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             serialInput,

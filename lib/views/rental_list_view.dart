@@ -5,6 +5,8 @@ import '../widgets/rental_card.dart';
 import '../widgets/service_card.dart';
 import '../widgets/base_card.dart';
 import '../theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 
 class RentalListView extends StatefulWidget {
   final String driverId;
@@ -55,80 +57,104 @@ class _RentalListViewState extends State<RentalListView> {
     };
     return driverMap[driverId] ?? driverId;
   }
-Future<void> _refreshRentals() async {
-  setState(() {
-    futureStops = _fetchStopsForDriverWithFallback(widget.driverId);
-  });
-}
-
-// Fetch stops for one driver, but fallback to all drivers if empty/error
-Future<List<Stop>> _fetchStopsForDriverWithFallback(String driverId) async {
-  try {
-    final stops = await ApiService().fetchStopsByDriver(
-      driverId,
-      completed: widget.completed,
-      unassigned: widget.unassigned,
-    );
-    if (stops.isNotEmpty) {
-      return stops; // normal route data exists → show it
-    }
-  } catch (_) {
-    // ignore errors for primary driver
+    
+  Future<void> _refreshRentals() async {
+    setState(() {
+      futureStops = _fetchStopsForDriverWithFallback(widget.driverId);
+    });
   }
 
-  // fallback: fetch all drivers to build summary
-  const driverIds = ['JS', 'K', 'A', 'JC', 'J', 'B'];
-  Map<String, bool> driverHasRoutes = {};
-
-  for (var id in driverIds) {
+  // Fetch stops for one driver, but fallback to all drivers if empty/error
+  Future<List<Stop>> _fetchStopsForDriverWithFallback(String driverId) async {
     try {
-      final s = await ApiService().fetchStopsByDriver(id);
-      driverHasRoutes[id] = s.isNotEmpty;
+      final stops = await ApiService().fetchStopsByDriver(
+        driverId,
+        completed: widget.completed,
+        unassigned: widget.unassigned,
+      );
+      if (stops.isNotEmpty) {
+        return stops; // normal route data exists → show it
+      }
     } catch (_) {
-      driverHasRoutes[id] = false;
+      // ignore errors for primary driver
     }
+
+    // fallback: fetch all drivers to build summary
+    const driverIds = ['JS', 'K', 'A', 'JC', 'J', 'B'];
+    Map<String, bool> driverHasRoutes = {};
+
+    for (var id in driverIds) {
+      try {
+        final s = await ApiService().fetchStopsByDriver(id);
+        driverHasRoutes[id] = s.isNotEmpty;
+      } catch (_) {
+        driverHasRoutes[id] = false;
+      }
+    }
+
+    // Build ghost summary stop objects
+    List<Stop> ghostStops = [
+      Stop(
+        id: -1,
+        orderId: -1,
+        type: 'GHOST_SUMMARY',
+        driverId: '',
+        liftType: '',
+        // optionally fill other fields if Stop requires them
+      )
+    ];
+
+    // attach summary as a property inside ghost stop
+    ghostStops[0] = ghostStops[0].copyWith(
+      driverId: _buildDriverSummary(driverHasRoutes),
+    );
+
+    return ghostStops;
   }
 
-  // Build ghost summary stop objects
-  List<Stop> ghostStops = [
-    Stop(
-      id: -1,
-      orderId: -1,
-      type: 'GHOST_SUMMARY',
-      driverId: '',
-      liftType: '',
-      // optionally fill other fields if Stop requires them
-    )
-  ];
+  // Helper to build summary string
+  String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
+    const driverMap = {
+      'JS': 'Jacob',
+      'K': 'Kaleb',
+      'A': 'Adrian',
+      'JC': 'Jackson',
+      'J': 'John',
+      'B': 'Byron',
+    };
 
-  // attach summary as a property inside ghost stop
-  ghostStops[0] = ghostStops[0].copyWith(
-    driverId: _buildDriverSummary(driverHasRoutes),
-  );
+    final withRoutes = driverHasRoutes.entries
+        .where((e) => e.value)
+        .map((e) => driverMap[e.key] ?? e.key)
+        .toList();
 
-  return ghostStops;
-}
+    if (withRoutes.isEmpty) return "Nobody has routes";
 
-// Helper to build summary string
-String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
-  const driverMap = {
-    'JS': 'Jacob',
-    'K': 'Kaleb',
-    'A': 'Adrian',
-    'JC': 'Jackson',
-    'J': 'John',
-    'B': 'Byron',
-  };
+    return "${withRoutes.join(', ')} have routes";
+  }
 
-  final withRoutes = driverHasRoutes.entries
-      .where((e) => e.value)
-      .map((e) => driverMap[e.key] ?? e.key)
-      .toList();
-
-  if (withRoutes.isEmpty) return "Nobody has routes";
-
-  return "${withRoutes.join(', ')} have routes";
-}
+  Widget gradientText(String text) {
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        return LinearGradient(
+          colors: [
+            AppColors.yellow,
+            AppColors.green,
+            AppColors.red,
+          ],
+        ).createShader(bounds);
+      },
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.white, // required for ShaderMask
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -141,17 +167,11 @@ String _buildDriverSummary(Map<String, bool> driverHasRoutes) {
             return const Center(child: CircularProgressIndicator());
           } else if (snapshot.hasError) {
             return Center(
-              child: Text(
-                '${snapshot.error}',
-                style: TextStyle(color: AppColors.green),
-              ),
-            );
+              child: gradientText('${snapshot.error}'),
+              );
           } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return const Center(
-              child: Text(
-                'No stops available.',
-                style: TextStyle(color: AppColors.green),
-              ),
+            return Center(
+              child: gradientText('No stops available'),
             );
           }
 

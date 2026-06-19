@@ -30,98 +30,82 @@ class _HomeScreenState extends State<HomeScreen> {
 
 
   Future<void> _showMenu() async {
-    final result = await showGeneralDialog<String>(
+    final result = await showModalBottomSheet<String>(
       context: context,
-      barrierDismissible: true,
-      barrierLabel: 'Menu',
-      barrierColor: Colors.black26,
-      transitionDuration: const Duration(milliseconds: 150),
-      pageBuilder: (_, __, ___) {
+      backgroundColor: AppColors.mainBackground,
+      isScrollControlled: false,
+      builder: (context) {
         return SafeArea(
-          child: Align(
-            alignment: Alignment.topRight,
-            child: Container(
-              width: 260,
-              margin: const EdgeInsets.only(
-                top: 12,
-                right: 12,
-              ),
-              child: Material(
-                color: AppColors.mainBackground,
-                elevation: 12,
-                borderRadius: BorderRadius.circular(12),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ListTile(
-                      leading: Icon(
-                        Icons.bar_chart,
-                        color: AppColors.yellow,
-                      ),
-                      title: Text(
-                        'Driver Statistics',
-                        style: TextStyle(
-                          color: AppColors.yellow,
-                        ),
-                      ),
-                      onTap: () => Navigator.pop(context, 'stats'),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: AppColors.yellow,
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.check_circle_outline,
-                        color: AppColors.yellow,
-                      ),
-                      title: Text(
-                        'Completed Stops',
-                        style: TextStyle(
-                          color: AppColors.yellow,
-                        ),
-                      ),
-                      onTap: () => Navigator.pop(context, 'completed'),
-                    ),
-                    Divider(
-                      height: 1,
-                      color: AppColors.yellow,
-                    ),
-                    ListTile(
-                      leading: Icon(
-                        Icons.pending_actions,
-                        color: AppColors.yellow,
-                      ),
-                      title: Text(
-                        'Unassigned Stops',
-                        style: TextStyle(
-                          color: AppColors.yellow,
-                        ),
-                      ),
-                      onTap: () => Navigator.pop(context, 'unassigned'),
-                    ),
-                  ],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.yellow.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
+
+                ListTile(
+                  leading: Icon(
+                    Icons.bar_chart,
+                    color: AppColors.yellow,
+                  ),
+                  title: Text(
+                    'Driver Statistics',
+                    style: TextStyle(
+                      color: AppColors.yellow,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, 'stats'),
+                ),
+
+                Divider(
+                  height: 1,
+                  color: AppColors.yellow,
+                ),
+
+                ListTile(
+                  leading: Icon(
+                    Icons.check_circle_outline,
+                    color: AppColors.yellow,
+                  ),
+                  title: Text(
+                    'Completed Stops',
+                    style: TextStyle(
+                      color: AppColors.yellow,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, 'completed'),
+                ),
+
+                Divider(
+                  height: 1,
+                  color: AppColors.yellow,
+                ),
+
+                ListTile(
+                  leading: Icon(
+                    Icons.pending_actions,
+                    color: AppColors.yellow,
+                  ),
+                  title: Text(
+                    'Unassigned Stops',
+                    style: TextStyle(
+                      color: AppColors.yellow,
+                    ),
+                  ),
+                  onTap: () => Navigator.pop(context, 'unassigned'),
+                ),
+
+                const SizedBox(height: 8),
+              ],
             ),
-          ),
-        );
-      },
-      transitionBuilder: (
-        context,
-        animation,
-        secondaryAnimation,
-        child,
-      ) {
-        return FadeTransition(
-          opacity: animation,
-          child: SlideTransition(
-            position: Tween<Offset>(
-              begin: const Offset(0, -0.1),
-              end: Offset.zero,
-            ).animate(animation),
-            child: child,
           ),
         );
       },
@@ -149,17 +133,17 @@ class _HomeScreenState extends State<HomeScreen> {
         );
         break;
 
-        case 'unassigned':
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => CompletedStopsScreen(
-                driverId: widget.currentUserId,
-                unassigned: true,
-              ),
+      case 'unassigned':
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CompletedStopsScreen(
+              driverId: widget.currentUserId,
+              unassigned: true,
             ),
-          );
-          break;
+          ),
+        );
+        break;
     }
   }
 
