@@ -45,6 +45,37 @@ class _DriverOrbitSelectorState
     orbit.dispose();
     super.dispose();
   }
+
+  Color _colorFromNormalized(double t) {
+    final clamped = t.clamp(-1.0, 1.0);
+
+    if (clamped < 0) {
+      return Color.lerp(
+        AppColors.yellow,
+        AppColors.green,
+        clamped + 1,
+      )!;
+    }
+
+    return Color.lerp(
+      AppColors.green,
+      AppColors.red,
+      clamped,
+    )!;
+  }
+
+  double _compressSpectrum(
+    double x,
+    double centerX,
+    double width,
+    double compression, // 0.0–1.0
+  ) {
+    final raw = ((x - centerX) / (width / 2)).clamp(-1.0, 1.0);
+
+    // compression < 1 shrinks range toward center
+    return raw * compression;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -55,83 +86,62 @@ class _DriverOrbitSelectorState
             final centerX = constraints.maxWidth / 2;
             final centerY = constraints.maxHeight / 2;
 
+            final xNudge = -constraints.maxWidth * 0.04;
+
             final shortestSide =
                 MediaQuery.of(context).size.shortestSide;
 
             final uiScale =
                 (shortestSide / 420).clamp(0.85, 1.6);
 
-            // ✅ DEVICE-SAFE ORBIT SIZE
             final radiusX = constraints.maxWidth * 0.31;
             final radiusY = constraints.maxHeight * 0.28;
 
             final nodeSizeBase = 110 * uiScale;
 
+            final drivers =
+                widget.users.where((u) => u['driver'] == 1).toList();
+
+            final nonDrivers =
+                widget.users.where((u) => u['driver'] != 1).toList();
+
             final nodes = <Widget>[];
 
-            // Drivers get full spacing, non-drivers get half spacing
-            final weights = widget.users.map((user) {
-              final isDriver = user['driver'] == 1;
-              return isDriver ? 1.0 : 0.4;
-            }).toList();
-
-            final totalWeight =
-                weights.fold<double>(0, (a, b) => a + b);
-
-            double runningWeight = 0;
-
-            for (int i = 0; i < widget.users.length; i++) {
-              final user = widget.users[i];
-
-              const phaseOffset = pi / 2;
+            // =========================
+            // DRIVERS (outer orbit)
+            // =========================
+            for (int i = 0; i < drivers.length; i++) {
+              final user = drivers[i];
 
               final angle =
-                  ((runningWeight + (weights[i] / 2)) /
-                          totalWeight) *
-                      (2 * pi) +
-                  phaseOffset +
-                  (orbit.value * 2 * pi);
+                  (i * (2 * pi / drivers.length)) +
+                  orbit.value * 2 * pi +
+                  pi / 2;
 
-              runningWeight += weights[i];
+              final x = centerX + cos(angle) * radiusX + xNudge;
+              final y = centerY + sin(angle) * radiusY;
 
-              // ✅ soft inward breathing (prevents edge hugging)
-              final t =
-                  0.88 + (sin(angle * 2) * 0.10);
+              final scale = 0.9;
 
-              final isDriver = user['driver'] == 1;
+              final t = _compressSpectrum(
+                x,
+                centerX,
+                radiusX,
+                0.54, // 👈 drivers only use ~2/3 spectrum
+              );
 
-              // push red-circle users outward
-              final orbitMultiplier =
-                  isDriver ? 1.0 : 1.1;
-
-              final orbitAdjuster =
-                  isDriver ? 0 : 40;
-
-              final x =
-                  orbitAdjuster + centerX +
-                  cos(angle) *
-                      radiusX *
-                      orbitMultiplier *
-                      t;
-
-              final y =
-                  centerY + sin(angle) * radiusY * t;
-
-              // depth feel (subtle)
-              final depth = (sin(angle) + 1) / 2;
-              final scale = 0.78 + depth * 0.34;
-
-              final nodeSize = nodeSizeBase * scale;
+              final color = _colorFromNormalized(t);
 
               nodes.add(
                 Positioned(
-                  left: x - nodeSize / 2,
-                  top: y - nodeSize / 2,
+                  left: x - 30,
+                  top: y - 30,
                   child: Transform.scale(
                     scale: scale,
                     child: _DriverNode(
                       user: user,
                       uiScale: uiScale,
+                      accentColor: color,
                       onTap: () {
                         widget.onUserTap(
                           user['initial'],
@@ -140,11 +150,56 @@ class _DriverOrbitSelectorState
                         );
                       },
                       onAssignmentTap: () {
-                        widget.onAssignmentTap(
-                          user['initial'],
-                        );
+                        widget.onAssignmentTap(user['initial']);
                       },
                     ),
+                  ),
+                ),
+              );
+            }
+
+            // =========================
+            // NON-DRIVERS (inner tight orbit)
+            // =========================
+            for (int i = 0; i < nonDrivers.length; i++) {
+              final user = nonDrivers[i];
+
+              final angle =
+                  (i * (2 * pi / nonDrivers.length)) +
+                  orbit.value * 2 * pi +
+                  pi / 2;
+
+              final x =
+                  centerX + cos(angle) * radiusX * 0.45;
+
+              final y =
+                  centerY + sin(angle) * radiusY * 0.45;
+
+              final t = _compressSpectrum(
+                x,
+                centerX,
+                radiusX,
+                0.5, // 👈 drivers only use ~2/3 spectrum
+              );
+
+              final color = _colorFromNormalized(t);
+
+              nodes.add(
+                Positioned(
+                  left: x - 22,
+                  top: y - 22,
+                  child: _DriverNode(
+                    user: user,
+                    uiScale: uiScale,
+                    accentColor: color,
+                    onTap: () {
+                      widget.onUserTap(
+                        user['initial'],
+                        user['nickname'],
+                        user['truckId'].toString(),
+                      );
+                    },
+                    onAssignmentTap: () {},
                   ),
                 ),
               );
@@ -166,29 +221,23 @@ class _DriverNode extends StatelessWidget {
   final Map<String, dynamic> user;
   final double uiScale;
 
+  final Color accentColor;
+
   final VoidCallback onTap;
   final VoidCallback onAssignmentTap;
 
   const _DriverNode({
     required this.user,
     required this.uiScale,
+    required this.accentColor,
     required this.onTap,
     required this.onAssignmentTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final hasRoute =
-        user['hasRoute'].toString() == 'true';
-
-    final isDriver =
-        user['driver'] == 1;
-
-    final accentColor = !isDriver
-        ? AppColors.red
-        : (hasRoute
-            ? AppColors.green
-            : AppColors.yellow);
+    final isDriver = user['driver'] == 1;
+    final hasRoute = user['hasRoute'].toString() == 'true';
 
     if (!isDriver) {
       return Material(
@@ -198,7 +247,7 @@ class _DriverNode extends StatelessWidget {
           onTap: onTap,
           child: CircleAvatar(
             radius: 22 * uiScale,
-            backgroundColor: AppColors.red,
+            backgroundColor: accentColor,
             child: Text(
               user['initial'],
               style: TextStyle(
@@ -237,11 +286,7 @@ class _DriverNode extends StatelessWidget {
               boxShadow: [
                 BoxShadow(
                   blurRadius: 12,
-                  color: accentColor.withOpacity(
-                    isDriver
-                        ? (hasRoute ? 0.15 : 0.08)
-                        : 0.15,
-                  ),
+                  color: accentColor.withOpacity(0.12),
                 ),
               ],
             ),
@@ -293,9 +338,7 @@ class _DriverNode extends StatelessWidget {
                 ),
                 const SizedBox(height: 2),
                 if (user['truckId'] != null &&
-                    user['truckId']
-                        .toString()
-                        .isNotEmpty)
+                    user['truckId'].toString().isNotEmpty)
                   Text(
                     "Truck ${user['truckId']}",
                     maxLines: 1,

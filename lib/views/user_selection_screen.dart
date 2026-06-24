@@ -10,6 +10,7 @@ import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/driver_orbit_selector.dart';
 import '../widgets/outer_orbit_particles.dart';
+import '../widgets/non_driver_orbit_selector.dart';
 import 'home_screen.dart';
 import 'rental_list_view.dart';
 
@@ -289,10 +290,31 @@ class _UserSelectionScreenState
                   ),
                 ),
 
-                DriverOrbitSelector(
-                  users: snapshot.data!,
-                  onUserTap: _openUser,
-                  onAssignmentTap: _openAssignments,
+                Builder(
+                  builder: (_) {
+                    final drivers = snapshot.data!
+                        .where((u) => u['driver'] == 1)
+                        .toList();
+
+                    final nonDrivers = snapshot.data!
+                        .where((u) => u['driver'] != 1)
+                        .toList();
+
+                    return Stack(
+                      children: [
+                        DriverOrbitSelector(
+                          users: drivers,
+                          onUserTap: _openUser,
+                          onAssignmentTap: _openAssignments,
+                        ),
+
+                        NonDriverOrbitSelector(
+                          users: nonDrivers,
+                          onUserTap: _openUser,
+                        ),
+                      ],
+                    );
+                  },
                 ),
 
                 Positioned(
