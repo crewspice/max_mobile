@@ -173,8 +173,20 @@ class ServiceCard extends StatelessWidget {
         child: SizedBox(
           width: MediaQuery.of(context).size.width * 0.3,
           child: TextField(
+            cursorColor: AppColors.green,
+            style: TextStyle(color: AppColors.green),
             controller: serialController,
-            decoration: const InputDecoration(labelText: 'Serial Number'),
+            decoration: const InputDecoration(
+              labelText: 'Serial Number',
+              labelStyle: TextStyle(color: AppColors.green),
+              floatingLabelStyle: TextStyle(color: AppColors.green),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.green),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: AppColors.green, width: 2),
+              ),
+            ),
           ),
         ),
       );
@@ -278,7 +290,10 @@ class ServiceCard extends StatelessWidget {
                     if (success) await onRefresh();
                   }
                 },
-                icon: const Icon(Icons.upload),
+                icon: Icon(
+                  Icons.upload,
+                  color: AppColors.main,
+                ),
                 label: const Text('Upload Photo'),
               ),
             ],

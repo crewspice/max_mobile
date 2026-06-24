@@ -5,6 +5,7 @@ import 'truck_view.dart';
 import 'driver_statistics_screen.dart';
 import 'user_selection_screen.dart';
 import 'completed_stops_screen.dart';
+import 'menu_screen.dart';
 import '../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -28,123 +29,15 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
 
-
   Future<void> _showMenu() async {
-    final result = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: AppColors.mainBackground,
-      isScrollControlled: false,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.yellow.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-
-                ListTile(
-                  leading: Icon(
-                    Icons.bar_chart,
-                    color: AppColors.yellow,
-                  ),
-                  title: Text(
-                    'Driver Statistics',
-                    style: TextStyle(
-                      color: AppColors.yellow,
-                    ),
-                  ),
-                  onTap: () => Navigator.pop(context, 'stats'),
-                ),
-
-                Divider(
-                  height: 1,
-                  color: AppColors.yellow,
-                ),
-
-                ListTile(
-                  leading: Icon(
-                    Icons.check_circle_outline,
-                    color: AppColors.yellow,
-                  ),
-                  title: Text(
-                    'Completed Stops',
-                    style: TextStyle(
-                      color: AppColors.yellow,
-                    ),
-                  ),
-                  onTap: () => Navigator.pop(context, 'completed'),
-                ),
-
-                Divider(
-                  height: 1,
-                  color: AppColors.yellow,
-                ),
-
-                ListTile(
-                  leading: Icon(
-                    Icons.pending_actions,
-                    color: AppColors.yellow,
-                  ),
-                  title: Text(
-                    'Unassigned Stops',
-                    style: TextStyle(
-                      color: AppColors.yellow,
-                    ),
-                  ),
-                  onTap: () => Navigator.pop(context, 'unassigned'),
-                ),
-
-                const SizedBox(height: 8),
-              ],
-            ),
-          ),
-        );
-      },
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => MenuScreen(
+          currentUserId: widget.currentUserId,
+        ),
+      ),
     );
-
-    if (!mounted || result == null) return;
-
-    switch (result) {
-      case 'stats':
-        Navigator.pushNamed(
-          context,
-          '/statistics',
-          arguments: widget.currentUserId,
-        );
-        break;
-
-      case 'completed':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CompletedStopsScreen(
-              driverId: widget.currentUserId,
-            ),
-          ),
-        );
-        break;
-
-      case 'unassigned':
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => CompletedStopsScreen(
-              driverId: widget.currentUserId,
-              unassigned: true,
-            ),
-          ),
-        );
-        break;
-    }
   }
 
   Widget _navItem({

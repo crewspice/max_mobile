@@ -436,7 +436,10 @@ Widget build(BuildContext context) {
                     if (success) await onRefresh();
                   }
                 },
-                icon: const Icon(Icons.upload),
+                icon: Icon(
+                  Icons.upload,
+                  color: AppColors.main,
+                ),
                 label: const Text('Upload Photo'),
               ),
             ),

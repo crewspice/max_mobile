@@ -234,29 +234,39 @@ class TruckView extends StatelessWidget {
             _liftAsset(item.liftType),
             height: 60,
             fit: BoxFit.contain,
+            color: AppColors.yellow,
+            colorBlendMode: BlendMode.srcIn,
           ),
           const SizedBox(height: 4),
           Text(
             item.serialNumber,
             style: const TextStyle(
               fontSize: 10,
-              color: Colors.white,
-              shadows: [Shadow(blurRadius: 2, color: Colors.black)],
+              color: AppColors.yellow,
+              shadows: [
+                Shadow(
+                  blurRadius: 2,
+                  color: Colors.black,
+                ),
+              ],
             ),
           ),
         ],
       ),
     );
   }
-
+  
   @override
   Widget build(BuildContext context) {
     if (truckId == null) {
-      return const Center(child: Text('No truck assigned',
-        style: TextStyle(
-          color: AppColors.yellow,
+      return const Center(
+        child: Text(
+          'No truck assigned',
+          style: TextStyle(
+            color: AppColors.yellow,
+          ),
         ),
-      ));
+      );
     }
 
     return FutureBuilder<List<InventoryItem>>(
@@ -267,160 +277,196 @@ class TruckView extends StatelessWidget {
         }
 
         if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
+          return Center(
+            child: Text(
+              'Error: ${snapshot.error}',
+              style: const TextStyle(color: AppColors.yellow),
+            ),
+          );
         }
 
         final inventory = snapshot.data ?? [];
 
-        return ListView(
-          padding: const EdgeInsets.all(12),
-          children: [
-            Text(
-              "Truck $truckId",
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.yellow,
-              ),
-            ),
+        return FutureBuilder<bool>(
+          future: ApiService().needsInspection(truckId!),
+          builder: (context, inspectionSnapshot) {
+            final needsInspection =
+                inspectionSnapshot.data ?? false;
 
-            const SizedBox(height: 12),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Truck $truckId",
+                        style: const TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.yellow,
+                        ),
+                      ),
 
-            // 🚨 INSPECTION SECTION
-            FutureBuilder<bool>(
-              future: ApiService().needsInspection(truckId!),
-              builder: (context, inspectionSnapshot) {
-                if (inspectionSnapshot.connectionState ==
-                    ConnectionState.waiting) {
-                  return const SizedBox();
-                }
+                      const SizedBox(height: 12),
 
-                if (inspectionSnapshot.hasError) {
-                  return const SizedBox();
-                }
-
-                final needsInspection =
-                    inspectionSnapshot.data ?? false;
-
-                if (!needsInspection) {
-                  return const SizedBox();
-                }
-
-                return Card(
-                  color: Colors.orange.shade100,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.warning,
-                                color: Colors.orange),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                "Truck $truckId needs inspection",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
+                      if (needsInspection)
+                        Card(
+                          color: AppColors.red,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(12),
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.warning,
+                                      color: AppColors.mainBackground,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Truck $truckId needs inspection",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                          color: AppColors.mainBackground,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
+
+                                const SizedBox(height: 6),
+
+                                const Text(
+                                  "No inspection recorded for this month.",
+                                  style: TextStyle(
+                                    color: AppColors.mainBackground,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 12),
+
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        style: OutlinedButton.styleFrom(
+                                          backgroundColor:
+                                              AppColors.mainBackground,
+                                          side: const BorderSide(
+                                            color: AppColors.red,
+                                            width: 2,
+                                          ),
+                                        ),
+                                        onPressed: () =>
+                                            _openIssueFlow(context),
+                                        icon: const Icon(
+                                          Icons.report_problem,
+                                          color: AppColors.red,
+                                        ),
+                                        label: const Text(
+                                          "Record Issue",
+                                          style: TextStyle(
+                                            color: AppColors.red,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+
+                                    const SizedBox(width: 10),
+
+                                    Expanded(
+                                      child: HoldToConfirmButton(
+                                        label: "No Issues",
+                                        baseColor:
+                                            AppColors.mainBackground,
+                                        textColor: AppColors.red,
+                                        progressColor: AppColors.red,
+                                        icon: const Icon(
+                                          Icons.check,
+                                          color: AppColors.red,
+                                        ),
+                                        onConfirmed: () {
+                                          // TODO
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-
-                        const SizedBox(height: 6),
-
-                        const Text(
-                          "No inspection recorded for this month.",
-                        ),
-
-                        const SizedBox(height: 12),
-
-                        Row(
-                          children: [
-                            // 🛠 Record Issue (NOW WIRED)
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () =>
-                                    _openIssueFlow(context),
-                                icon: const Icon(
-                                    Icons.report_problem),
-                                label:
-                                    const Text("Record Issue"),
-                              ),
-                            ),
-
-                            const SizedBox(width: 10),
-
-                            // ✅ Hold confirm
-                            Expanded(
-                              child: HoldToConfirmButton(
-                                label: "No Issues",
-                                baseColor: AppColors.red,
-                                textColor: AppColors.main,
-                                progressColor: AppColors.yellow,
-                                icon:
-                                    const Icon(Icons.check),
-                                onConfirmed: () {
-                                  // TODO: inspection complete API
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            const SizedBox(height: 12),
-
-            // 📦 INVENTORY
-            const Text(
-              "Inventory",
-              style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600),
-            ),
-
-            const SizedBox(height: 8),
-
-            if (inventory.isEmpty)
-              const Text("No inventory found")
-            else
-              SizedBox(
-                height: 320,
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final cellW = constraints.maxWidth / 3;
-                    final cellH = constraints.maxHeight / 3;
-
-                    return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Image.asset(
-                            'assets/truck-overhead.png',
-                            fit: BoxFit.contain,
                           ),
                         ),
 
-                        ...inventory.map((item) {
-                          return _buildLiftMarker(item, cellW, cellH);
-                        }),
-                      ],
-                    );
-                  },
+                      const SizedBox(height: 12),
+
+                      const Text(
+                        "Inventory",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.yellow,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              )
-          ],
+
+                Expanded(
+                  child: inventory.isEmpty
+                      ? const Center(
+                          child: Text(
+                            "No inventory found",
+                            style: TextStyle(
+                              color: AppColors.yellow,
+                            ),
+                          ),
+                        )
+                      : Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ),
+                          child: LayoutBuilder(
+                            builder: (context, constraints) {
+                              final cellW =
+                                  constraints.maxWidth / 3;
+                              final cellH =
+                                  constraints.maxHeight / 3;
+
+                              return Stack(
+                                children: [
+                                  Positioned.fill(
+                                    child: Image.asset(
+                                      'assets/overhead-truck.png',
+                                      fit: BoxFit.contain,
+                                    ),
+                                  ),
+
+                                  ...inventory.map(
+                                    (item) => _buildLiftMarker(
+                                      item,
+                                      cellW,
+                                      cellH,
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                ),
+              ],
+            );
+          },
         );
       },
     );

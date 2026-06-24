@@ -539,7 +539,7 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                     );
                   }
                   if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
+                    return Text('${snapshot.error}');
                   }
                   final data = snapshot.data!;
                   return GridView.builder(

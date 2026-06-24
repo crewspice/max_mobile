@@ -199,11 +199,13 @@ class _OuterOrbitParticlesState
 
              /// 🔥 DEVICE NORMALIZED BASE RADIUS
              // iphones
-             // final baseRadius = shortest * 0.645;
+            //  final baseRadius = shortest * 0.645;
 
+            // moto g android
+            final baseRadius = shortest * 0.68;
 
              // ipads
-             final baseRadius = shortest * 0.465;
+            //  final baseRadius = shortest * 0.465;
 
 
              /// 🔥 ASPECT RATIO CORRECTION
