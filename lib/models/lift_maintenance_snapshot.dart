@@ -1,3 +1,5 @@
+import 'lift_maintenance_history_item.dart';
+
 class LiftMaintenanceSnapshot {
   final bool? upToDate;
 
@@ -8,13 +10,8 @@ class LiftMaintenanceSnapshot {
   final String? pmCompletedByNickname;
   final String? pmNotes;
 
-  // ✅ Active maintenance action fields
-  final int? actionId;
-  final String? actionTypeName;
-  final int? actionTypeId;
-  final DateTime? actionCreatedAt;
-  final String? actionReportedBy;
-  final String? actionNotes;
+  // ✅ Active maintenance actions
+  final List<LiftMaintenanceHistoryItem> maintenanceActions;
 
   LiftMaintenanceSnapshot({
     this.upToDate,
@@ -23,12 +20,7 @@ class LiftMaintenanceSnapshot {
     this.pmCompletedByFullName,
     this.pmCompletedByNickname,
     this.pmNotes,
-    this.actionId,
-    this.actionTypeName,
-    this.actionTypeId,
-    this.actionCreatedAt,
-    this.actionReportedBy,
-    this.actionNotes,
+    this.maintenanceActions = const [],
   });
 
   factory LiftMaintenanceSnapshot.fromJson(Map<String, dynamic> json) {
@@ -44,15 +36,12 @@ class LiftMaintenanceSnapshot {
       pmCompletedByNickname: json['pmCompletedByNickname'],
       pmNotes: json['pmNotes'],
 
-      // Maintenance Action
-      actionId: json['actionId'],
-      actionTypeName: json['actionTypeName'],
-      actionTypeId: json['actionTypeId'],
-      actionCreatedAt: json['actionCreatedAt'] != null
-          ? DateTime.parse(json['actionCreatedAt'])
-          : null,
-      actionReportedBy: json['actionReportedBy'],
-      actionNotes: json['actionNotes'],
+      // Maintenance Actions
+      maintenanceActions:
+      (json['maintenanceActions'] as List<dynamic>?)
+          ?.map((e) => LiftMaintenanceHistoryItem.fromJson(e))
+          .toList() ??
+      [],
     );
   }
 }

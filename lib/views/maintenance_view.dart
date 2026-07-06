@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import '../models/lift.dart';
 import '../models/lift_maintenance_snapshot.dart';
 import '../models/lift_pm_history_item.dart';
@@ -30,8 +31,13 @@ class _MaintenanceViewState extends State<MaintenanceView> {
   bool _showIssueForm = false;
   bool _showPmHistory = false;
   bool _showIssueHistory = false;
+  final Map<int, bool> _noRepairNeededByAction = {};
+  final Map<int, bool> _repairNotesExpanded = {};
+  final Map<int, TextEditingController> _repairNotesControllers = {};
   late Future<List<LiftPmHistoryItem>> _pmHistoryFuture;
   late Future<List<LiftMaintenanceHistoryItem>> _issueHistoryFuture;
+  int? _expandedHistoryIndex;
+  String? _lastAutoSelectedSerial;
 
   @override
   void initState() {
@@ -43,6 +49,9 @@ class _MaintenanceViewState extends State<MaintenanceView> {
   void dispose() {
     _serialController.dispose();
     _notesController.dispose();
+    for (final controller in _repairNotesControllers.values) {
+    controller.dispose();
+    }
     super.dispose();
   }
 
@@ -105,21 +114,30 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                         .toLowerCase()
                                         .contains(query));
                               },
-                              onSelected: (lift) {
-                                setState(() {
-                                  _selectedLift = lift;
-                                  _resetToggles();
-                                  _snapshotFuture =
-                                      ApiService().fetchLiftMaintenanceSnapshot(
-                                          lift.liftId);
-                                });
-                              },
+                              onSelected: _selectLift,
                               fieldViewBuilder: (context, controller, focusNode, onFieldSubmitted) {
                                 return TextField(
                                   controller: controller,
                                   focusNode: focusNode,
                                   textInputAction: TextInputAction.done,
+                                    onChanged: (value) {
+                                      final serial = value.trim().toLowerCase();
 
+                                      print('Typed: "$serial"');
+
+                                      final match = lifts.cast<Lift?>().firstWhere(
+                                        (l) => (l?.serialNumber ?? '').trim().toLowerCase() == serial,
+                                        orElse: () => null,
+                                      );
+
+                                      print('Match found: ${match?.serialNumber}');
+
+                                      if (match != null &&
+                                          (_selectedLift == null ||
+                                              _selectedLift!.liftId != match.liftId)) {
+                                        _selectLift(match);
+                                      }
+                                    },
                                   cursorColor: AppColors.yellow,
 
                                   style: const TextStyle(
@@ -271,18 +289,17 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                       controller: controller,
                       focusNode: focusNode,
                       textInputAction: TextInputAction.done,
-                      onSubmitted: (_) {
-                        final text = controller.text.toLowerCase();
-                        final matches = lifts.where((l) =>
-                            (l.serialNumber ?? '').toLowerCase().contains(text));
-                        if (matches.isNotEmpty) {
-                          final lift = matches.first;
-                          setState(() {
-                            _selectedLift = lift;
-                            _resetToggles();
-                            _snapshotFuture =
-                                ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
-                          });
+                      onSubmitted: (value) {
+                        final serial = value.trim().toLowerCase();
+
+                        final match = lifts.cast<Lift?>().firstWhere(
+                          (l) => (l?.serialNumber ?? '').toLowerCase() == serial,
+                          orElse: () => null,
+                        );
+
+                        if (match != null) {
+                          FocusScope.of(context).unfocus();
+                          _selectLift(match);
                         }
                       },
                       decoration: InputDecoration(
@@ -397,88 +414,159 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                 ),
                 const SizedBox(height: 8),
 
+                if (data.maintenanceActions.isNotEmpty)
+                  ...data.maintenanceActions.map((action) {
+                    final repairNotesController =
+                        _repairNotesControllers.putIfAbsent(
+                      action.actionId!,
+                      () => TextEditingController(),
+                    );
 
-
-                // --- Multi-line repair card ---
-                if (data.actionId != null)
-
-                  _buildRepairCard(
-                    title: 'Needs Repair',
-                    isGood: false,
-                    content: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Type: ${data.actionTypeName ?? ''}',
-                          style: const TextStyle(color: AppColors.red),
-                        ),
-                        if (data.actionCreatedAt != null)
-                          Text(
-                            'Date: ${data.actionCreatedAt!.year.toString().padLeft(4, '0')}-'
-                            '${data.actionCreatedAt!.month.toString().padLeft(2, '0')}-'
-                            '${data.actionCreatedAt!.day.toString().padLeft(2, '0')}',
-                            style: const TextStyle(color: AppColors.red),
-                          ),
-                        if ((data.actionReportedBy ?? '').isNotEmpty)
-                          Text('Reported by: ${data.actionReportedBy}',
-                            style: const TextStyle(color: AppColors.red),
-                          ),
-                        if ((data.actionNotes ?? '').isNotEmpty)
-                          Text('Notes: ${data.actionNotes}',
-                            style: const TextStyle(color: AppColors.red),
-                          ),
-                        const SizedBox(height: 6),
-                        HoldToConfirmButton(
-                          icon: const Icon(Icons.check),
-                          label: 'Resolve',
-                          baseColor: AppColors.main,
-                          textColor: AppColors.red,
-                          progressColor: AppColors.red,
-                          holdDuration: const Duration(seconds: 2),
-                          onConfirmed: () async {
-                            if (_selectedLift == null || data.actionId == null) return;
-
-                            try {
-                              await ApiService().resolveMaintenanceAction(
-                                actionId: data.actionId!,
-                                resolvedByInitial: widget.currentUserId,
-                              );
-
-                              if (!mounted) return;
-
-                              // Refresh the snapshot and history
-                              setState(() {
-                                _snapshotFuture =
-                                    ApiService().fetchLiftMaintenanceSnapshot(_selectedLift!.liftId);
-                                _issueHistoryFuture =
-                                    ApiService().fetchMaintenanceHistory(_selectedLift!.liftId);
-                              });
-
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  backgroundColor: AppColors.mainBackground,
-                                  content: Text(
-                                    'Issue resolved successfully',
-                                    style: TextStyle(color: AppColors.green),
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildRepairCard(
+                        title: '${_formatDate(action.createdAt!)}',
+                        isGood: false,
+                        content: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if ((action.notes ?? '').isNotEmpty)
+                              Center(
+                                child: Text(
+                                  '"${action.notes}"',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.red,
+                                    fontStyle: FontStyle.italic,
                                   ),
                                 ),
-                              );
-                            } catch (e) {
-                              if (!mounted) return;
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  backgroundColor: AppColors.mainBackground,
-                                  content: Text(
-                                    'Failed to resolve issue: $e',
-                                    style: const TextStyle(color: AppColors.red),
+                              ),
+
+                            if ((action.reportedBy ?? '').isNotEmpty)
+                              Center(
+                                child: Text(
+                                  (action.notes ?? '').isNotEmpty
+                                      ? '- ${action.reportedBy}'
+                                      : 'Reported by: ${action.reportedBy}',
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(
+                                    color: AppColors.red,
                                   ),
                                 ),
-                              );
-                            }
-                          },
+                              ),
+
+                            const SizedBox(height: 6),
+
+                            ExpansionTile(
+                              tilePadding: EdgeInsets.zero,
+                              childrenPadding: const EdgeInsets.only(bottom: 8),
+                              initiallyExpanded:
+                                  _repairNotesExpanded[action.actionId] ?? false,
+                              onExpansionChanged: (expanded) {
+                                setState(() {
+                                  _repairNotesExpanded[action.actionId!] = expanded;
+                                });
+                              },
+                              title: const Text(
+                                'Add repair notes',
+                                style: TextStyle(
+                                  color: AppColors.red,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              children: [
+                                TextField(
+                                  controller: repairNotesController,
+                                  maxLines: 3,
+                                  cursorColor: AppColors.red,
+                                  style: const TextStyle(
+                                    color: AppColors.red,
+                                  ),
+                                  decoration: const InputDecoration(
+                                    hintText: 'Optional repair notes...',
+                                    hintStyle: TextStyle(
+                                      color: AppColors.red,
+                                    ),
+                                    enabledBorder: OutlineInputBorder(),
+                                    focusedBorder: OutlineInputBorder(),
+                                  ),
+                                ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 6),
+
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                const Text(
+                                  'No Repair Needed',
+                                  style: TextStyle(
+                                    color: AppColors.red,
+                                    fontSize: 13,
+                                  ),
+                                ),
+
+                                Checkbox(
+                                  value:
+                                      _noRepairNeededByAction[action.actionId] ?? false,
+                                  activeColor: AppColors.red,
+                                  checkColor: AppColors.mainBackground,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _noRepairNeededByAction[action.actionId!] =
+                                          value ?? false;
+                                    });
+                                  },
+                                ),
+
+                                const SizedBox(width: 12),
+
+                                Expanded(
+                                  child: HoldToConfirmButton(
+                                    icon: const Icon(Icons.check),
+                                    label: 'Resolve',
+                                    baseColor: AppColors.main,
+                                    textColor: AppColors.red,
+                                    progressColor: AppColors.red,
+                                    holdDuration: const Duration(seconds: 2),
+                                    onConfirmed: () async {
+                                      await ApiService().resolveMaintenanceAction(
+                                        actionId: action.actionId!,
+                                        resolvedByInitial: widget.currentUserId,
+                                        noRepairNeeded:
+                                            _noRepairNeededByAction[action.actionId] ?? false,
+                                        repairNotes: repairNotesController.text.trim(),
+                                      );
+
+                                      if (!mounted) return;
+
+                                      setState(() {
+                                        _noRepairNeededByAction.remove(action.actionId);
+                                        _repairNotesExpanded.remove(action.actionId);
+                                        _repairNotesControllers
+                                            .remove(action.actionId)
+                                            ?.dispose();
+
+                                        _snapshotFuture = ApiService()
+                                            .fetchLiftMaintenanceSnapshot(
+                                                _selectedLift!.liftId);
+
+                                        _issueHistoryFuture = ApiService()
+                                            .fetchMaintenanceHistory(
+                                                _selectedLift!.liftId);
+                                      });
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  }
+                ),
               ],
             ),
 
@@ -585,142 +673,226 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                   );
                 },
               ),
-
-            // ----------------------------
-            // Issue / maintenance history display
-            // ----------------------------
-            if (_showIssueHistory)
-              FutureBuilder<List<LiftMaintenanceHistoryItem>>(
-                future: _issueHistoryFuture,
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: CircularProgressIndicator(),
-                    );
-                  }
-                  if (snapshot.hasError) {
-                    return Text('Error: ${snapshot.error}');
-                  }
-                  final data = snapshot.data!;
-                  return GridView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      childAspectRatio: 1.5,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
-                    itemCount: data.length,
-                    itemBuilder: (context, index) {
-                      final issue = data[index];
-                      return Card(
-                        color: AppColors.yellow,
-                        child: Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Builder(
-                            builder: (context) {
-                              final performer = issue.performedByNickname ??
-                                                issue.performedByName ??
-                                                issue.performedByInitials;
-                              final cleanedNotes = (issue.actionTypeId == 60 && issue.notes != null)
-                                  ? cleanBatteryNotes(issue.notes!)
-                                  : null; 
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // --- Title ---
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          issue.actionTypeName ??
-                                              (issue.notes != null && issue.notes!.isNotEmpty
-                                                  ? issue.notes!
-                                                  : 'Unknown'),
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.mainBackground,
-                                          ),
-                                          overflow: TextOverflow.ellipsis, // prevents overflow issues
-                                        ),
-                                      ),
-
-                                      if (issue.quantity != null && issue.quantity! > 0 && issue.quantity! < 100)
-                                        Text(
-                                          'x${issue.quantity}',
-                                          style: const TextStyle(
-                                            color: AppColors.mainBackground,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-
-                                  // --- Performer ---
-                                  if (performer != null && performer.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      'By: $performer',
-                                      style: const TextStyle(color: AppColors.mainBackground),
-                                    ),
-                                  ],
-
-                                  if (issue.partAction != null && issue.partAction!.isNotEmpty) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      issue.partAction == 'Repair'
-                                          ? 'Repaired'
-                                          : issue.partAction == 'Replace'
-                                              ? 'Replaced'
-                                              : issue.partAction!, // fallback for anything else
-                                      style: const TextStyle(
-                                        fontStyle: FontStyle.italic,
-                                        color: AppColors.mainBackground,
-                                      ),
-                                    ),
-                                  ],
-
-                                  // --- Date ---
-                                  if (issue.performedAt != null) ...[
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      '${issue.performedAt!.month.toString().padLeft(2, '0')}-'
-                                      '${issue.performedAt!.day.toString().padLeft(2, '0')}-'
-                                      '${issue.performedAt!.year.toString().padLeft(4, '0')}',
-                                      style: const TextStyle(color: AppColors.mainBackground),
-                                    ),
-                                  ],
-
-                                  // --- Notes ---
-                                  if (issue.notes != null && issue.notes!.isNotEmpty) ...[
-                                    if (issue.actionTypeId == 1) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        '"${issue.notes}"',
-                                        style: const TextStyle(color: AppColors.yellow),
-                                      ),
-                                    ] else if (issue.actionTypeId == 60 &&
-                                        cleanedNotes != null &&
-                                        cleanedNotes.isNotEmpty) ...[
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        cleanedNotes,
-                                        style: const TextStyle(color: AppColors.yellow),
-                                      ),
-                                    ]
-                                  ],
-                                ],
-                              );
-                            },
-                          ),
-                        ),
+              // ----------------------------
+              // Issue / maintenance history display
+              // ----------------------------
+              if (_showIssueHistory)
+                FutureBuilder<List<LiftMaintenanceHistoryItem>>(
+                  future: _issueHistoryFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 8),
+                        child: CircularProgressIndicator(),
                       );
-                    },
-                  );
-                },
-              ),
+                    }
+
+                    if (snapshot.hasError) {
+                      return Text('Error: ${snapshot.error}');
+                    }
+
+                    final data = snapshot.data!;
+
+                    return StaggeredGrid.count(
+                      crossAxisCount: 2,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      children: List.generate(data.length, (index) {
+                        final issue = data[index];
+
+                        final expanded = _expandedHistoryIndex == index;
+
+                        return StaggeredGridTile.count(
+                          crossAxisCellCount: expanded ? 2 : 1,
+                          mainAxisCellCount: expanded ? 3 : 1,
+                          child: GestureDetector(
+                            onLongPress: () {
+                              setState(() {
+                                _expandedHistoryIndex =
+                                    expanded ? null : index;
+                              });
+                            },
+                            onTap: () {
+                              if (expanded) {
+                                setState(() {
+                                  _expandedHistoryIndex = null;
+                                });
+                              }
+                            },
+                            child: AnimatedSize(
+                              duration: const Duration(milliseconds: 250),
+                              curve: Curves.easeOutCubic,
+                              child: Card(
+                                color: AppColors.yellow,
+                                child: Padding(
+                                  padding: const EdgeInsets.all(8),
+                                  child: Builder(
+                                    builder: (context) {
+                                      final performer =
+                                          issue.performedByNickname ??
+                                          issue.performedByName ??
+                                          issue.performedByInitials;
+
+                                      final cleanedNotes =
+                                          (issue.actionTypeId == 60 &&
+                                                  issue.notes != null)
+                                              ? cleanBatteryNotes(issue.notes!)
+                                              : null;
+
+                                      return Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+
+                                          // ---------- Title ----------
+                                          Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  issue.actionTypeName ??
+                                                      (issue.notes != null &&
+                                                              issue.notes!.isNotEmpty
+                                                          ? issue.notes!
+                                                          : 'Unknown'),
+                                                  style: TextStyle(
+                                                    fontWeight: FontWeight.bold,
+                                                    color:
+                                                        AppColors.mainBackground,
+                                                  ),
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                ),
+                                              ),
+
+                                              if (issue.quantity != null &&
+                                                  issue.quantity! > 0 &&
+                                                  issue.quantity! < 100)
+                                                Text(
+                                                  'x${issue.quantity}',
+                                                  style: const TextStyle(
+                                                    color: AppColors
+                                                        .mainBackground,
+                                                    fontWeight:
+                                                        FontWeight.bold,
+                                                  ),
+                                                ),
+                                            ],
+                                          ),
+
+                                          // ---------- Performer ----------
+                                          if (performer != null &&
+                                              performer.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'By: $performer',
+                                              style: const TextStyle(
+                                                color:
+                                                    AppColors.mainBackground,
+                                              ),
+                                            ),
+                                          ],
+
+                                          // ---------- Part Action ----------
+                                          if (issue.partAction != null &&
+                                              issue.partAction!.isNotEmpty) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              issue.partAction == 'Repair'
+                                                  ? 'Repaired'
+                                                  : issue.partAction ==
+                                                          'Replace'
+                                                      ? 'Replaced'
+                                                      : issue.partAction!,
+                                              style: const TextStyle(
+                                                fontStyle:
+                                                    FontStyle.italic,
+                                                color:
+                                                    AppColors.mainBackground,
+                                              ),
+                                            ),
+                                          ],
+
+                                          // ---------- Date ----------
+                                          if (issue.performedAt != null) ...[
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              '${issue.performedAt!.month.toString().padLeft(2, '0')}-'
+                                              '${issue.performedAt!.day.toString().padLeft(2, '0')}-'
+                                              '${issue.performedAt!.year.toString().padLeft(4, '0')}',
+                                              style: const TextStyle(
+                                                color:
+                                                    AppColors.mainBackground,
+                                              ),
+                                            ),
+                                          ],
+
+                                          // ---------- Expanded info ----------
+                                          if (expanded) ...[
+                                            const Divider(),
+
+                                            if (issue.notes != null &&
+                                                issue.notes!.isNotEmpty)
+                                              Text(
+                                                issue.actionTypeId == 60
+                                                    ? (cleanedNotes ??
+                                                        issue.notes!)
+                                                    : issue.notes!,
+                                                style: const TextStyle(
+                                                  color: AppColors
+                                                      .mainBackground,
+                                                ),
+                                              ),
+
+                                            const Spacer(),
+
+                                            Text(
+                                              'Long press again or tap to collapse',
+                                              style: TextStyle(
+                                                color: AppColors
+                                                    .mainBackground
+                                                    .withOpacity(.6),
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ]
+
+                                          // ---------- Compact notes ----------
+                                          else if (issue.notes != null &&
+                                              issue.notes!.isNotEmpty) ...[
+                                            if (issue.actionTypeId == 1) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                '"${issue.notes}"',
+                                                style: const TextStyle(
+                                                  color: AppColors.yellow,
+                                                ),
+                                              ),
+                                            ] else if (issue.actionTypeId ==
+                                                    60 &&
+                                                cleanedNotes != null &&
+                                                cleanedNotes.isNotEmpty) ...[
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                cleanedNotes,
+                                                style: const TextStyle(
+                                                  color: AppColors.yellow,
+                                                ),
+                                              ),
+                                            ]
+                                          ],
+                                        ],
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }),
+                    );
+                  },
+                ),
 
             // ----------------------------
             // PM form
@@ -840,7 +1012,9 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                 isGood ? Icons.check_circle : Icons.warning,
                 color: isGood ? AppColors.green : AppColors.red,
               ),
-              const SizedBox(width: 6),
+
+              const Spacer(),
+
               Text(
                 title,
                 style: TextStyle(
@@ -945,6 +1119,15 @@ class _MaintenanceViewState extends State<MaintenanceView> {
         ),
       );
     }
+  }
+
+  void _selectLift(Lift lift) {
+    setState(() {
+      _selectedLift = lift;
+      _resetToggles();
+      _snapshotFuture =
+          ApiService().fetchLiftMaintenanceSnapshot(lift.liftId);
+    });
   }
 
   String _formatDate(DateTime date) {

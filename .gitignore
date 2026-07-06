@@ -1,29 +1,33 @@
+# =========================
 # Miscellaneous
+# =========================
 *.class
 *.log
 *.pyc
 *.swp
 .DS_Store
+migrate_working_dir/
+
+# Editor directories
 .atom/
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# VS Code settings (optional)
+.vscode/
+
+# History / temporary folders
 .build/
 .buildlog/
 .history
 .svn/
 .swiftpm/
-migrate_working_dir/
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
-
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
+# =========================
+# Flutter / Dart
+# =========================
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -33,13 +37,41 @@ migrate_working_dir/
 .pub/
 /build/
 
-# Symbolication related
+# Firebase config (local only)
+lib/firebase_options.dart
+
+# =========================
+# iOS
+# =========================
+ios/Pods/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/engine/
+ios/.symlinks/
+ios/Runner.xcworkspace/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/Flutter.podspec.lock
+
+# Xcode derived data
+ios/DerivedData/
+*.xcuserstate
+*.xcworkspace
+*.xcuserdata
+*.xcodeproj/project.xcworkspace/contents.xcworkspacedata
+
+# =========================
+# Android
+# =========================
+/android/.gradle/
+/android/app/build/
+/android/build/
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+/android/local.properties
+
+# Symbolication / obfuscation files
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release

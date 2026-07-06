@@ -26,7 +26,7 @@ class ApiService {
       throw Exception('Failed to fetch user selection');
     }
 
-    final List<dynamic> jsonList = jsonDecode(response.body);
+    final List<dynamic> jsonList = jsonDecode(utf8.decode(response.bodyBytes));
 
     return jsonList.cast<Map<String, dynamic>>();
   }
@@ -51,7 +51,7 @@ class ApiService {
     final response = await http.get(Uri.parse(endpoint));
 
     if (response.statusCode == 200) {
-      final data = json.decode(response.body);
+      final data = json.decode(utf8.decode(response.bodyBytes));
       List<dynamic> stopsJson = data['stops'] ?? [];
 
       return stopsJson.map((json) {
@@ -106,7 +106,7 @@ class ApiService {
       throw Exception('Failed to load inventory');
     }
 
-    final data = json.decode(response.body);
+    final data = json.decode(utf8.decode(response.bodyBytes));
 
     final List<dynamic> inventoryJson = data['inventory'] ?? [];
 
@@ -340,7 +340,7 @@ class ApiService {
       print('📥 Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
-        List<dynamic> data = json.decode(response.body);
+        List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
         List<String> names = data.map((e) => e.toString()).toList();
         print('✅ Parsed names: $names');
         return names;
@@ -361,7 +361,7 @@ class ApiService {
       throw Exception('Failed to load driver statistics');
     }
 
-    List<dynamic> statsList = jsonDecode(response.body);
+    List<dynamic> statsList = jsonDecode(utf8.decode(response.bodyBytes));
 
     // Find stats for the selected driver
     final driverData = statsList.firstWhere(
@@ -421,7 +421,7 @@ class ApiService {
         await http.get(Uri.parse('http://5.78.73.173:8080/maintenance/lifts'));
 
     if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+      final List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((e) => Lift.fromJson(e)).toList();
     } else {
       throw Exception('Failed to load lifts');
@@ -473,7 +473,7 @@ class ApiService {
     );
 
     if (response.statusCode == 200) {
-      final jsonMap = jsonDecode(response.body);
+      final jsonMap = jsonDecode(utf8.decode(response.bodyBytes));
       return LiftMaintenanceSnapshot.fromJson(jsonMap);
     } else {
       throw Exception('Failed to load lift maintenance snapshot');
@@ -493,7 +493,7 @@ class ApiService {
   Future<List<LiftPmHistoryItem>> fetchPmHistory(int liftId) async {
     final response = await http.get(Uri.parse('$maintenanceUrl/pm-history/$liftId'));
     if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
+      final List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((e) => LiftPmHistoryItem.fromJson(e)).toList();
     } else {
       throw Exception('Failed to load PM history');
@@ -504,18 +504,28 @@ class ApiService {
   // New: Maintenance / issue history
   // -----------------------------
   Future<List<LiftMaintenanceHistoryItem>> fetchMaintenanceHistory(int liftId) async {
-    final response = await http.get(Uri.parse('$maintenanceUrl/issue-history/$liftId'));
+    final response =
+        await http.get(Uri.parse('$maintenanceUrl/issue-history/$liftId'));
+
     if (response.statusCode == 200) {
-      final List data = jsonDecode(response.body);
-      return data.map((e) => LiftMaintenanceHistoryItem.fromJson(e)).toList();
+      final List data = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      );
+
+      return data
+          .map((e) => LiftMaintenanceHistoryItem.fromJson(e))
+          .toList();
     } else {
       throw Exception('Failed to load maintenance history');
     }
   }
+
   
   Future<void> resolveMaintenanceAction({
     required int actionId,
     required String resolvedByInitial,
+    required bool noRepairNeeded,
+    required String repairNotes,
   }) async {
     final res = await http.post(
       Uri.parse('$maintenanceUrl/issue/resolve'),
@@ -523,6 +533,8 @@ class ApiService {
       body: jsonEncode({
         'actionId': actionId,
         'resolvedByInitial': resolvedByInitial,
+        'noRepairNeeded': noRepairNeeded,
+        'repairNotes': repairNotes,
       }),
     );
 
