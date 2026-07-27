@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'views/user_selection_screen.dart';
 import 'views/driver_statistics_screen.dart';
+import 'theme/app_colors.dart';
 
 /// Background message handler
 @pragma('vm:entry-point')
@@ -62,7 +63,7 @@ class _RentalAppState extends State<RentalApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Rental App',
-      theme: ThemeData(primarySwatch: Colors.yellow),
+      theme: ThemeData(colorSchemeSeed: AppColors.yellow),
       home: const UserSelectionScreen(),
       debugShowCheckedModeBanner: false,
       routes: {

@@ -60,41 +60,50 @@ class _ActionRibbonState extends State<ActionRibbon> {
               })
             : const SizedBox(width: arrowWidth),
             Expanded(
-              child: ClipRect(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 300),
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  transitionBuilder: (child, animation) {
-                    final isOld = child.key != ValueKey(_offset);
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final buttonWidth =
+                      (constraints.maxWidth - gap * (visibleButtons - 1)) / visibleButtons;
 
-                    final beginOffset = isOld
-                        ? (_movingRight ? -1.0 : 1.0)
-                        : (_movingRight ? 1.0 : -1.0);
+                  return ClipRect(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        final isOld = child.key != ValueKey(_offset);
 
-                    return SlideTransition(
-                      position: Tween<Offset>(
-                        begin: Offset(beginOffset, 0),
-                        end: Offset.zero,
-                      ).animate(animation),
-                      child: child,
-                    );
-                  },
-                  child: Row(
-                    key: ValueKey(_offset),
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      for (int i = 0; i < visible.length; i++) ...[
-                        SizedBox(
-                          width: widget.buttonWidth,
-                          child: _button(visible[i]),
-                        ),
-                        if (i < visible.length - 1)
-                          const SizedBox(width: gap),
-                      ],
-                    ],
-                  ),
-                ),
+                        final beginOffset = isOld
+                            ? (_movingRight ? -1.0 : 1.0)
+                            : (_movingRight ? 1.0 : -1.0);
+
+                        return SlideTransition(
+                          position: Tween<Offset>(
+                            begin: Offset(beginOffset, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        );
+                      },
+                      child: Row(
+                        key: ValueKey(_offset),
+                        mainAxisAlignment: visible.length == 1
+                            ? MainAxisAlignment.center
+                            : MainAxisAlignment.start,
+                        children: [
+                          for (int i = 0; i < visible.length; i++) ...[
+                            SizedBox(
+                              width: buttonWidth,
+                              child: _button(visible[i]),
+                            ),
+                            if (i < visible.length - 1)
+                              const SizedBox(width: gap),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
         hasRight
@@ -117,7 +126,6 @@ class _ActionRibbonState extends State<ActionRibbon> {
       onPressed: action.onPressed,
       style: OutlinedButton.styleFrom(
         backgroundColor: AppColors.mainBackground,
-        foregroundColor: action.color,
         side: BorderSide(
           color: action.color,
           width: 1.3,
@@ -134,13 +142,20 @@ class _ActionRibbonState extends State<ActionRibbon> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           if (action.icon != null) ...[
-            Icon(action.icon, size: 18),
+            Icon(
+              action.icon,
+              size: 18,
+              color: action.color,
+            ),
             const SizedBox(width: 6),
           ],
           Flexible(
             child: Text(
               action.label,
               overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: action.color,
+              ),
             ),
           ),
         ],

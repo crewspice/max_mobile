@@ -131,7 +131,20 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     return (widget.serials??[]).where((s)=>s.toLowerCase().contains(q));
   }
 
-  double get selectorWidth=>_serial.isEmpty?120:(_serial.length*38)+24;
+  double get selectorWidth {
+    if (_serial.isNotEmpty) {
+      return (_serial.length * 38) + 24;
+    }
+    const text = 'Enter Serial';
+    final painter = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: TextStyle(color: widget.colors.border),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    return painter.width + 56; // generous horizontal padding
+  }
 
   @override
   void dispose(){

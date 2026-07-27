@@ -449,24 +449,24 @@ class _ServiceCardState extends State<ServiceCard> {
         ],
       );
     } else if (serviceType == "SERVICE CHANGE OUT") {
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            if (widget.stop.reason != null)
-              Text(
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          if (widget.stop.reason != null)
+            SizedBox(
+              width: double.infinity,
+              child: Text(
                 "\"${widget.stop.reason!}\"",
-                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
+                style: const TextStyle(
+                  fontStyle: FontStyle.italic,
+                  color: AppColors.green,
+                ),
                 textAlign: TextAlign.center,
               ),
-            if (widget.stop.notes != null)
-              Text(
-                "${widget.stop.notes}",
-                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
-                textAlign: TextAlign.center,
-              ),
-          ],
-        );
-      } else if (serviceType == "MOVE") {
+            ),
+        ],
+      );
+    } else if (serviceType == "MOVE") {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -534,14 +534,17 @@ class _ServiceCardState extends State<ServiceCard> {
     return BaseCard(
       stop: widget.stop,
       extraContent: [
-        content,
+        SizedBox(
+          width: double.infinity,
+          child: content,
+        ),
         if (actions.isNotEmpty)
           ActionRibbon(
             actions: actions,
             color: AppColors.green,
-          ),
-          const SizedBox(height: 5),
-          serialInput,
+        ),
+        const SizedBox(height: 5),
+        serialInput,
       ],
       onRefresh: widget.onRefresh,
       onNotesUpdated: null,

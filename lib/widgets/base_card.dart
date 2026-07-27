@@ -58,6 +58,12 @@ class BaseCard extends StatelessWidget {
     debugPrint('No app or browser available to launch maps for: $query');
   }
 
+  Future<void> _launchHQMaps() async {
+    await _launchMaps(
+      "5455 Dahlia St, Commerce City, CO",
+    );
+  }
+
   String get stopAddress {
     final parts = [
       stop.streetAddress,
@@ -264,63 +270,69 @@ class BaseCard extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(
-                'assets/shop.png',
-                width: 120,
-                height: 120,
-                fit: BoxFit.contain,
-                color: AppColors.green,
-                colorBlendMode: BlendMode.srcIn,
+              GestureDetector(
+                onTap: _launchHQMaps,
+                child: Image.asset(
+                  'assets/shop.png',
+                  width: 120,
+                  height: 120,
+                  fit: BoxFit.contain,
+                  color: AppColors.green,
+                  colorBlendMode: BlendMode.srcIn,
+                ),
               ),
               const SizedBox(height: 16),
               if (!completedView) ...[
-                HoldToConfirmButton(
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: "I'm back",
-                  baseColor: AppColors.green,
-                  textColor: AppColors.mainBackground,
-                  progressColor: AppColors.yellow,
-                  holdDuration: const Duration(seconds: 1),
-                  onConfirmed: () async {
-                    final api = ApiService();
+              Center(
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.5,
+                  child: HoldToConfirmButton(
+                    outlined: true,
+                    icon: const Icon(Icons.check_circle_outline),
+                    label: "I'm back",
+                    baseColor: AppColors.green,
+                    textColor: AppColors.green,
+                    progressColor: AppColors.yellow,
+                    holdDuration: const Duration(seconds: 2),
+                    onConfirmed: () async {
+                      final api = ApiService();
 
-                    // Show loading indicator
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) =>
-                          const Center(child: CircularProgressIndicator()),
-                    );
+                      showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (_) =>
+                            const Center(child: CircularProgressIndicator()),
+                      );
 
-                    final success = await api.recordHQReturn(
-                      stop.id,
-                      stop.truck ?? "null",
-                      stop.driverId ?? "null",
-                    );
+                      final success = await api.recordHQReturn(
+                        stop.id,
+                        stop.truck ?? "null",
+                        stop.driverId ?? "null",
+                      );
 
-                    // Remove loading indicator
-                    Navigator.of(context).pop();
+                      Navigator.of(context).pop();
 
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: AppColors.mainBackground,
-                        content: Text(
-                          success
-                              ? 'HQ stop deleted successfully.'
-                              : 'Failed to delete HQ stop.',
-                          style: TextStyle(
-                            color: success ? AppColors.green : AppColors.red,
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          backgroundColor: AppColors.mainBackground,
+                          content: Text(
+                            success
+                                ? 'HQ stop deleted successfully.'
+                                : 'Failed to delete HQ stop.',
+                            style: TextStyle(
+                              color: success ? AppColors.green : AppColors.red,
+                            ),
                           ),
                         ),
-                      ),
-                    );
+                      );
 
-                    // Trigger refresh callback if provided
-                    if (success) {
-                      await onRefresh();
-                    }
-                  },
+                      if (success) {
+                        await onRefresh();
+                      }
+                    },
+                  ),
                 ),
+              )
               ],
             ],
           ),

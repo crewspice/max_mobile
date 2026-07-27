@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/app_colors.dart';
 
 class HoldToConfirmButton extends StatefulWidget {
   final VoidCallback onConfirmed;
@@ -8,6 +9,7 @@ class HoldToConfirmButton extends StatefulWidget {
   final Color baseColor;
   final Color progressColor;
   final Color textColor;
+  final bool outlined;
 
   const HoldToConfirmButton({
     super.key,
@@ -17,7 +19,8 @@ class HoldToConfirmButton extends StatefulWidget {
     required this.baseColor,
     required this.progressColor,
     required this.textColor,
-    this.holdDuration = const Duration(seconds: 2), // hardcode?
+    this.holdDuration = const Duration(seconds: 2),
+    this.outlined = false,
   });
 
   @override
@@ -31,6 +34,7 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
   @override
   void initState() {
     super.initState();
+
     _controller = AnimationController(
       vsync: this,
       duration: widget.holdDuration,
@@ -53,40 +57,68 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
+    final radius = BorderRadius.circular(widget.outlined ? 12 : 28);
+
     return GestureDetector(
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: radius,
         child: Stack(
           alignment: Alignment.center,
           children: [
             SizedBox(
               width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: IconTheme(
-                  data: IconThemeData(color: widget.textColor),
-                  child: widget.icon,
-                ),
-                label: Text(
-                  widget.label,
-                  style: TextStyle(color: widget.textColor),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: widget.baseColor,
-                ),
-                onPressed: () {},
-              ),
+              child: widget.outlined
+                  ? OutlinedButton.icon(
+                      icon: IconTheme(
+                        data: IconThemeData(color: widget.textColor),
+                        child: widget.icon,
+                      ),
+                      label: Text(
+                        widget.label,
+                        style: TextStyle(color: widget.textColor),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        backgroundColor: AppColors.mainBackground,
+                        foregroundColor: widget.textColor,
+                        side: BorderSide(
+                          color: widget.baseColor,
+                          width: 1.3,
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {},
+                    )
+                  : ElevatedButton.icon(
+                      icon: IconTheme(
+                        data: IconThemeData(color: widget.textColor),
+                        child: widget.icon,
+                      ),
+                      label: Text(
+                        widget.label,
+                        style: TextStyle(color: widget.textColor),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: widget.baseColor,
+                      ),
+                      onPressed: () {},
+                    ),
             ),
-
             Positioned.fill(
               child: Center(
                 child: FractionallySizedBox(
-                  heightFactor: 0.83,
+                  heightFactor: widget.outlined ? 1.0 : 0.83,
                   child: AnimatedBuilder(
                     animation: _controller,
                     builder: (context, child) {
@@ -96,8 +128,15 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
                         alignment: Alignment.centerLeft,
                         widthFactor: progress,
                         child: Container(
-                          color: widget.progressColor.withOpacity(
-                            0.3 + progress * 0.4,
+                          decoration: BoxDecoration(
+                            color: widget.outlined
+                                ? widget.baseColor.withOpacity(
+                                    0.18 + progress * 0.22,
+                                  )
+                                : widget.progressColor.withOpacity(
+                                    0.3 + progress * 0.4,
+                                  ),
+                            borderRadius: radius,
                           ),
                         ),
                       );
