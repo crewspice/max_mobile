@@ -115,20 +115,6 @@ class _ServiceCardState extends State<ServiceCard> {
   }
 
 
-
-  Future<void> _handlePickupComplete(BuildContext context) async {
-    final api = ApiService();
-    final success = await api.recordPickup(
-      widget.stop.id, 
-      widget.stop.truck ?? "null",
-      widget.stop.driverId ?? "null"
-    );
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(success ? 'Pickup completed!' : 'Failed')),
-    );
-    if (success && widget.onRefresh != null) await widget.onRefresh!();
-  }
-
   void _showServicePhoto(BuildContext context) {
     final imageUrl =
         'http://5.78.73.173:8080/images/deliveries/by-service/${widget.stop.id}';
@@ -371,15 +357,6 @@ class _ServiceCardState extends State<ServiceCard> {
 
         actions.add(
           ActionItem(
-            label: "Complete",
-            icon: Icons.check,
-            color: AppColors.green,
-            onPressed: () => _handlePickupComplete(context),
-          ),
-        );
-
-        actions.add(
-          ActionItem(
             label: "Cancel",
             icon: Icons.block,
             color: AppColors.green,
@@ -469,7 +446,6 @@ class _ServiceCardState extends State<ServiceCard> {
               textAlign: TextAlign.center,
             ),
 
-          serialInput,
         ],
       );
     } else if (serviceType == "SERVICE CHANGE OUT") {
@@ -488,7 +464,6 @@ class _ServiceCardState extends State<ServiceCard> {
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (serialInput is! Container) Center(child: serialInput),
           ],
         );
       } else if (serviceType == "MOVE") {
@@ -533,7 +508,6 @@ class _ServiceCardState extends State<ServiceCard> {
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            serialInput,
           ],
         );
       } else {
@@ -552,7 +526,6 @@ class _ServiceCardState extends State<ServiceCard> {
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            serialInput,
           ],
         );
       }
@@ -567,6 +540,8 @@ class _ServiceCardState extends State<ServiceCard> {
             actions: actions,
             color: AppColors.green,
           ),
+          const SizedBox(height: 5),
+          serialInput,
       ],
       onRefresh: widget.onRefresh,
       onNotesUpdated: null,

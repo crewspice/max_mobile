@@ -21,6 +21,7 @@ class LiftSelectorPanel extends StatefulWidget {
   final ValueChanged<String> onChanged;
   final ValueChanged<Lift>? onLiftSelected;
   final LiftSelectorColorScheme colors;
+  final bool readOnly;
 
   const LiftSelectorPanel({
     super.key,
@@ -29,6 +30,7 @@ class LiftSelectorPanel extends StatefulWidget {
     this.initialText='',
     required this.onChanged,
     this.onLiftSelected,
+    this.readOnly=false,
     this.colors=const LiftSelectorColorScheme(
       ball:AppColors.yellow,
       border:AppColors.yellow,
@@ -58,16 +60,19 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     super.initState();
     _serial=widget.initialText;
     _inputController.text=_serial;
-    _inputController.addListener(_onInput);
-    _focusNode.addListener((){
-      setState((){
-        _showSuggestions=_focusNode.hasFocus&&!_liftSelected&&_serial.isNotEmpty;
+    if(!widget.readOnly){
+      _inputController.addListener(_onInput);
+      _focusNode.addListener((){
+        setState((){
+          _showSuggestions=_focusNode.hasFocus&&!_liftSelected&&_serial.isNotEmpty;
+        });
       });
-    });
+    }
     _syncLatitudes();
   }
 
   void _onInput(){
+    if(widget.readOnly)return;
     if(_inputController.text==_serial)return;
     setState((){
       _serial=_inputController.text;
@@ -171,7 +176,9 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
       children:[
         GestureDetector(
           behavior:HitTestBehavior.opaque,
-          onTap:()=>_focusNode.requestFocus(),
+          onTap: widget.readOnly
+              ? null
+              : ()=>_focusNode.requestFocus(),
           child:SizedBox(
             width:selectorWidth,
             height:50,
@@ -273,9 +280,10 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                           ],
                         ),
                 ),
-                Opacity(
-                  opacity:0,
-                  child:EditableText(
+                if(!widget.readOnly)
+                  Opacity(
+                    opacity:0,
+                    child:EditableText(
                     controller:_inputController,
                     focusNode:_focusNode,
                     keyboardType:TextInputType.number,
@@ -290,7 +298,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
             ),
           ),
         ),
-        if(_showSuggestions&&suggestionList.isNotEmpty)
+        if(!widget.readOnly && _showSuggestions && suggestionList.isNotEmpty)
           ConstrainedBox(
             constraints:const BoxConstraints(maxHeight:250),
             child:Container(
