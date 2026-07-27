@@ -8,24 +8,34 @@ import '../services/api_service.dart';
 import 'base_card.dart';
 import '../widgets/hold_to_confirm_button.dart';
 import '../theme/app_colors.dart';
+import 'lift_selector_panel.dart';
+import '../models/lift.dart';
+import 'action_ribbon.dart';
 
-class RentalCard extends StatelessWidget {
+class RentalCard extends StatefulWidget {
   final Stop stop;
   final TextEditingController serialController;
   final Future<void> Function() onRefresh;
-  final void Function(Stop updatedStop)? onNotesUpdated;
   final bool completedView;
   final bool unassignedView;
+  final void Function(Stop updatedStop)? onNotesUpdated;
 
   const RentalCard({
-    Key? key,
+    super.key,
     required this.stop,
     required this.serialController,
     required this.onRefresh,
-    required this.onNotesUpdated,
     this.completedView = false,
     this.unassignedView = false,
-  }) : super(key: key);
+    this.onNotesUpdated,
+  });
+
+  @override
+  State<RentalCard> createState() => _RentalCardState();
+}
+
+
+class _RentalCardState extends State<RentalCard> {
 
   Future<File?> _pickImage({bool camera = true}) async {
     final picker = ImagePicker();
@@ -66,21 +76,21 @@ class RentalCard extends StatelessWidget {
 
 
   Future<void> _handlePhotoUpload(BuildContext context) async {
-    String serial = serialController.text.trim();
+    String serial = widget.serialController.text.trim();
     if (!await _validateSerial(serial)) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid or empty serial number')));
       return;
     }
 
-    if (stop.liftType != null) {
-      final lower = stop.liftType!.toLowerCase();
+    if (widget.stop.liftType != null) {
+      final lower = widget.stop.liftType!.toLowerCase();
       if (lower.startsWith("45")) {
         serial = "45";
       } else if (lower.startsWith("33")) {
         serial = "33";
       } else {
-        serial = serialController.text.trim();
+        serial = widget.serialController.text.trim();
       }
     }
 
@@ -89,37 +99,82 @@ class RentalCard extends StatelessWidget {
       final compressed = await _compressImage(file);
       final api = ApiService();
       final success =
-          await api.recordDeliveryWithPhoto(compressed, stop.id, serial, stop.truck ?? "null", stop.driverId ?? "null");
+          await api.recordDeliveryWithPhoto(compressed, widget.stop.id, serial, widget.stop.truck ?? "null", widget.stop.driverId ?? "null");
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')));
-      if (success) await onRefresh();
+      if (success) await widget.onRefresh();
     }
   }
+
+  Future<void> _handleGalleryUpload(BuildContext context) async {
+    String serial = widget.serialController.text.trim();
+    if (!await _validateSerial(serial)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Invalid or empty serial number')),
+      );
+      return;
+    }
+    if (widget.stop.liftType != null) {
+      final lower = widget.stop.liftType!.toLowerCase();
+      if (lower.startsWith("45")) {
+        serial = "45";
+      } else if (lower.startsWith("33")) {
+        serial = "33";
+      } else {
+        serial = widget.serialController.text.trim();
+      }
+    }
+    final file = await _pickImage(camera: false);
+    if (file != null) {
+      final compressed = await _compressImage(file);
+      final api = ApiService();
+      final success = await api.recordDeliveryWithPhoto(
+        compressed,
+        widget.stop.id,
+        serial,
+        widget.stop.truck ?? "null",
+        widget.stop.driverId ?? "null",
+      );
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            success ? 'Photo uploaded!' : 'Upload failed',
+          ),
+        ),
+      );
+      if (success) {
+        await widget.onRefresh();
+      }
+    }
+  }
+
 
   Future<void> _handlePickupComplete(BuildContext context) async {
     final api = ApiService();
 
     final success = await api.recordPickup(
-      stop.id,
-      stop.truck ?? "null",   // or "TRUCK101"
-      stop.driverId ?? "null",   // or "Jake"
+      widget.stop.id,
+      widget.stop.truck ?? "null",   // or "TRUCK101"
+      widget.stop.driverId ?? "null",   // or "Jake"
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(success ? 'Pickup completed!' : 'Failed')),
     );
 
-    if (success) await onRefresh();
+    if (success) await widget.onRefresh();
   }
 
   void _showRentalPhoto(BuildContext context) {
     final Color elementColor =
-        stop.status == "Upcoming"
-            ? AppColors.yellow
-            : AppColors.red;
+        widget.stop.status == "Active"
+            ? AppColors.green
+            : (widget.stop.status == "Upcoming"
+                ? AppColors.yellow
+                : AppColors.red);
 
     final imageUrl =
-        'http://5.78.73.173:8080/images/deliveries/rental_${stop.id}.jpg';
+        'http://5.78.73.173:8080/images/deliveries/rental_${widget.stop.id}.jpg';
 
     showDialog(
       context: context,
@@ -154,349 +209,359 @@ class RentalCard extends StatelessWidget {
     );
   }
 
-@override
-Widget build(BuildContext context) {
-  // Determine if serial is required
-  final bool requiresSerial = stop.status == 'Upcoming' &&
-      !(stop.liftType == '33rt' || stop.liftType == '45b');
+  void _showCancelDialog(BuildContext context) {
+    final Color elementColor =
+        widget.stop.status == "Active"
+            ? AppColors.green
+            : (widget.stop.status == "Upcoming"
+                ? AppColors.yellow
+                : AppColors.red);
 
-  final List<Widget> preInfoWidgets = [];
-  final Color elementColor =
-      stop.status == "Upcoming"
-          ? AppColors.yellow
-          : AppColors.red;
+    int selected = 0;
 
-  // Notes row with flush-right edit icon
-  Widget notesRow = Padding(
-    padding: const EdgeInsets.only(bottom: 8.0),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: Center(
-            child: Text(
-              stop.notes != null && stop.notes!.isNotEmpty
-                  ? stop.notes!
-                  : 'No notes yet',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                color: elementColor,
-              ),
-            ),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.only(right: 10.0),
-          child: GestureDetector(
-            onTap: () async {
-              final controller = TextEditingController(text: stop.notes ?? '');
-              final updatedNotes = await showDialog<String>(
-                context: context,
-                barrierDismissible: false,
-                builder: (context) {
-                  return AlertDialog(
-                    backgroundColor: elementColor,
-
-                    title: const Text(
-                      'Edit Notes',
-                      style: TextStyle(
-                        color: AppColors.main,
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: elementColor,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Center(
+                    child: ToggleButtons(
+                      isSelected: [
+                        selected == 0,
+                        selected == 1,
+                      ],
+                      onPressed: (index) {
+                        setState(() {
+                          selected = index;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      fillColor: AppColors.main,
+                      selectedColor: elementColor,
+                      color: AppColors.main,
+                      constraints: const BoxConstraints(
+                        minWidth: 135,
+                        minHeight: 42,
                       ),
-                    ),
-
-                    content: TextField(
-                      controller: controller,
-                      maxLines: 5,
-                      autofocus: true,
-                      cursorColor: AppColors.main,
-                      style: const TextStyle(
-                        color: AppColors.main,
-                      ),
-                      decoration: const InputDecoration(
-                        hintText: 'Enter notes here...',
-                        hintStyle: TextStyle(color: AppColors.main),
-
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.main),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.main,
-                            width: 2,
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            "Before\nArrival",
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                      ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            "On\nArrival",
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
                     ),
-
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: AppColors.main),
-                        ),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.main,
-                          foregroundColor: elementColor,
-                        ),
-                        onPressed: () =>
-                            Navigator.pop(context, controller.text.trim()),
-                        child: const Text('Save'),
-                      ),
-                    ],
-                  );
-                },
-              );
-
-              if (updatedNotes == null) return;
-
-              final api = ApiService();
-              final success = await api.updateRentalNotes(
-                rentalItemId: stop.id,
-                notes: updatedNotes,
-              );
-
-              if (success) {
-                final updatedStop = stop.copyWith(notes: updatedNotes);
-
-                // Call the parent callback instead of setState
-                if (onNotesUpdated != null) {
-                  onNotesUpdated!(updatedStop); // ✅ safe call
-                }
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Notes updated')),
-                );
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Failed to update notes')),
-                );
-              }
-
-            },
-            child: Image.asset(
-              'assets/notes.png',
-              width: 20,
-              height: 20,
-              color: elementColor,
-            ),
-          ),
-        ),
-      ],
-    ),
-  );
-
-
-  // --- Serial input field ---
-  Widget serialInput = Container();
-  if (requiresSerial && !completedView && !unassignedView) {
-    serialInput = Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Center(
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.3,
-          child: TextField(
-            controller: serialController,
-            cursorColor: elementColor,
-            style: TextStyle(color: elementColor),
-            decoration: InputDecoration(
-              labelText: 'Serial Number',
-              labelStyle: TextStyle(color: elementColor),
-              floatingLabelStyle: TextStyle(color: elementColor),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: elementColor),
+                  ),
+                ],
               ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: elementColor, width: 2),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Close",
+                    style: TextStyle(color: AppColors.main),
+                  ),
+                ),
+                SizedBox(
+                  width: 190,
+                  child: HoldToConfirmButton(
+                    icon: const Icon(Icons.cancel),
+                    label: "Submit Cancellation",
+                    baseColor: AppColors.main,
+                    progressColor: AppColors.main,
+                    textColor: elementColor,
+                    holdDuration: const Duration(seconds: 1),
+                    onConfirmed: () async {
+                      final bool onArrival = selected == 1;
 
-  // --- Action buttons ---
-  List<Widget> actionButtons = [];
+                      Navigator.pop(context);
 
-  // COMPLETED VIEW → read-only, but allow photo viewing
-  if (completedView) {
-    actionButtons.add(
-      SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: elementColor,
-            foregroundColor: AppColors.main,
-          ),
-          onPressed: () async {
-            _showRentalPhoto(context);
+                      final api = ApiService();
+
+                      final success = await api.recordCancellation(
+                        rentalId: widget.stop.id.toString(),
+                        truck: widget.stop.truck ?? "null",
+                        driver: widget.stop.driverId ?? "null",
+                        type: onArrival
+                            ? "Cancelled on Arrival"
+                            : "Cancelled",
+                      );
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? (onArrival
+                                    ? "Cancelled on arrival"
+                                    : "Cancelled before arrival")
+                                : "Cancellation failed",
+                          ),
+                        ),
+                      );
+
+                      if (success) {
+                        await widget.onRefresh();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            );
           },
-          child: const Text('See Photo'),
-        ),
-      ),
+        );
+      },
     );
   }
 
-  else if (stop.status == 'Upcoming') {
-    if (!unassignedView) {
-      actionButtons.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Take Photo
-            SizedBox(
-              width: 140,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: elementColor,
-                  foregroundColor: AppColors.main,
-                ),
-                onPressed: requiresSerial
-                    ? () => _handlePhotoUpload(context)
-                    : () async {
-                        final file = await _pickImage();
-                        if (file != null) {
-                          final compressed = await _compressImage(file);
-                          String serial = "i";
-                          if (stop.liftType != null) {
-                            final lower = stop.liftType!.toLowerCase();
-                            if (lower.startsWith("45")) serial = "45";
-                            else if (lower.startsWith("33")) serial = "33";
-                            else serial = serialController.text.trim();
-                          }
+  @override
+  Widget build(BuildContext context) {
+    // Determine if serial is required
+    final bool requiresSerial = widget.stop.status == 'Upcoming' &&
+        !(widget.stop.liftType == '33rt' || widget.stop.liftType == '45b');
 
-                          final api = ApiService();
-                          final success = await api.recordDeliveryWithPhoto(
-                            compressed,
-                            stop.id,
-                            serial,
-                            stop.truck ?? "null",
-                            stop.driverId ?? "null",
-                          );
+    final Color elementColor =
+        widget.stop.status == "Active"
+            ? AppColors.green
+            : (widget.stop.status == "Upcoming"
+                ? AppColors.yellow
+                : AppColors.red);
 
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                success ? 'Photo uploaded!' : 'Upload failed',
-                              ),
-                            ),
-                          );
-
-                          if (success) await onRefresh();
-                        }
-                      },
-                child: const Text('Take Photo'),
-              ),
+    // --- Serial input field ---
+    Widget serialInput = Container();
+    if (requiresSerial && !widget.completedView && !widget.unassignedView) {
+      serialInput = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: LiftSelectorPanel(
+              serials: null,
+              initialText: widget.serialController.text,
+              onChanged: (serial) {
+                widget.serialController.text = serial;
+              },
             ),
-
-            const SizedBox(width: 10),
-
-            // Upload Photo
-            SizedBox(
-              width: 160,
-              child: ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: elementColor,
-                  foregroundColor: AppColors.main,
-                ),
-                onPressed: () async {
-                  final file = await _pickImage(camera: false);
-                  if (file != null) {
-                    final compressed = await _compressImage(file);
-                    String serial = "o";
-
-                    if (stop.liftType != null) {
-                      final lower = stop.liftType!.toLowerCase();
-                      if (lower.startsWith("45")) serial = "45";
-                      else if (lower.startsWith("33")) serial = "33";
-                      else serial = serialController.text.trim();
-                    }
-
-                    final api = ApiService();
-                    final success = await api.recordDeliveryWithPhoto(
-                      compressed,
-                      stop.id,
-                      serial,
-                      stop.truck ?? "null",
-                      stop.driverId ?? "null",
-                    );
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          success ? 'Photo uploaded!' : 'Upload failed',
-                        ),
-                      ),
-                    );
-
-                    if (success) await onRefresh();
-                  }
-                },
-                icon: Icon(
-                  Icons.upload,
-                  color: AppColors.main,
-                ),
-                label: const Text('Upload Photo'),
-              ),
-            ),
-          ],
+          ),
         ),
       );
     }
-  }
 
-  // CALLED OFF → show Complete + See Photo
-  else if (stop.status == 'Called Off') {
+    // --- Action buttons ---
+    List<ActionItem> actions = [];
 
-    actionButtons.add(
-      Row(
-        children: [
-          Expanded(
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: elementColor,
-                foregroundColor: AppColors.main,
-              ),
-              onPressed: () => _showRentalPhoto(context),
-              child: const Text('See Photo'),
-            ),
+    // COMPLETED VIEW → read-only, but allow photo viewing
+    if (widget.completedView) {
+      actions.add(
+        ActionItem(
+          label: "See Photo",
+          icon: Icons.photo,
+          color: elementColor,
+          onPressed: () => _showRentalPhoto(context),
+        ),
+      );
+    }
+
+    else if (widget.stop.status == "Upcoming") {
+
+      if (!widget.unassignedView) {
+
+        actions.add(
+          ActionItem(
+            label: "Take Photo",
+            icon: Icons.camera_alt,
+            color: elementColor,
+            onPressed: requiresSerial
+                ? () => _handlePhotoUpload(context)
+                : () async {
+                  // existing camera upload code
+                },
           ),
+        );
 
-          const SizedBox(width: 8),
+        actions.add(
+          ActionItem(
+            label: "Upload",
+            icon: Icons.upload,
+            color: elementColor,
+            onPressed: () => _handleGalleryUpload(context),
+          ),
+        );
 
-          if (!unassignedView)
-            Expanded(
-              child: HoldToConfirmButton(
-                icon: const Icon(Icons.check),
-                label: 'Complete',
-                baseColor: elementColor,
-                textColor: AppColors.main,
-                progressColor: elementColor,
-                holdDuration: const Duration(seconds: 1),
-                onConfirmed: () => _handlePickupComplete(context),
-              ),
+        actions.add(
+          ActionItem(
+            label: "Cancel",
+            icon: Icons.block,
+            color: elementColor,
+            onPressed: () => _showCancelDialog(context),
+          ),
+        );
+      }
+    }
+
+    // CALLED OFF → show Complete + See Photo
+    else if (widget.stop.status == "Called Off" ||
+            widget.stop.status == "Active") {
+
+      actions.add(
+        ActionItem(
+          label: "See Photo",
+          icon: Icons.photo,
+          color: elementColor,
+          onPressed: () => _showRentalPhoto(context),
+        ),
+      );
+
+      if (!widget.unassignedView) {
+
+        actions.add(
+          ActionItem(
+            label: "Complete",
+            icon: Icons.check,
+            color: elementColor,
+            onPressed: () => _handlePickupComplete(context),
+          ),
+        );
+
+        actions.add(
+          ActionItem(
+            label: "Cancel",
+            icon: Icons.block,
+            color: elementColor,
+            onPressed: () => _showCancelDialog(context),
+          ),
+        );
+      }
+    }
+
+    Widget actionTray = _ActionTray(
+      color: elementColor,
+      children: [
+        SizedBox(
+          width: 140,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.mainBackground,
+              foregroundColor: elementColor,
             ),
-        ],
-      ),
+            onPressed: () => _showCancelDialog(context),
+            icon: const Icon(Icons.block),
+            label: const Text("Cancel"),
+          ),
+        ),
+      ],
+    );
+
+    return BaseCard(
+      stop: widget.stop,
+      extraContent: [
+        if (actions.isNotEmpty)
+          ActionRibbon(actions: actions, color: elementColor),
+        serialInput,
+      ],
+      onRefresh: widget.onRefresh,
+      completedView: widget.completedView,
     );
   }
-
-  return BaseCard(
-    stop: stop,
-    extraContent: [
-      ...preInfoWidgets,
-      notesRow,
-      serialInput,
-    ],
-    actionButtons: actionButtons,
-    onRefresh: onRefresh,
-    completedView: completedView,
-  );
 }
 
 
+  class _ActionTray extends StatefulWidget {
+    final Color color;
+    final List<Widget> children;
+
+    const _ActionTray({
+      required this.color,
+      required this.children,
+    });
+
+    @override
+    State<_ActionTray> createState() => _ActionTrayState();
+  }
+
+ class _ActionTrayState extends State<_ActionTray> {
+  bool expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        GestureDetector(
+          onTap: () {
+            setState(() {
+              expanded = !expanded;
+            });
+          },
+          child: Center(
+            child: Container(
+              width: 45,
+              height: 18,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: widget.color,
+                borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(18),
+                  bottomRight: Radius.circular(18),
+                ),
+              ),
+              child: AnimatedSlide(
+                offset: expanded
+                    ? const Offset(0, 0.25)
+                    : const Offset(0, -0.35),
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.easeInOut,
+                child: AnimatedRotation(
+                  turns: expanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.easeInOut,
+                  child: Icon(
+                    Icons.keyboard_arrow_down,
+                    color: AppColors.main,
+                    size: 30,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: expanded
+              ? Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 12,
+                  ),
+                  decoration: BoxDecoration(
+                    color: widget.color.withOpacity(.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: widget.children,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
 }

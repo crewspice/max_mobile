@@ -2,6 +2,7 @@ import 'lift_maintenance_history_item.dart';
 
 class LiftMaintenanceSnapshot {
   final bool? upToDate;
+  final bool? needsAnnual;
 
   // ✅ PM fields with prefix
   final int? pmId;
@@ -15,6 +16,7 @@ class LiftMaintenanceSnapshot {
 
   LiftMaintenanceSnapshot({
     this.upToDate,
+    this.needsAnnual,
     this.pmId,
     this.pmCompletedAt,
     this.pmCompletedByFullName,
@@ -26,6 +28,7 @@ class LiftMaintenanceSnapshot {
   factory LiftMaintenanceSnapshot.fromJson(Map<String, dynamic> json) {
     return LiftMaintenanceSnapshot(
       upToDate: json['upToDate'],
+      needsAnnual: json['needsAnnual'],
 
       // PM
       pmId: json['pmId'],

@@ -7,6 +7,8 @@ class LiftMaintenanceHistoryItem {
   final bool resolved;
   final String? partAction;
   final int? quantity;
+  final bool noRepairNeeded;
+  final String? repairNotes;
   final int? actionTypeId;
   final String? actionTypeName;
   final String? performedByName;
@@ -23,6 +25,8 @@ class LiftMaintenanceHistoryItem {
     this.resolved = false,
     this.partAction,
     this.quantity,
+    this.noRepairNeeded = false,
+    this.repairNotes,
     this.actionTypeId,
     this.actionTypeName,
     this.performedByName,
@@ -45,6 +49,8 @@ class LiftMaintenanceHistoryItem {
       resolved: json['resolved'] == true || json['resolved'] == 1,
       partAction: json['partAction'] as String?,
       quantity: json['quantity'] as int?,
+      noRepairNeeded: json['noRepairNeeded'] == true || json['noRepairNeeded'] == 1,
+      repairNotes: json['repairNotes'] as String?,
       actionTypeId: json['actionTypeId'] as int?,
       actionTypeName: json['actionTypeName'] as String?,
       performedByName: json['performedByName'] as String?,

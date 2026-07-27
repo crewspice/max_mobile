@@ -6,11 +6,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../widgets/hold_to_confirm_button.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class BaseCard extends StatelessWidget {
   final Stop stop;
   final List<Widget> extraContent;
   final List<Widget> actionButtons;
+  final void Function(Stop updatedStop)? onNotesUpdated;
   final Future<void> Function() onRefresh;
   final bool completedView;
 
@@ -19,7 +21,8 @@ class BaseCard extends StatelessWidget {
     required this.stop,
     this.extraContent = const [],
     this.actionButtons = const [],
-    required this.onRefresh, // now required
+    required this.onRefresh,
+    this.onNotesUpdated,
     this.completedView = false,
   }) : super(key: key);
 
@@ -69,6 +72,7 @@ class BaseCard extends StatelessWidget {
     if (stop.serviceType == null || stop.serviceType!.isEmpty) {
       if (stop.status == "Upcoming") return 'assets/dropping-off.png';
       if (stop.status == "Called Off") return 'assets/picking-up.png';
+      if (stop.status == "Active") return 'assets/active.png';
       return 'assets/calling-off.png';
     }
 
@@ -119,21 +123,135 @@ class BaseCard extends StatelessWidget {
     }
   }
 
+  Widget _buildNotesRow(Color elementColor, BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              stop.notes != null && stop.notes!.isNotEmpty
+                  ? stop.notes!
+                  : "No notes yet",
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontStyle: FontStyle.italic,
+                color: elementColor,
+              ),
+            ),
+          ),
+          GestureDetector(
+            onTap: () async {
+              final controller =
+                  TextEditingController(text: stop.notes ?? "");
+
+              final updatedNotes = await showDialog<String>(
+                context: context,
+                builder: (context) {
+                  return AlertDialog(
+                    backgroundColor: elementColor,
+                    title: const Text(
+                      "Edit Notes",
+                      style: TextStyle(color: AppColors.main),
+                    ),
+                    content: TextField(
+                      controller: controller,
+                      maxLines: 5,
+                      autofocus: true,
+                      cursorColor: AppColors.main,
+                      style: const TextStyle(
+                        color: AppColors.main,
+                      ),
+                      decoration: const InputDecoration(
+                        hintText: 'Enter notes here...',
+                        hintStyle: TextStyle(color: AppColors.main),
+
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.main),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(
+                            color: AppColors.main,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: AppColors.main),
+                        ),
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.main,
+                          foregroundColor: elementColor,
+                        ),
+                        onPressed: () =>
+                            Navigator.pop(context, controller.text.trim()),
+                        child: const Text('Save'),
+                      ),
+                    ],
+                  );
+                },
+              );
+
+              if (updatedNotes == null) return;
+
+              final api = ApiService();
+
+              final success = await api.updateRentalNotes(
+                rentalItemId: stop.id,
+                notes: updatedNotes,
+              );
+
+              if (success && onNotesUpdated != null) {
+                onNotesUpdated!(
+                  stop.copyWith(notes: updatedNotes),
+                );
+              }
+            },
+            child: Image.asset(
+              "assets/notes.png",
+              width: 20,
+              height: 20,
+              color: elementColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
 
   final Color elementColor =
       stop.type == "SERVICE"
           ? AppColors.green
-          : (stop.status == "Upcoming"
-              ? AppColors.yellow
-              : AppColors.red);
+          : (stop.status == "Active"
+              ? AppColors.green
+              : (stop.status == "Upcoming"
+                  ? AppColors.yellow
+                  : AppColors.red));
 
   final Color textColor =
       completedView ? Colors.purple.shade50 : Colors.black87;
 
   final Color iconColor =
       completedView ? Colors.purple.shade50 : Colors.black87;
+
+  final List<Widget> normalExtraContent =
+    extraContent.isEmpty
+        ? const []
+        : extraContent.sublist(0, extraContent.length - 1);
+
+  final Widget? tray =
+    extraContent.isNotEmpty ? extraContent.last : null;
 
     if (stop.liftType == "HQ") {
       return Card(
@@ -287,8 +405,12 @@ class BaseCard extends StatelessWidget {
                     if (stop.liftType != null && stop.liftType!.isNotEmpty)
                       Text(
                         stop.liftType!,
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold, color: elementColor),
+                        style: GoogleFonts.knewave(
+                          fontSize: 24,
+                          // fontWeight: FontWeight.bold,
+                          color: elementColor,
+                          letterSpacing: 2.0,
+                        ),
                       ),
                     const SizedBox(height: 6),
                     Image.asset(_getServiceIcon(), width: 60, height: 60, color: elementColor),
@@ -377,24 +499,7 @@ class BaseCard extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                if (stop.serialNumber != null && stop.serialNumber!.isNotEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.only(top: 8),
-                                    child: Column(
-                                      children: [
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          "#${stop.serialNumber}",
-                                          textAlign: TextAlign.center,
-                                          style: GoogleFonts.orbitron(
-                                            color: elementColor,
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
+                                _buildNotesRow(elementColor, context),
                               ],
                           ),
                         ),
@@ -500,8 +605,6 @@ class BaseCard extends StatelessWidget {
             const SizedBox(height: 10),
 
             // Extra content
-            ...extraContent,
-            const SizedBox(height: 10),
 
             if (actionButtons.isNotEmpty)
               Column(
@@ -513,6 +616,15 @@ class BaseCard extends StatelessWidget {
                         ))
                     .toList(),
               ),
+            const SizedBox(height: 10),
+
+            ...normalExtraContent,
+
+
+              if (tray != null) ...[
+              const SizedBox(height: 0),
+              tray,
+            ],
           ],
         ),
       ),

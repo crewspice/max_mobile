@@ -8,8 +8,10 @@ import '../models/lift.dart';
 import '../models/lift_maintenance_snapshot.dart';
 import '../models/lift_pm_history_item.dart';
 import '../models/lift_maintenance_history_item.dart';
+import '../models/lift_rental_history_item.dart';
 import '../models/inventory_item.dart';
 import 'package:http_parser/http_parser.dart';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   final String baseUrl = "http://5.78.73.173:8080/rentals";
@@ -428,10 +430,10 @@ class ApiService {
     }
   }
 
-
   Future<void> submitPreventiveMaintenance({
     required int liftId,
     required String completedByInitial,
+    bool isAnnualInspection = false,
   }) async {
     final res = await http.post(
       Uri.parse('$maintenanceUrl/pm'),
@@ -439,6 +441,7 @@ class ApiService {
       body: jsonEncode({
         'liftId': liftId,
         'completedByInitial': completedByInitial,
+        'isAnnualInspection': isAnnualInspection,
       }),
     );
 
@@ -447,23 +450,27 @@ class ApiService {
     }
   }
 
-  Future<void> submitMaintenanceIssue({
+  Future<void> submitMaintenanceAction({
     required int liftId,
     required String notes,
     required String createdByInitial,
+    required bool isRepair,
   }) async {
     final res = await http.post(
       Uri.parse('$maintenanceUrl/issue'),
-      headers: {'Content-Type': 'application/json'},
+      headers: {
+        'Content-Type': 'application/json',
+      },
       body: jsonEncode({
         'liftId': liftId,
         'notes': notes,
         'createdByInitial': createdByInitial,
+        'isRepair': isRepair,
       }),
     );
 
     if (res.statusCode != 200) {
-      throw Exception('Failed to submit maintenance issue');
+      throw Exception('Failed to submit maintenance action');
     }
   }
 
@@ -517,6 +524,23 @@ class ApiService {
           .toList();
     } else {
       throw Exception('Failed to load maintenance history');
+    }
+  }
+
+  Future<List<LiftRentalHistoryItem>> fetchRentalHistory(int liftId) async {
+    final response =
+        await http.get(Uri.parse('$maintenanceUrl/rental-history/$liftId'));
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(
+        utf8.decode(response.bodyBytes),
+      );
+
+      return data
+          .map((e) => LiftRentalHistoryItem.fromJson(e))
+          .toList();
+    } else {
+      throw Exception('Failed to load rental history');
     }
   }
 
@@ -574,4 +598,114 @@ class ApiService {
     // Always succeed for now
     return true;
   }
+
+  Future<void> updateMaintenanceRepairNotes(
+      int actionId,
+      String repairNotes,
+  ) async {
+    final response = await http.put(
+      Uri.parse('$maintenanceUrl/repair-notes/$actionId'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'repairNotes': repairNotes,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to update repair notes: ${response.body}',
+      );
+    }
+  }
+
+  Future<bool> recordCancellation({
+    required String rentalId,
+    required String truck,
+    required String driver,
+    required String type,
+    String? nullRouteId,
+  }) async {
+    try {
+      final uri = Uri.parse('$routeUrl/recordCancellation').replace(
+        queryParameters: {
+          'rentalId': rentalId,
+          'truck': truck,
+          'driver': driver,
+          'type': type,
+          if (nullRouteId != null) 'nullRouteId': nullRouteId,
+        },
+      );
+
+      final response = await http.post(uri);
+
+      if (response.statusCode == 200) {
+        return true;
+      }
+      return false;
+
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<void> recordTruckInspection({
+    required String truckId,
+    required String driverId,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$maintenanceUrl/truck-inspections/record'),
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'truckId': truckId,
+        'driverId': driverId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to record truck inspection: ${response.body}',
+      );
+    }
+  }
+
+  Future<bool> recordTruckIssue({
+    required File image,
+    required String truckId,
+    required String driverId,
+    required String description,
+    String? issueType,
+  }) async {
+    try {
+      final uri = Uri.parse('$maintenanceUrl/recordTruckIssue');
+
+      final request = http.MultipartRequest('POST', uri);
+
+      request.fields['truckId'] = truckId;
+      request.fields['driverId'] = driverId;
+      request.fields['description'] = description;
+
+      if (issueType != null && issueType.isNotEmpty) {
+        request.fields['issueType'] = issueType;
+      }
+
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'photoFile',
+          image.path,
+        ),
+      );
+
+      final response = await request.send();
+
+      return response.statusCode == 200;
+    } catch (e) {
+      debugPrint('recordTruckIssue failed: $e');
+      return false;
+    }
+  }
+
 }

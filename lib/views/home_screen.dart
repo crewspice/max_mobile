@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'rental_list_view.dart';
 import 'maintenance_view.dart';
+import 'maintenance_view.dart';
 import 'truck_view.dart';
 import 'driver_statistics_screen.dart';
 import 'user_selection_screen.dart';
@@ -14,12 +15,14 @@ class HomeScreen extends StatefulWidget {
   final String currentUserId;
   final String userName;
   final String? truckId;
+  final bool maintenanceOnly;
 
   const HomeScreen({
     super.key,
     required this.currentUserId,
     required this.userName,
     required this.truckId,
+    this.maintenanceOnly = false,
   });
 
   @override
@@ -94,14 +97,24 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final pages = <Widget>[
-      RentalListView(driverId: widget.currentUserId),
-      MaintenanceView(currentUserId: widget.currentUserId),
-      TruckView(
-        truckId: widget.truckId,
-        driverId: widget.currentUserId,
-      ),
-    ];
+    final pages = widget.maintenanceOnly
+        ? <Widget>[
+            MaintenanceView(
+              currentUserId: widget.currentUserId,
+            ),
+          ]
+        : <Widget>[
+            RentalListView(
+              driverId: widget.currentUserId,
+            ),
+            MaintenanceView(
+              currentUserId: widget.currentUserId,
+            ),
+            TruckView(
+              truckId: widget.truckId,
+              driverId: widget.currentUserId,
+            ),
+          ];
 
     return Scaffold(
       backgroundColor: AppColors.mainBackground,
@@ -123,7 +136,7 @@ class _HomeScreenState extends State<HomeScreen> {
             widget.userName,
             style: GoogleFonts.permanentMarker(
               fontSize: 26, // slightly smaller than header
-              fontWeight: FontWeight.bold,
+              // fontWeight: FontWeight.bold,
               color: Colors.white,
               letterSpacing: 3.5,
             ),
@@ -155,7 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       body: pages[_selectedIndex],
-      bottomNavigationBar: SafeArea(
+      bottomNavigationBar: widget.maintenanceOnly
+          ? null
+          : SafeArea(
         top: false,
         child: Container(
           height: 70,

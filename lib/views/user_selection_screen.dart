@@ -162,6 +162,7 @@ class _UserSelectionScreenState
     String userId,
     String userName,
     String truckId,
+    bool maintenanceOnly,
   ) async {
     await _initPush(userId);
 
@@ -174,6 +175,7 @@ class _UserSelectionScreenState
           currentUserId: userId,
           userName: userName,
           truckId: truckId,
+          maintenanceOnly: maintenanceOnly,
         ),
       ),
     );
@@ -304,13 +306,27 @@ class _UserSelectionScreenState
                       children: [
                         DriverOrbitSelector(
                           users: drivers,
-                          onUserTap: _openUser,
+                          onUserTap: (userId, userName, truckId) {
+                            return _openUser(
+                              userId,
+                              userName,
+                              truckId,
+                              false,
+                            );
+                          },
                           onAssignmentTap: _openAssignments,
                         ),
 
                         NonDriverOrbitSelector(
                           users: nonDrivers,
-                          onUserTap: _openUser,
+                          onUserTap: (userId, userName, truckId) {
+                            return _openUser(
+                              userId,
+                              userName,
+                              truckId,
+                              true,
+                            );
+                          },
                         ),
                       ],
                     );

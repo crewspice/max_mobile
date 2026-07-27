@@ -7,30 +7,40 @@ import '../models/stop.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../theme/app_colors.dart';
+import 'hold_to_confirm_button.dart';
+import 'lift_selector_panel.dart';
+import 'action_ribbon.dart';
 
-class ServiceCard extends StatelessWidget {
+class ServiceCard extends StatefulWidget {
   final Stop stop;
-  final TextEditingController serialController = TextEditingController();
   final Future<void> Function() onRefresh;
   final bool completedView;
   final bool unassignedView;
 
-  ServiceCard({
-    Key? key,
+  const ServiceCard({
+    super.key,
     required this.stop,
     required this.onRefresh,
     this.completedView = false,
     this.unassignedView = false,
-  }) : super(key: key);
+  });
+
+  @override
+  State<ServiceCard> createState() => _ServiceCardState();
+}
+
+class _ServiceCardState extends State<ServiceCard> {
+  String _serial = '';
 
   bool _requiresSerial(String serviceType) {
-    return serviceType == "Change Out" || serviceType == "Service Change Out";
+    return serviceType == "Change Out" ||
+        serviceType == "Service Change Out";
   }
 
   bool _skipSerial(String serviceType) {
-    return serviceType == "MOVE" || serviceType == "SERVICE";
+    return serviceType == "MOVE" ||
+        serviceType == "SERVICE";
   }
-
 
   Future<File?> _pickImage({bool camera = true}) async {
     final picker = ImagePicker();
@@ -59,16 +69,14 @@ class ServiceCard extends StatelessWidget {
   }
 
   Future<void> _handlePhotoUpload(BuildContext context) async {
-    final serial = serialController.text.trim();
-    final type = stop.serviceType?.trim() ?? "";
+    final serial = _serial.trim();
+    final type = widget.stop.serviceType?.trim() ?? "";
 
     final requiresSerial = _requiresSerial(type);
     final skipSerial = _skipSerial(type);
 
-    print("DEBUG: stop.type=${stop.type}");
-    print("DEBUG: stop.serviceType=${stop.serviceType}");
-    print("DEBUG: requiresSerial=$requiresSerial");
-    print("DEBUG: skipSerial=$skipSerial");
+    print("DEBUG: stop.type=${widget.stop.type}");
+    print("DEBUG: stop.serviceType=${widget.stop.serviceType}");
 
     // Validate serial if required
     if (!skipSerial && requiresSerial) {
@@ -90,18 +98,18 @@ class ServiceCard extends StatelessWidget {
 
       final success = await api.recordServiceWithPhoto(
         compressed,
-        stop.id,
+        widget.stop.id,
         serialNumber: requiresSerial ? serial : null, // ✅ now safe
-        stop.truck ?? "null",
-        stop.driverId ?? "null"
+        widget.stop.truck ?? "null",
+        widget.stop.driverId ?? "null"
       );
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')),
       );
 
-      if (success && onRefresh != null) {
-        await onRefresh!();
+      if (success && widget.onRefresh != null) {
+        await widget.onRefresh!();
       }
     }
   }
@@ -111,19 +119,19 @@ class ServiceCard extends StatelessWidget {
   Future<void> _handlePickupComplete(BuildContext context) async {
     final api = ApiService();
     final success = await api.recordPickup(
-      stop.id, 
-      stop.truck ?? "null",
-      stop.driverId ?? "null"
+      widget.stop.id, 
+      widget.stop.truck ?? "null",
+      widget.stop.driverId ?? "null"
     );
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(success ? 'Pickup completed!' : 'Failed')),
     );
-    if (success && onRefresh != null) await onRefresh!();
+    if (success && widget.onRefresh != null) await widget.onRefresh!();
   }
 
   void _showServicePhoto(BuildContext context) {
     final imageUrl =
-        'http://5.78.73.173:8080/images/deliveries/by-service/${stop.id}';
+        'http://5.78.73.173:8080/images/deliveries/by-service/${widget.stop.id}';
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -157,215 +165,326 @@ class ServiceCard extends StatelessWidget {
     );
   }
 
+
+  void _showCancelDialog(BuildContext context) {
+    final Color elementColor = AppColors.green;
+
+    int selected = 0;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: elementColor,
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Center(
+                    child: ToggleButtons(
+                      isSelected: [
+                        selected == 0,
+                        selected == 1,
+                      ],
+                      onPressed: (index) {
+                        setState(() {
+                          selected = index;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      fillColor: AppColors.main,
+                      selectedColor: elementColor,
+                      color: AppColors.main,
+                      constraints: const BoxConstraints(
+                        minWidth: 135,
+                        minHeight: 42,
+                      ),
+                      children: const [
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            "Before\nArrival",
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            "On\nArrival",
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actionsAlignment: MainAxisAlignment.center,
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "Close",
+                    style: TextStyle(color: AppColors.main),
+                  ),
+                ),
+                SizedBox(
+                  width: 190,
+                  child: HoldToConfirmButton(
+                    icon: const Icon(Icons.cancel),
+                    label: "Submit Cancellation",
+                    baseColor: AppColors.main,
+                    progressColor: AppColors.main,
+                    textColor: elementColor,
+                    holdDuration: const Duration(seconds: 1),
+                    onConfirmed: () async {
+                      Navigator.pop(context);
+
+                      final bool onArrival = selected == 1;
+
+                      final api = ApiService();
+
+                      final success = await api.recordCancellation(
+                        rentalId: widget.stop.id.toString(),
+                        truck: widget.stop.truck ?? "null",
+                        driver: widget.stop.driverId ?? "null",
+                        type: onArrival
+                            ? "Cancelled on Arrival"
+                            : "Cancelled",
+                      );
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            success
+                                ? (onArrival
+                                    ? "Cancelled on arrival"
+                                    : "Cancelled before arrival")
+                                : "Cancellation failed",
+                          ),
+                        ),
+                      );
+
+                      if (success) {
+                        await widget.onRefresh();
+                      }
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+
   @override
   Widget build(BuildContext context) {
-    
-    final String serviceType = stop.serviceType?.trim() ?? "";
+
+    final String serviceType = widget.stop.serviceType?.trim() ?? "";
 
     final bool requiresSerial = 
         serviceType == "Change Out" || serviceType == "Service Change Out";
     final bool skipSerial = serviceType == "MOVE" || serviceType == "SERVICE";
 
-    Widget serialInput = Container();
-    if (!completedView && requiresSerial && !unassignedView) {
-      serialInput = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 0.0),
-        child: SizedBox(
-          width: MediaQuery.of(context).size.width * 0.3,
-          child: TextField(
-            cursorColor: AppColors.green,
-            style: TextStyle(color: AppColors.green),
-            controller: serialController,
-            decoration: const InputDecoration(
-              labelText: 'Serial Number',
-              labelStyle: TextStyle(color: AppColors.green),
-              floatingLabelStyle: TextStyle(color: AppColors.green),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.green),
-              ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: AppColors.green, width: 2),
-              ),
-            ),
+
+    // Action buttons
+    List<ActionItem> actions = [];
+
+    if (widget.completedView) {
+      actions.add(
+        ActionItem(
+          label: "See Photo",
+          icon: Icons.photo,
+          color: AppColors.green,
+          onPressed: () => _showServicePhoto(context),
+        ),
+      );
+    } else {
+      actions.add(
+        ActionItem(
+          label: "See Photo",
+          icon: Icons.photo,
+          color: AppColors.green,
+          onPressed: () => _showServicePhoto(context),
+        ),
+      );
+
+      if (!widget.unassignedView) {
+        actions.add(
+          ActionItem(
+            label: "Take Photo",
+            icon: Icons.camera_alt,
+            color: AppColors.green,
+            onPressed: () => _handlePhotoUpload(context),
           ),
-        ),
-      );
-    }
+        );
 
-    // Action buttons (universal)
-    List<Widget> actionButtons = [];
+        actions.add(
+          ActionItem(
+            label: "Upload",
+            icon: Icons.upload,
+            color: AppColors.green,
+            onPressed: () async {
+              final serial = _serial.trim();
 
-    // COMPLETED VIEW → only "See Photo"
-    if (completedView) {
-      actionButtons.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.green,
-                foregroundColor: AppColors.main,
-              ),
-              onPressed: () => _showServicePhoto(context),
-              child: const Text("See Photo"),
-            ),
-          ],
-        ),
-      );
-    }
+              if (requiresSerial && !await _validateSerial(serial)) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Invalid or empty serial number'),
+                  ),
+                );
+                return;
+              }
 
-    // ACTIVE VIEW → full controls
-    else {
-      // Row 1: See Photo (optional, you can keep or remove this if redundant)
-      actionButtons.add(
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.green,
-                foregroundColor: AppColors.main,
-              ),
-              onPressed: () => _showServicePhoto(context),
-              child: const Text("See Photo"),
-            ),
-          ],
-        ),
-      );
+              final file = await _pickImage(camera: false);
 
-      actionButtons.add(const SizedBox(height: 8));
-      if (!unassignedView) {
-        // Row 2: Take + Upload
-        actionButtons.add(
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: AppColors.main,
-                ),
-                onPressed: () => _handlePhotoUpload(context),
-                child: const Text('Take Photo'),
-              ),
+              if (file != null) {
+                final compressed = await _compressImage(file);
+                final api = ApiService();
 
-              const SizedBox(width: 8),
+                final success = await api.uploadPhoto(
+                  compressed,
+                  widget.stop.id,
+                  serialNumber: requiresSerial ? serial : null,
+                );
 
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.green,
-                  foregroundColor: AppColors.main,
-                ),
-                onPressed: () async {
-                  final serial = serialController.text.trim();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success ? 'Photo uploaded!' : 'Upload failed',
+                    ),
+                  ),
+                );
 
-                  if (requiresSerial && !await _validateSerial(serial)) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Invalid or empty serial number'),
-                      ),
-                    );
-                    return;
-                  }
+                if (success) {
+                  await widget.onRefresh();
+                }
+              }
+            },
+          ),
+        );
 
-                  final file = await _pickImage(camera: false);
-                  if (file != null) {
-                    final compressed = await _compressImage(file);
-                    final api = ApiService();
+        actions.add(
+          ActionItem(
+            label: "Complete",
+            icon: Icons.check,
+            color: AppColors.green,
+            onPressed: () => _handlePickupComplete(context),
+          ),
+        );
 
-                    final success = await api.uploadPhoto(
-                      compressed,
-                      stop.id,
-                      serialNumber: requiresSerial ? serial : null,
-                    );
-
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          success ? 'Photo uploaded!' : 'Upload failed',
-                        ),
-                      ),
-                    );
-
-                    if (success) await onRefresh();
-                  }
-                },
-                icon: Icon(
-                  Icons.upload,
-                  color: AppColors.main,
-                ),
-                label: const Text('Upload Photo'),
-              ),
-            ],
+        actions.add(
+          ActionItem(
+            label: "Cancel",
+            icon: Icons.block,
+            color: AppColors.green,
+            onPressed: () => _showCancelDialog(context),
           ),
         );
       }
     }
 
+    Widget serialInput = Container();
+    if (!widget.completedView && requiresSerial && !widget.unassignedView) {
+      serialInput = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 0.0),
+        child: Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: LiftSelectorPanel(
+              initialText: _serial,
+              colors: const LiftSelectorColorScheme(
+                ball: AppColors.green,
+                border: AppColors.green,
+                selectedBorder: AppColors.yellow,
+                shadow: AppColors.yellow,
+                text: AppColors.mainBackground,
+              ),
+              onChanged: (serial) {
+                setState(() {
+                  _serial = serial;
+                });
+              },
+            ),
+          ),
+        ),
+      );
+    }
+
+
     // --- Content setup (unchanged) ---
     Widget content = const SizedBox.shrink();
 
-    if (stop.type.toUpperCase() == "SERVICE") {
-      final serviceType = stop.serviceType?.trim().toUpperCase() ?? "";
+    if (widget.stop.type.toUpperCase() == "SERVICE") {
+      final serviceType = widget.stop.serviceType?.trim().toUpperCase() ?? "";
 
-      if (serviceType == "CHANGE OUT" && stop.newLiftType?.isNotEmpty == true) {
-        content = Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 1,
-              child: Row(
-                children: [
-                  const Text(
-                    'to: ',
-                    style: TextStyle(fontSize: 20, color: AppColors.green),
-                  ),
-                  Text(
-                    stop.newLiftType!,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.green,
-                    ),
-                  ),
-                ],
+    if (serviceType == "CHANGE OUT" &&
+        widget.stop.newLiftType?.isNotEmpty == true) {
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'to: ',
+                style: TextStyle(
+                  fontSize: 20,
+                  color: AppColors.green,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 3,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (stop.reason != null)
-                    Text(
-                      "\"${stop.reason!}\"",
-                      style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
-                    ),
-                  if (stop.notes != null)
-                    Text(
-                      "${stop.notes}",
-                      style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
-                    ),
-                  serialInput,
-                ],
+              Text(
+                widget.stop.newLiftType!,
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.green,
+                ),
               ),
+            ],
+          ),
+
+          if (widget.stop.reason != null)
+            Text(
+              "\"${widget.stop.reason!}\"",
+              style: const TextStyle(
+                fontStyle: FontStyle.italic,
+                color: AppColors.green,
+              ),
+              textAlign: TextAlign.center,
             ),
-          ],
-        );
-      } else if (serviceType == "SERVICE CHANGE OUT") {
+
+          if (widget.stop.notes != null)
+            Text(
+              "${widget.stop.notes}",
+              style: const TextStyle(
+                fontStyle: FontStyle.italic,
+                color: AppColors.green,
+              ),
+              textAlign: TextAlign.center,
+            ),
+
+          serialInput,
+        ],
+      );
+    } else if (serviceType == "SERVICE CHANGE OUT") {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (stop.reason != null)
+            if (widget.stop.reason != null)
               Text(
-                "\"${stop.reason!}\"",
+                "\"${widget.stop.reason!}\"",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (stop.notes != null)
+            if (widget.stop.notes != null)
               Text(
-                "${stop.notes}",
+                "${widget.stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
@@ -376,41 +495,41 @@ class ServiceCard extends StatelessWidget {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (stop.newStreetAddress?.isNotEmpty == true)
+            if (widget.stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 "New Site:",
                 style: const TextStyle(fontSize: 13, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (stop.newSiteName?.isNotEmpty == true)
+            if (widget.stop.newSiteName?.isNotEmpty == true)
               Text(
-                stop.newSiteName!,
+                widget.stop.newSiteName!,
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (stop.newStreetAddress?.isNotEmpty == true)
+            if (widget.stop.newStreetAddress?.isNotEmpty == true)
               Text(
-                stop.newStreetAddress!,
+                widget.stop.newStreetAddress!,
                 style: const TextStyle(fontSize: 16, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (stop.newCity?.isNotEmpty == true)
+            if (widget.stop.newCity?.isNotEmpty == true)
               Text(
-                stop.newCity!,
+                widget.stop.newCity!,
                 style: const TextStyle(fontSize: 16, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             const SizedBox(height: 8),
-            if (stop.reason != null)
+            if (widget.stop.reason != null)
               Text(
-                "\"${stop.reason!}\"",
+                "\"${widget.stop.reason!}\"",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (stop.notes != null)
+            if (widget.stop.notes != null)
               Text(
-                "${stop.notes}",
+                "${widget.stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
@@ -421,15 +540,15 @@ class ServiceCard extends StatelessWidget {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (stop.reason != null)
+            if (widget.stop.reason != null)
               Text(
-                "\"${stop.reason!}\"",
+                "\"${widget.stop.reason!}\"",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (stop.notes != null)
+            if (widget.stop.notes != null)
               Text(
-                "${stop.notes}",
+                "${widget.stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
@@ -440,12 +559,19 @@ class ServiceCard extends StatelessWidget {
     }
 
     return BaseCard(
-      stop: stop,
-      extraContent: [content],
-      actionButtons: actionButtons, // <-- pass directly
-      onRefresh: onRefresh,
+      stop: widget.stop,
+      extraContent: [
+        content,
+        if (actions.isNotEmpty)
+          ActionRibbon(
+            actions: actions,
+            color: AppColors.green,
+          ),
+      ],
+      onRefresh: widget.onRefresh,
+      onNotesUpdated: null,
     );
-
 
   }
 }
+

@@ -215,6 +215,11 @@ class _RentalListViewState extends State<RentalListView> {
                     stop: stop,
                     onRefresh: _refreshRentals, // refresh after HQ deletion
                     completedView: widget.completed,
+                    onNotesUpdated: (updatedStop) {
+                      setState(() {
+                        stops[index] = updatedStop;
+                      });
+                    }
                   );
                 } else {
                   return const SizedBox.shrink();
