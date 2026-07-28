@@ -72,7 +72,7 @@ class _ActionRibbonState extends State<ActionRibbon> {
 
                   // reserve space for two buttons + gap
                   final calculatedButtonWidth =
-                      DeviceConfig.actionButtonWidth(context);
+                      DeviceConfig.actionButtonWidth();
 
                   final groupWidth = visible.length == 2
                       ? calculatedButtonWidth * 2 + dynamicGap

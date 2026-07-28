@@ -414,6 +414,32 @@ class _ServiceCardState extends State<ServiceCard> {
         ),
       );
     }
+
+    final Widget serialSelector = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Center(
+        child: SizedBox(
+          width: MediaQuery.of(context).size.width * 0.8,
+          child: Transform.scale(
+            scale: DeviceConfig.liftSelectorScale(),
+            child: LiftSelectorPanel(
+              emptyTextSize: 18,
+              initialText: _stop.serialNumber ?? '',
+              readOnly: true,
+              colors: LiftSelectorColorScheme(
+                ball: AppColors.green,
+                border: AppColors.green,
+                selectedBorder: AppColors.green,
+                shadow: AppColors.main,
+                text: AppColors.mainBackground,
+              ),
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      ),
+    );
+
     // --- Content setup (unchanged) ---
     Widget content = const SizedBox.shrink();
 
@@ -425,6 +451,7 @@ class _ServiceCardState extends State<ServiceCard> {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          serialSelector,
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -461,6 +488,7 @@ class _ServiceCardState extends State<ServiceCard> {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          serialSelector,
           if (_stop.reason != null && _stop.reason != "")
             SizedBox(
               width: double.infinity,
@@ -479,6 +507,7 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            serialSelector,
             if (_stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 "New Site:",
@@ -505,15 +534,9 @@ class _ServiceCardState extends State<ServiceCard> {
                 textAlign: TextAlign.center,
               ),
             const SizedBox(height: 8),
-            if (_stop.reason != null)
+            if (_stop.reason != null && _stop.reason != "")
               Text(
                 "\"${_stop.reason!}\"",
-                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
-                textAlign: TextAlign.center,
-              ),
-            if (_stop.notes != null)
-              Text(
-                "${_stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
@@ -523,15 +546,10 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (_stop.reason != null)
+            serialSelector,
+            if (_stop.reason != null && _stop.reason != "")
               Text(
                 "\"${_stop.reason!}\"",
-                style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
-                textAlign: TextAlign.center,
-              ),
-            if (_stop.notes != null)
-              Text(
-                "${_stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
