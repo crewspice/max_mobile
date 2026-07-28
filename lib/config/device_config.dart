@@ -52,7 +52,7 @@ class DeviceConfig {
   static double actionButtonWidth() {
     switch (device) {
       case "iphone":
-        return 105;
+        return 175;
 
       case "ipad":
         return 290;

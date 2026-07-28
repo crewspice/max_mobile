@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/lift.dart';
 import '../../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../config/device_config.dart';
 
 
 class LiftSelectorColorScheme {
@@ -253,17 +254,19 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                         : null,
                   ),
                   child:_serial.isEmpty
-                      ? Center(
-                          child: MediaQuery.withNoTextScaling(
-                            child: Text(
-                              'Enter Serial',
-                              style: TextStyle(
-                                color: widget.colors.border,
-                                fontSize: widget.emptyTextSize,
-                              ),
+                    ? Center(
+                        child: MediaQuery.withNoTextScaling(
+                          child: Text(
+                            'Enter Serial',
+                            style: TextStyle(
+                              color: widget.colors.border,
+                              fontSize: DeviceConfig.device == "ipad"
+                                  ? 26
+                                  : widget.emptyTextSize,
                             ),
                           ),
-                        )
+                        ),
+                      )
                       : Row(
                           mainAxisAlignment:MainAxisAlignment.center,
                           children:[
