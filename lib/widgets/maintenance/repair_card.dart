@@ -24,6 +24,13 @@ class RepairCard extends StatefulWidget {
 
 class _RepairCardState extends State<RepairCard> {
   bool _noRepairNeeded = false;
+  String? _repairNotes;
+
+  @override
+  void initState() {
+    super.initState();
+    _repairNotes = widget.action.repairNotes;
+  }
 
   String _formatDate(DateTime? date) {
     if (date == null) return 'Unknown';
@@ -107,9 +114,9 @@ class _RepairCardState extends State<RepairCard> {
                     Expanded(
                         child: Center(
                         child: Text(
-                            (widget.action.repairNotes ?? '').isNotEmpty
-                                ? widget.action.repairNotes!
-                                : 'No repair notes',
+                          (_repairNotes ?? '').isNotEmpty
+                              ? _repairNotes!
+                              : 'No repair notes',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                             color: AppColors.red,
@@ -130,13 +137,15 @@ class _RepairCardState extends State<RepairCard> {
                             if (notes == null) return;
 
                             await ApiService().updateMaintenanceRepairNotes(
-                            widget.action.actionId!,
-                            notes,
+                              widget.action.actionId!,
+                              notes,
                             );
 
                             if (!mounted) return;
 
-                            widget.onResolved();
+                            setState(() {
+                              _repairNotes = notes;
+                            });
                         },
                         child: Image.asset(
                             'assets/notes.png',
@@ -187,7 +196,7 @@ class _RepairCardState extends State<RepairCard> {
                         actionId: widget.action.actionId!,
                         resolvedByInitial: widget.currentUserId,
                         noRepairNeeded: _noRepairNeeded,
-                        repairNotes: widget.action.repairNotes ?? '',
+                        repairNotes: _repairNotes ?? '',
                       );
 
                       widget.onResolved();

@@ -26,16 +26,27 @@ class RentalListView extends StatefulWidget {
 
 class _RentalListViewState extends State<RentalListView> {
   late Future<List<Stop>> futureStops;
+  List<Stop> stops = [];
   List<TextEditingController> serialControllers = [];
 
   @override
   void initState() {
     super.initState();
-    futureStops = ApiService().fetchStopsByDriver(
+    futureStops = _loadStops();
+  }
+
+  Future<List<Stop>> _loadStops() async {
+    final result = await ApiService().fetchStopsByDriver(
       widget.driverId,
       completed: widget.completed,
       unassigned: widget.unassigned,
     );
+
+    setState(() {
+      stops = result;
+    });
+
+    return result;
   }
 
   @override
@@ -59,8 +70,11 @@ class _RentalListViewState extends State<RentalListView> {
   }
     
   Future<void> _refreshRentals() async {
+    final result = await _fetchStopsForDriverWithFallback(widget.driverId);
+
     setState(() {
-      futureStops = _fetchStopsForDriverWithFallback(widget.driverId);
+      stops = result;
+      futureStops = Future.value(result);
     });
   }
 
@@ -163,22 +177,33 @@ class _RentalListViewState extends State<RentalListView> {
       body: FutureBuilder<List<Stop>>(
         future: futureStops,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
+          if (snapshot.connectionState == ConnectionState.waiting && stops.isEmpty) {
+            return const Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (snapshot.hasError && stops.isEmpty) {
             return Center(
               child: gradientText('${snapshot.error}'),
-              );
-          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            );
+          }
+
+          if (snapshot.hasData && stops.isEmpty) {
+            stops = snapshot.data!;
+          }
+
+          if (stops.isEmpty) {
             return Center(
               child: gradientText('No stops available'),
             );
           }
 
-          List<Stop> stops = snapshot.data!;
           if (serialControllers.length != stops.length) {
-            serialControllers =
-                List.generate(stops.length, (index) => TextEditingController());
+            serialControllers = List.generate(
+              stops.length,
+              (_) => TextEditingController(),
+            );
           }
 
           return RefreshIndicator(
@@ -201,29 +226,33 @@ class _RentalListViewState extends State<RentalListView> {
                       setState(() {
                         stops[index] = updatedStop;
                       });
-                    }
+                    },
                   );
-                } else if (stop.type == 'SERVICE') {
+                }
+
+                if (stop.type == 'SERVICE') {
                   return ServiceCard(
                     stop: stop,
                     onRefresh: _refreshRentals,
                     completedView: widget.completed,
                     unassignedView: widget.unassigned,
                   );
-                } else if (stop.liftType == 'HQ') {
+                }
+
+                if (stop.liftType == 'HQ') {
                   return BaseCard(
                     stop: stop,
-                    onRefresh: _refreshRentals, // refresh after HQ deletion
+                    onRefresh: _refreshRentals,
                     completedView: widget.completed,
                     onNotesUpdated: (updatedStop) {
                       setState(() {
                         stops[index] = updatedStop;
                       });
-                    }
+                    },
                   );
-                } else {
-                  return const SizedBox.shrink();
                 }
+
+                return const SizedBox.shrink();
               },
             ),
           );

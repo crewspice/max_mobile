@@ -408,6 +408,30 @@ class ApiService {
     }
   }
 
+  Future<bool> updateServiceNotes({
+    required int serviceId,
+    required String notes,
+  }) async {
+    final uri = Uri.parse('$baseUrl/service/$serviceId/notes');
+
+    try {
+      final response = await http.put(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'notes': notes,
+        }),
+      );
+
+      return response.statusCode == 200;
+    } catch (e) {
+      print('❌ HTTP ERROR: $e');
+      return false;
+    }
+  }
+
   Future<List<dynamic>> fetchMaintenanceLifts() async {
     final res = await http.get(Uri.parse('$maintenanceUrl/lifts'));
 

@@ -209,10 +209,15 @@ class BaseCard extends StatelessWidget {
 
               final api = ApiService();
 
-              final success = await api.updateRentalNotes(
-                rentalItemId: stop.id,
-                notes: updatedNotes,
-              );
+              final success = stop.type == "SERVICE"
+                  ? await api.updateServiceNotes(
+                      serviceId: stop.id,
+                      notes: updatedNotes,
+                    )
+                  : await api.updateRentalNotes(
+                      rentalItemId: stop.id,
+                      notes: updatedNotes,
+                    );
 
               if (success && onNotesUpdated != null) {
                 onNotesUpdated!(

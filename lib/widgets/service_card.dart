@@ -30,8 +30,24 @@ class ServiceCard extends StatefulWidget {
 }
 
 class _ServiceCardState extends State<ServiceCard> {
+  late Stop _stop;
   String _serial = '';
 
+  @override
+  void initState() {
+    super.initState();
+    _stop = widget.stop;
+  }
+
+  @override
+  void didUpdateWidget(ServiceCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.stop != widget.stop) {
+      _stop = widget.stop;
+    }
+  }
+  
   bool _requiresSerial(String serviceType) {
     return serviceType == "Change Out" ||
         serviceType == "Service Change Out";
@@ -271,7 +287,7 @@ class _ServiceCardState extends State<ServiceCard> {
   @override
   Widget build(BuildContext context) {
 
-    final String serviceType = widget.stop.serviceType?.trim() ?? "";
+    final String serviceType = _stop.serviceType?.trim() ?? "";
 
     final bool requiresSerial = 
         serviceType == "Change Out" || serviceType == "Service Change Out";
@@ -335,7 +351,7 @@ class _ServiceCardState extends State<ServiceCard> {
 
                 final success = await api.uploadPhoto(
                   compressed,
-                  widget.stop.id,
+                  _stop.id,
                   serialNumber: requiresSerial ? serial : null,
                 );
 
@@ -397,11 +413,11 @@ class _ServiceCardState extends State<ServiceCard> {
     // --- Content setup (unchanged) ---
     Widget content = const SizedBox.shrink();
 
-    if (widget.stop.type.toUpperCase() == "SERVICE") {
-      final serviceType = widget.stop.serviceType?.trim().toUpperCase() ?? "";
+    if (_stop.type.toUpperCase() == "SERVICE") {
+      final serviceType = _stop.serviceType?.trim().toUpperCase() ?? "";
 
     if (serviceType == "CHANGE OUT" &&
-        widget.stop.newLiftType?.isNotEmpty == true) {
+        _stop.newLiftType?.isNotEmpty == true) {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
@@ -416,7 +432,7 @@ class _ServiceCardState extends State<ServiceCard> {
                 ),
               ),
               Text(
-                widget.stop.newLiftType!,
+                _stop.newLiftType!,
                 style: const TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -426,37 +442,26 @@ class _ServiceCardState extends State<ServiceCard> {
             ],
           ),
 
-          if (widget.stop.reason != null)
+          if (_stop.reason != null && _stop.reason != "")
             Text(
-              "\"${widget.stop.reason!}\"",
+              "\"${_stop.reason!}\"",
               style: const TextStyle(
                 fontStyle: FontStyle.italic,
                 color: AppColors.green,
               ),
               textAlign: TextAlign.center,
             ),
-
-          if (widget.stop.notes != null)
-            Text(
-              "${widget.stop.notes}",
-              style: const TextStyle(
-                fontStyle: FontStyle.italic,
-                color: AppColors.green,
-              ),
-              textAlign: TextAlign.center,
-            ),
-
         ],
       );
     } else if (serviceType == "SERVICE CHANGE OUT") {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (widget.stop.reason != null)
+          if (_stop.reason != null && _stop.reason != "")
             SizedBox(
               width: double.infinity,
               child: Text(
-                "\"${widget.stop.reason!}\"",
+                "\"${_stop.reason!}\"",
                 style: const TextStyle(
                   fontStyle: FontStyle.italic,
                   color: AppColors.green,
@@ -470,41 +475,41 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (widget.stop.newStreetAddress?.isNotEmpty == true)
+            if (_stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 "New Site:",
                 style: const TextStyle(fontSize: 13, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (widget.stop.newSiteName?.isNotEmpty == true)
+            if (_stop.newSiteName?.isNotEmpty == true)
               Text(
-                widget.stop.newSiteName!,
+                _stop.newSiteName!,
                 style:
                     const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (widget.stop.newStreetAddress?.isNotEmpty == true)
+            if (_stop.newStreetAddress?.isNotEmpty == true)
               Text(
-                widget.stop.newStreetAddress!,
+                _stop.newStreetAddress!,
                 style: const TextStyle(fontSize: 16, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (widget.stop.newCity?.isNotEmpty == true)
+            if (_stop.newCity?.isNotEmpty == true)
               Text(
-                widget.stop.newCity!,
+                _stop.newCity!,
                 style: const TextStyle(fontSize: 16, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
             const SizedBox(height: 8),
-            if (widget.stop.reason != null)
+            if (_stop.reason != null)
               Text(
-                "\"${widget.stop.reason!}\"",
+                "\"${_stop.reason!}\"",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (widget.stop.notes != null)
+            if (_stop.notes != null)
               Text(
-                "${widget.stop.notes}",
+                "${_stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
@@ -514,15 +519,15 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (widget.stop.reason != null)
+            if (_stop.reason != null)
               Text(
-                "\"${widget.stop.reason!}\"",
+                "\"${_stop.reason!}\"",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
-            if (widget.stop.notes != null)
+            if (_stop.notes != null)
               Text(
-                "${widget.stop.notes}",
+                "${_stop.notes}",
                 style: const TextStyle(fontStyle: FontStyle.italic, color: AppColors.green),
                 textAlign: TextAlign.center,
               ),
@@ -532,22 +537,27 @@ class _ServiceCardState extends State<ServiceCard> {
     }
 
     return BaseCard(
-      stop: widget.stop,
+      stop: _stop,
       extraContent: [
         SizedBox(
           width: double.infinity,
           child: content,
         ),
         if (actions.isNotEmpty)
+          const SizedBox(height: 3),
           ActionRibbon(
             actions: actions,
             color: AppColors.green,
         ),
-        const SizedBox(height: 5),
+        const SizedBox(height: 7),
         serialInput,
       ],
       onRefresh: widget.onRefresh,
-      onNotesUpdated: null,
+      onNotesUpdated: (updatedStop) {
+        setState(() {
+          _stop = updatedStop;
+        });
+      },
     );
 
   }

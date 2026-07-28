@@ -74,32 +74,43 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
             SizedBox(
               width: double.infinity,
               child: widget.outlined
-                  ? OutlinedButton.icon(
-                      icon: IconTheme(
-                        data: IconThemeData(color: widget.textColor),
-                        child: widget.icon,
+                  ? OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppColors.mainBackground,
+                      foregroundColor: widget.textColor,
+                      side: BorderSide(
+                        color: widget.baseColor,
+                        width: 1.3,
                       ),
-                      label: Text(
-                        widget.label,
-                        style: TextStyle(color: widget.textColor),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 12,
                       ),
-                      style: OutlinedButton.styleFrom(
-                        backgroundColor: AppColors.mainBackground,
-                        foregroundColor: widget.textColor,
-                        side: BorderSide(
-                          color: widget.baseColor,
-                          width: 1.3,
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      onPressed: () {},
-                    )
+                    ),
+                    onPressed: () {},
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconTheme(
+                          data: IconThemeData(color: widget.textColor),
+                          child: widget.icon,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            widget.label,
+                            maxLines: 1,
+                            softWrap: false,
+                            overflow: TextOverflow.fade, // or ellipsis
+                            style: TextStyle(color: widget.textColor),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                   : ElevatedButton.icon(
                       icon: IconTheme(
                         data: IconThemeData(color: widget.textColor),

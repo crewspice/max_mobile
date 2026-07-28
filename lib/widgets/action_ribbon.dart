@@ -1,19 +1,24 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'hold_to_confirm_button.dart';
 
 class ActionItem {
   final String label;
   final IconData? icon;
   final Color color;
   final VoidCallback? onPressed;
-  final Widget? customChild;
+  final bool holdToConfirm;
+  final Duration holdDuration;
+  final Color? progressColor;
 
   const ActionItem({
     required this.label,
     required this.color,
     this.icon,
     this.onPressed,
-    this.customChild,
+    this.holdToConfirm = false,
+    this.holdDuration = const Duration(seconds: 2),
+    this.progressColor,
   });
 }
 
@@ -37,7 +42,6 @@ class _ActionRibbonState extends State<ActionRibbon> {
   int _offset = 0;
   bool _movingRight = true;
 
-  static const double gap = 8;
   static const double arrowWidth = 42;
   static const int visibleButtons = 2;
 
@@ -62,8 +66,18 @@ class _ActionRibbonState extends State<ActionRibbon> {
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) {
-                  final buttonWidth =
-                      (constraints.maxWidth - gap * (visibleButtons - 1)) / visibleButtons;
+                  final availableWidth = constraints.maxWidth;
+
+                  // gap scales with screen size but stays reasonable
+                  final dynamicGap = (availableWidth * 0.03).clamp(8.0, 16.0);
+
+                  // reserve space for two buttons + gap
+                  final calculatedButtonWidth =
+                      ((availableWidth - dynamicGap) / 2) * 0.85;
+
+                  final groupWidth = visible.length == 2
+                      ? calculatedButtonWidth * 2 + dynamicGap
+                      : calculatedButtonWidth;
 
                   return ClipRect(
                     child: AnimatedSwitcher(
@@ -85,21 +99,30 @@ class _ActionRibbonState extends State<ActionRibbon> {
                           child: child,
                         );
                       },
-                      child: Row(
+                      child: SizedBox(
                         key: ValueKey(_offset),
-                        mainAxisAlignment: visible.length == 1
-                            ? MainAxisAlignment.center
-                            : MainAxisAlignment.start,
-                        children: [
-                          for (int i = 0; i < visible.length; i++) ...[
+                        width: double.infinity,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
                             SizedBox(
-                              width: buttonWidth,
-                              child: _button(visible[i]),
+                              width: groupWidth,
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  for (int i = 0; i < visible.length; i++) ...[
+                                    SizedBox(
+                                      width: calculatedButtonWidth,
+                                      child: _button(visible[i]),
+                                    ),
+                                    if (i < visible.length - 1)
+                                      SizedBox(width: dynamicGap),
+                                  ],
+                                ],
+                              ),
                             ),
-                            if (i < visible.length - 1)
-                              const SizedBox(width: gap),
                           ],
-                        ],
+                        ),
                       ),
                     ),
                   );
@@ -120,8 +143,19 @@ class _ActionRibbonState extends State<ActionRibbon> {
   }
 
   Widget _button(ActionItem action) {
-    if (action.customChild != null) return action.customChild!;
-
+    if (action.holdToConfirm) {
+      return HoldToConfirmButton(
+        outlined: true,
+        // ribbonStyle: true,
+        label: action.label,
+        icon: Icon(action.icon!),
+        baseColor: action.color,
+        progressColor: action.progressColor ?? action.color,
+        textColor: action.color,
+        holdDuration: action.holdDuration,
+        onConfirmed: action.onPressed!,
+      );
+    }
     return OutlinedButton(
       onPressed: action.onPressed,
       style: OutlinedButton.styleFrom(

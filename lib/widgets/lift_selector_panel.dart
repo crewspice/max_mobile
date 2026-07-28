@@ -55,20 +55,40 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
 
   bool get isLiftMode=>widget.lifts!=null;
 
+  double _scale = 1.0;
+
   @override
   void initState(){
     super.initState();
-    _serial=widget.initialText;
-    _inputController.text=_serial;
+    _serial = widget.initialText;
+    _inputController.text = _serial;
+
     if(!widget.readOnly){
       _inputController.addListener(_onInput);
       _focusNode.addListener((){
         setState((){
-          _showSuggestions=_focusNode.hasFocus&&!_liftSelected&&_serial.isNotEmpty;
+          _showSuggestions =
+              _focusNode.hasFocus &&
+              !_liftSelected &&
+              _serial.isNotEmpty;
         });
       });
     }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    _scale = (screenWidth / 390).clamp(0.85, 1.8);
+
     _syncLatitudes();
+  }
+
+  double _getScale(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    return (screenWidth / 390).clamp(0.85, 1.8);
   }
 
   void _onInput(){
@@ -117,8 +137,11 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
 
   void _syncLatitudes(){
     while(_latitudes.length<_serial.length){
-      _latitudes.add(_random.nextDouble()*10-5);
+      _latitudes.add(
+        (_random.nextDouble()*10-5) * _scale,
+      );
     }
+
     if(_latitudes.length>_serial.length){
       _latitudes.removeRange(_serial.length,_latitudes.length);
     }
@@ -131,19 +154,12 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     return (widget.serials??[]).where((s)=>s.toLowerCase().contains(q));
   }
 
-  double get selectorWidth {
+  double selectorWidth(BuildContext context) {
+    final scale = _getScale(context);
     if (_serial.isNotEmpty) {
-      return (_serial.length * 38) + 24;
+      return ((_serial.length * 38) + 24) * scale;
     }
-    const text = 'Enter Serial';
-    final painter = TextPainter(
-      text: TextSpan(
-        text: text,
-        style: TextStyle(color: widget.colors.border),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    return painter.width + 56; // generous horizontal padding
+    return MediaQuery.of(context).size.width * 0.40;
   }
 
   @override
@@ -184,6 +200,11 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
   @override
   Widget build(BuildContext context){
     final suggestionList=suggestions.toList();
+    final width = selectorWidth(context);
+    final scale = _getScale(context);
+    final selectorHeight = 50 * scale;
+    final ballSize = 32 * scale;
+    final characterSize = ballSize * 0.93;
 
     return Column(
       children:[
@@ -193,15 +214,15 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
               ? null
               : ()=>_focusNode.requestFocus(),
           child:SizedBox(
-            width:selectorWidth,
-            height:50,
+            width:width,
+            height:selectorHeight,
             child:Stack(
               alignment:Alignment.center,
               children:[
                 AnimatedContainer(
                   duration:const Duration(milliseconds:250),
-                  width:selectorWidth+20,
-                  height:60,
+                  width:width+20,
+                  height:selectorHeight * 1.2,
                   decoration:_serial.isEmpty
                       ? BoxDecoration(
                           borderRadius:BorderRadius.circular(16),
@@ -218,8 +239,8 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                       : const BoxDecoration(),
                 ),
                 Container(
-                  width:selectorWidth,
-                  height:50,
+                  width:width,
+                  height:selectorHeight,
                   decoration:BoxDecoration(
                     borderRadius:BorderRadius.circular(12),
                     color:_serial.isEmpty
@@ -246,7 +267,10 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                 duration:const Duration(milliseconds:1350),
                                 curve:Curves.elasticOut,
                                 builder:(context,value,child)=>Transform.translate(
-                                  offset:Offset(value*45,_latitudes[i]),
+                                  offset: Offset(
+                                    value * 45 * scale,
+                                    _latitudes[i] * scale,
+                                  ),
                                   child:Transform.rotate(angle:value*.15,child:child),
                                 ),
                                 child:Container(
@@ -256,8 +280,8 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                     children:[
                                       AnimatedContainer(
                                         duration:const Duration(milliseconds:250),
-                                        width:32,
-                                        height:32,
+                                        width:ballSize,
+                                        height:ballSize,
                                         decoration:BoxDecoration(
                                           color:widget.colors.ball,
                                           shape:BoxShape.circle,
@@ -275,12 +299,17 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                         ),
                                         child:Center(
                                           child:Transform.translate(
-                                            offset:const Offset(0,-4),
-                                            child:Text(
-                                              _serial[i],
-                                              style:GoogleFonts.knewave(
-                                                color:widget.colors.text,
-                                                fontSize:28,
+                                            offset: Offset(
+                                              0,
+                                              -ballSize * 0.12,
+                                            ),
+                                            child: MediaQuery.withNoTextScaling(
+                                              child: Text(
+                                                _serial[i],
+                                                style: GoogleFonts.knewave(
+                                                  color: widget.colors.text,
+                                                  fontSize: characterSize * .85,
+                                                ),
                                               ),
                                             ),
                                           ),

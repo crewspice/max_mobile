@@ -410,6 +410,29 @@ class _TruckViewState extends State<TruckView> {
     );
   }
 
+  Widget gradientText(String text) {
+    return ShaderMask(
+      shaderCallback: (bounds) {
+        return LinearGradient(
+          colors: [
+            AppColors.yellow,
+            AppColors.green,
+            AppColors.red,
+          ],
+        ).createShader(bounds);
+      },
+      child: Text(
+        text,
+        style: const TextStyle(
+          fontSize: 22,
+          fontWeight: FontWeight.bold,
+          color: Colors.white, // required for ShaderMask
+          letterSpacing: 2,
+        ),
+      ),
+    );
+  }
+
   Widget _buildLiftMarker(
     BuildContext context,
     InventoryItem item,
@@ -490,10 +513,7 @@ class _TruckViewState extends State<TruckView> {
 
         if (snapshot.hasError) {
           return Center(
-            child: Text(
-              'Error: ${snapshot.error}',
-              style: const TextStyle(color: AppColors.yellow),
-            ),
+            child: gradientText("No Truck"),
           );
         }
 
@@ -647,13 +667,8 @@ class _TruckViewState extends State<TruckView> {
 
                 Expanded(
                   child: inventory.isEmpty
-                      ? const Center(
-                          child: Text(
-                            "No inventory found",
-                            style: TextStyle(
-                              color: AppColors.yellow,
-                            ),
-                          ),
+                      ? Center(
+                          child: gradientText("No Inventory"),
                         )
                       : Padding(
                           padding: const EdgeInsets.symmetric(
