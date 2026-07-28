@@ -42,7 +42,7 @@ class _ActionRibbonState extends State<ActionRibbon> {
   bool _movingRight = true;
 
   static const double arrowWidth = 42;
-  static const int visibleButtons = 2;
+  int get visibleButtons => DeviceConfig.device == "iphone" ? 1 : 2;
 
   @override
   Widget build(BuildContext context) {

@@ -160,52 +160,52 @@ class _RepairCardState extends State<RepairCard> {
                 ),
             ),
             DeviceConfig.isIphone
-                ? Column(
-                    children: [
-                      Row(
-                        children: [
-                          const Text(
-                            'No Repair Needed',
-                            style: TextStyle(
-                              color: AppColors.red,
-                              fontSize: 13,
-                            ),
+                ? Column(children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Text(
+                          'No Repair Needed',
+                          style: TextStyle(
+                            color: AppColors.red,
+                            fontSize: 13,
                           ),
-                          Checkbox(
-                            value: _noRepairNeeded,
-                            activeColor: AppColors.red,
-                            checkColor: AppColors.mainBackground,
-                            onChanged: (value) {
-                              setState(() {
-                                _noRepairNeeded = value ?? false;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: HoldToConfirmButton(
-                          icon: const Icon(Icons.check),
-                          label: 'Resolve',
-                          baseColor: AppColors.main,
-                          textColor: AppColors.red,
-                          progressColor: AppColors.red,
-                          holdDuration: const Duration(seconds: 2),
-                          onConfirmed: () async {
-                            await ApiService().resolveMaintenanceAction(
-                              actionId: widget.action.actionId!,
-                              resolvedByInitial: widget.currentUserId,
-                              noRepairNeeded: _noRepairNeeded,
-                              repairNotes: _repairNotes ?? '',
-                            );
-
-                            widget.onResolved();
+                        ),
+                        Checkbox(
+                          value: _noRepairNeeded,
+                          activeColor: AppColors.red,
+                          checkColor: AppColors.mainBackground,
+                          onChanged: (value) {
+                            setState(() {
+                              _noRepairNeeded = value ?? false;
+                            });
                           },
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: HoldToConfirmButton(
+                        icon: const Icon(Icons.check),
+                        label: 'Resolve',
+                        baseColor: AppColors.main,
+                        textColor: AppColors.red,
+                        progressColor: AppColors.red,
+                        holdDuration: const Duration(seconds: 2),
+                        onConfirmed: () async {
+                          await ApiService().resolveMaintenanceAction(
+                            actionId: widget.action.actionId!,
+                            resolvedByInitial: widget.currentUserId,
+                            noRepairNeeded: _noRepairNeeded,
+                            repairNotes: _repairNotes ?? '',
+                          );
+
+                          widget.onResolved();
+                        },
                       ),
-                    ],
+                    ),
+                  ],
                   )
                 : Row(
                     children: [

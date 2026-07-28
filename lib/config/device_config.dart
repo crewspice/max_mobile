@@ -49,18 +49,18 @@ class DeviceConfig {
   }
 
 
-  static double actionButtonWidth(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
+  static double actionButtonWidth() {
+    switch (device) {
+      case "iphone":
+        return 105;
 
-    if (width >= 900) {
-      return 290; // iPad
+      case "ipad":
+        return 290;
+
+      case "moto_g":
+      default:
+        return 125;
     }
-
-    if (width < 400) {
-      return 95; // smaller iPhones
-    }
-
-    return 125; // Moto / larger phones
   }
 
   static double liftSelectorScale() {

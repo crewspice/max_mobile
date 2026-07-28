@@ -118,7 +118,7 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
                     label: widget.snapshot.needsAnnual == true
                         ? 'Annual'
                         : 'PM',
-                    textSize: DeviceConfig.isIphone ? 11 : 14,
+                    textSize: DeviceConfig.isIphone ? 10 : 14,
                     baseColor: AppColors.main,
                     textColor: AppColors.yellow,
                     progressColor: AppColors.yellow,

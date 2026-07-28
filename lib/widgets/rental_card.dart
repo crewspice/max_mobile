@@ -447,18 +447,7 @@ class _RentalCardState extends State<RentalCard> {
     // CALLED OFF → show Complete + See Photo
     else if (widget.stop.status == "Called Off" ||
             widget.stop.status == "Active") {
-
-      actions.add(
-        ActionItem(
-          label: "See Photo",
-          icon: Icons.photo,
-          color: elementColor,
-          onPressed: () => _showRentalPhoto(context),
-        ),
-      );
-
       if (!widget.unassignedView) {
-
         actions.add(
           ActionItem(
             label: "Complete",
@@ -472,10 +461,28 @@ class _RentalCardState extends State<RentalCard> {
 
         actions.add(
           ActionItem(
+            label: "See Photo",
+            icon: Icons.photo,
+            color: elementColor,
+            onPressed: () => _showRentalPhoto(context),
+          ),
+        );
+
+        actions.add(
+          ActionItem(
             label: "Cancel",
             icon: Icons.block,
             color: elementColor,
             onPressed: () => _showCancelDialog(context),
+          ),
+        );
+      } else {
+        actions.add(
+          ActionItem(
+            label: "See Photo",
+            icon: Icons.photo,
+            color: elementColor,
+            onPressed: () => _showRentalPhoto(context),
           ),
         );
       }
