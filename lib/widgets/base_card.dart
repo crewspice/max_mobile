@@ -7,6 +7,7 @@ import '../widgets/hold_to_confirm_button.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../config/device_config.dart';
 
 class BaseCard extends StatelessWidget {
   final Stop stop;
@@ -561,21 +562,29 @@ class BaseCard extends StatelessWidget {
                                                   color: elementColor,
                                                 ),
                                               )), 
-                                        if (stop.orderedByContactPhone != null)
-                                          Transform.translate(
-                                            offset: const Offset(-6, -10),
-                                            child: GestureDetector(
-                                              onTap: () => _launchDialer(
-                                                  context,
-                                                  stop.orderedByContactPhone!,),
-                                              child: Image.asset(
-                                                'assets/calling-off.png',
-                                                width: 28,
-                                                height: 28,
-                                                color: elementColor,
-                                              ),
-                                            ),
-                                          ),
+                                              if (stop.orderedByContactPhone != null)
+                                                DeviceConfig.isIpad
+                                                    ? Text(
+                                                        stop.orderedByContactPhone!,
+                                                        style: TextStyle(
+                                                          color: elementColor,
+                                                        ),
+                                                      )
+                                                    : Transform.translate(
+                                                        offset: const Offset(-6, -10),
+                                                        child: GestureDetector(
+                                                          onTap: () => _launchDialer(
+                                                            context,
+                                                            stop.orderedByContactPhone!,
+                                                          ),
+                                                          child: Image.asset(
+                                                            'assets/calling-off.png',
+                                                            width: 28,
+                                                            height: 28,
+                                                            color: elementColor,
+                                                          ),
+                                                        ),
+                                                      ),
                                       ],
                                     ),
                                   ],
@@ -603,20 +612,28 @@ class BaseCard extends StatelessWidget {
                                                 ),
                                               )), 
                                         if (stop.siteContactPhone != null)
-                                          Transform.translate(
-                                            offset: const Offset(-6, -10),
-                                            child: GestureDetector(
-                                              onTap: () => _launchDialer(
-                                                  context,
-                                                  stop.siteContactPhone!,),
-                                              child: Image.asset(
-                                                'assets/calling-off.png',
-                                                width: 28,
-                                                height: 28,
-                                                color: elementColor,
-                                              ),
-                                            ),
-                                          ),
+                                          DeviceConfig.isIpad
+                                              ? Text(
+                                                  stop.siteContactPhone!,
+                                                  style: TextStyle(
+                                                    color: elementColor,
+                                                  ),
+                                                )
+                                              : Transform.translate(
+                                                  offset: const Offset(-6, -10),
+                                                  child: GestureDetector(
+                                                    onTap: () => _launchDialer(
+                                                      context,
+                                                      stop.siteContactPhone!,
+                                                    ),
+                                                    child: Image.asset(
+                                                      'assets/calling-off.png',
+                                                      width: 28,
+                                                      height: 28,
+                                                      color: elementColor,
+                                                    ),
+                                                  ),
+                                                ),
                                       ],
                                     ),
                                   ],
