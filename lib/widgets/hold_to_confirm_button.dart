@@ -4,23 +4,25 @@ import '../theme/app_colors.dart';
 class HoldToConfirmButton extends StatefulWidget {
   final VoidCallback onConfirmed;
   final String label;
-  final Icon icon;
+  final Icon? icon;
   final Duration holdDuration;
   final Color baseColor;
   final Color progressColor;
   final Color textColor;
   final bool outlined;
+  final double textSize;
 
   const HoldToConfirmButton({
     super.key,
     required this.onConfirmed,
     required this.label,
-    required this.icon,
+    this.icon,
     required this.baseColor,
     required this.progressColor,
     required this.textColor,
     this.holdDuration = const Duration(seconds: 2),
     this.outlined = false,
+    this.textSize = 14,
   });
 
   @override
@@ -94,36 +96,54 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        IconTheme(
-                          data: IconThemeData(color: widget.textColor),
-                          child: widget.icon,
-                        ),
-                        const SizedBox(width: 6),
+                        if (widget.icon != null) ...[
+                          IconTheme(
+                            data: IconThemeData(color: widget.textColor),
+                            child: widget.icon!,
+                          ),
+                          const SizedBox(width: 6),
+                        ],
                         Flexible(
                           child: Text(
                             widget.label,
                             maxLines: 1,
                             softWrap: false,
                             overflow: TextOverflow.fade, // or ellipsis
-                            style: TextStyle(color: widget.textColor),
+                            style: TextStyle(color: widget.textColor, fontSize: widget.textSize,),
                           ),
                         ),
                       ],
                     ),
                   )
-                  : ElevatedButton.icon(
-                      icon: IconTheme(
-                        data: IconThemeData(color: widget.textColor),
-                        child: widget.icon,
-                      ),
-                      label: Text(
-                        widget.label,
-                        style: TextStyle(color: widget.textColor),
-                      ),
+                  : ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: widget.baseColor,
                       ),
                       onPressed: () {},
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (widget.icon != null) ...[
+                            IconTheme(
+                              data: IconThemeData(color: widget.textColor),
+                              child: widget.icon!,
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Flexible(
+                            child: Text(
+                              widget.label,
+                              maxLines: 1,
+                              softWrap: false,
+                              overflow: TextOverflow.fade,
+                              style: TextStyle(
+                                color: widget.textColor,
+                                fontSize: widget.textSize,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
             ),
             Positioned.fill(

@@ -11,6 +11,7 @@ import '../theme/app_colors.dart';
 import 'lift_selector_panel.dart';
 import '../models/lift.dart';
 import 'action_ribbon.dart';
+import '../config/device_config.dart';
 
 class RentalCard extends StatefulWidget {
   final Stop stop;
@@ -341,51 +342,53 @@ class _RentalCardState extends State<RentalCard> {
             : (widget.stop.status == "Upcoming"
                 ? AppColors.yellow
                 : AppColors.red);
+    // --- Serial input field ---
+    Widget serialInput = Container();
 
-                    // --- Serial input field ---
-                Widget serialInput = Container();
-
-                if (requiresSerial && !widget.completedView && !widget.unassignedView) {
-                  serialInput = Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6.0),
-                    child: Center(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        child: LiftSelectorPanel(
-                          serials: null,
-                          initialText: widget.serialController.text,
-                          onChanged: (serial) {
-                            widget.serialController.text = serial;
-                          },
-                        ),
-                      ),
-                    ),
-                  );
-                } else if (
-                  !requiresSerial &&
-                  widget.stop.status != "Upcoming"
-                ) {
-                  serialInput = Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 6.0),
-                    child: Center(
-                      child: SizedBox(
-                        width: MediaQuery.of(context).size.width * 0.8,
-                        child: LiftSelectorPanel(
-                  initialText: widget.stop.serialNumber ?? '',
-                  readOnly: true,
-                  colors: LiftSelectorColorScheme(
-                    ball: elementColor,
-                    border: elementColor,
-                    selectedBorder: elementColor,
-                    shadow: AppColors.main,
-                    text: AppColors.mainBackground,
-                  ),
-                  onChanged: (_) {},
-                ),
+    if (requiresSerial && !widget.completedView && !widget.unassignedView) {
+      serialInput = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: Transform.scale(
+              scale: DeviceConfig.liftSelectorScale(),
+              child: LiftSelectorPanel(
+                serials: null,
+                initialText: widget.serialController.text,
+                onChanged: (serial) {
+                  widget.serialController.text = serial;
+                },
               ),
             ),
-          );
-        }
+          ),
+        ),
+      );
+    } else if (!requiresSerial && widget.stop.status != "Upcoming") {
+      serialInput = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: Transform.scale(
+              scale: DeviceConfig.liftSelectorScale(),
+              child: LiftSelectorPanel(
+                initialText: widget.stop.serialNumber ?? '',
+                readOnly: true,
+                colors: LiftSelectorColorScheme(
+                  ball: elementColor,
+                  border: elementColor,
+                  selectedBorder: elementColor,
+                  shadow: AppColors.main,
+                  text: AppColors.mainBackground,
+                ),
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
+    }
 
     // --- Action buttons ---
     List<ActionItem> actions = [];

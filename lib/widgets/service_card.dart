@@ -10,6 +10,7 @@ import '../theme/app_colors.dart';
 import 'hold_to_confirm_button.dart';
 import 'lift_selector_panel.dart';
 import 'action_ribbon.dart';
+import '../config/device_config.dart';
 
 class ServiceCard extends StatefulWidget {
   final Stop stop;
@@ -47,7 +48,7 @@ class _ServiceCardState extends State<ServiceCard> {
       _stop = widget.stop;
     }
   }
-  
+
   bool _requiresSerial(String serviceType) {
     return serviceType == "Change Out" ||
         serviceType == "Service Change Out";
@@ -383,33 +384,35 @@ class _ServiceCardState extends State<ServiceCard> {
     }
 
     Widget serialInput = Container();
+
     if (!widget.completedView && requiresSerial && !widget.unassignedView) {
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 0.0),
         child: Center(
           child: SizedBox(
             width: MediaQuery.of(context).size.width * 0.8,
-            child: LiftSelectorPanel(
-              initialText: _serial,
-              colors: const LiftSelectorColorScheme(
-                ball: AppColors.green,
-                border: AppColors.green,
-                selectedBorder: AppColors.yellow,
-                shadow: AppColors.yellow,
-                text: AppColors.mainBackground,
+            child: Transform.scale(
+              scale: DeviceConfig.liftSelectorScale(),
+              child: LiftSelectorPanel(
+                initialText: _serial,
+                colors: const LiftSelectorColorScheme(
+                  ball: AppColors.green,
+                  border: AppColors.green,
+                  selectedBorder: AppColors.yellow,
+                  shadow: AppColors.yellow,
+                  text: AppColors.mainBackground,
+                ),
+                onChanged: (serial) {
+                  setState(() {
+                    _serial = serial;
+                  });
+                },
               ),
-              onChanged: (serial) {
-                setState(() {
-                  _serial = serial;
-                });
-              },
             ),
           ),
         ),
       );
     }
-
-
     // --- Content setup (unchanged) ---
     Widget content = const SizedBox.shrink();
 

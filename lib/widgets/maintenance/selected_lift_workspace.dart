@@ -9,6 +9,7 @@ import 'mode_selector_row.dart';
 import 'snapshot_panel.dart';
 import 'issue_entry_card.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../config/device_config.dart';
 
 
 class SelectedLiftWorkspace extends StatefulWidget {
@@ -109,64 +110,75 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
             const SizedBox(height: 6),
 
             Row(
-                children: [
+              children: [
 
                 Expanded(
-                    child: HoldToConfirmButton(
-                    icon: const Icon(Icons.check),
+                  child: HoldToConfirmButton(
+                    icon: !DeviceConfig.isIpad ? null : const Icon(Icons.check),
                     label: widget.snapshot.needsAnnual == true
                         ? 'Annual'
                         : 'PM',
+                    textSize: DeviceConfig.isIphone ? 11 : 14,
                     baseColor: AppColors.main,
                     textColor: AppColors.yellow,
                     progressColor: AppColors.yellow,
                     holdDuration: const Duration(seconds: 2),
                     onConfirmed: _submitPm,
-                    ),
+                  ),
                 ),
 
                 const SizedBox(width: 8),
 
                 Expanded(
-                    child: ElevatedButton(
+                  child: ElevatedButton(
                     onPressed: () {
-                        widget.ui.selectRecord(RecordMode.repair);
+                      widget.ui.selectRecord(RecordMode.repair);
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            widget.ui.selectedRecord == RecordMode.repair
-                                ? AppColors.yellow
-                                : AppColors.main,
-                        foregroundColor:
-                            widget.ui.selectedRecord == RecordMode.repair
-                                ? AppColors.main
-                                : AppColors.yellow,
+                      backgroundColor:
+                          widget.ui.selectedRecord == RecordMode.repair
+                              ? AppColors.yellow
+                              : AppColors.main,
+                      foregroundColor:
+                          widget.ui.selectedRecord == RecordMode.repair
+                              ? AppColors.main
+                              : AppColors.yellow,
                     ),
-                    child: const Text('Repair'),
+                    child: Text(
+                      'Repair',
+                      style: TextStyle(
+                        fontSize: DeviceConfig.isIphone ? 11 : 14,
+                      ),
                     ),
+                  ),
                 ),
 
                 const SizedBox(width: 8),
 
                 Expanded(
-                    child: ElevatedButton(
+                  child: ElevatedButton(
                     onPressed: () {
-                        widget.ui.selectRecord(RecordMode.issue);
+                      widget.ui.selectRecord(RecordMode.issue);
                     },
                     style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            widget.ui.selectedRecord == RecordMode.issue
-                                ? AppColors.yellow
-                                : AppColors.main,
-                        foregroundColor:
-                            widget.ui.selectedRecord == RecordMode.issue
-                                ? AppColors.main
-                                : AppColors.yellow,
+                      backgroundColor:
+                          widget.ui.selectedRecord == RecordMode.issue
+                              ? AppColors.yellow
+                              : AppColors.main,
+                      foregroundColor:
+                          widget.ui.selectedRecord == RecordMode.issue
+                              ? AppColors.main
+                              : AppColors.yellow,
                     ),
-                    child: const Text('Issue'),
+                    child: Text(
+                      'Issue',
+                      style: TextStyle(
+                        fontSize: DeviceConfig.isIphone ? 11 : 14,
+                      ),
                     ),
+                  ),
                 ),
-                ],
+              ],
             ),
 
             if (widget.ui.selectedRecord == RecordMode.issue)

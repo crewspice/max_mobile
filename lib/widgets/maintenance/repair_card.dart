@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../hold_to_confirm_button.dart';
 import '../ornate_card.dart';
 import 'maintenance_dialogs.dart';
+import '../../config/device_config.dart';
 
 class RepairCard extends StatefulWidget {
   final LiftMaintenanceHistoryItem action;
@@ -158,53 +159,96 @@ class _RepairCardState extends State<RepairCard> {
                     ],
                 ),
             ),
+            DeviceConfig.isIphone
+                ? Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'No Repair Needed',
+                            style: TextStyle(
+                              color: AppColors.red,
+                              fontSize: 13,
+                            ),
+                          ),
+                          Checkbox(
+                            value: _noRepairNeeded,
+                            activeColor: AppColors.red,
+                            checkColor: AppColors.mainBackground,
+                            onChanged: (value) {
+                              setState(() {
+                                _noRepairNeeded = value ?? false;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: HoldToConfirmButton(
+                          icon: const Icon(Icons.check),
+                          label: 'Resolve',
+                          baseColor: AppColors.main,
+                          textColor: AppColors.red,
+                          progressColor: AppColors.red,
+                          holdDuration: const Duration(seconds: 2),
+                          onConfirmed: () async {
+                            await ApiService().resolveMaintenanceAction(
+                              actionId: widget.action.actionId!,
+                              resolvedByInitial: widget.currentUserId,
+                              noRepairNeeded: _noRepairNeeded,
+                              repairNotes: _repairNotes ?? '',
+                            );
 
-            Row(
-              children: [
+                            widget.onResolved();
+                          },
+                        ),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      const Text(
+                        'No Repair Needed',
+                        style: TextStyle(
+                          color: AppColors.red,
+                          fontSize: 13,
+                        ),
+                      ),
+                      Checkbox(
+                        value: _noRepairNeeded,
+                        activeColor: AppColors.red,
+                        checkColor: AppColors.mainBackground,
+                        onChanged: (value) {
+                          setState(() {
+                            _noRepairNeeded = value ?? false;
+                          });
+                        },
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: HoldToConfirmButton(
+                          icon: const Icon(Icons.check),
+                          label: 'Resolve',
+                          baseColor: AppColors.main,
+                          textColor: AppColors.red,
+                          progressColor: AppColors.red,
+                          holdDuration: const Duration(seconds: 2),
+                          onConfirmed: () async {
+                            await ApiService().resolveMaintenanceAction(
+                              actionId: widget.action.actionId!,
+                              resolvedByInitial: widget.currentUserId,
+                              noRepairNeeded: _noRepairNeeded,
+                              repairNotes: _repairNotes ?? '',
+                            );
 
-                const Text(
-                  'No Repair Needed',
-                  style: TextStyle(
-                    color: AppColors.red,
-                    fontSize: 13,
+                            widget.onResolved();
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-
-                Checkbox(
-                  value: _noRepairNeeded,
-                  activeColor: AppColors.red,
-                  checkColor: AppColors.mainBackground,
-                  onChanged: (value) {
-                    setState(() {
-                      _noRepairNeeded = value ?? false;
-                    });
-                  },
-                ),
-
-                const SizedBox(width: 12),
-
-                Expanded(
-                  child: HoldToConfirmButton(
-                    icon: const Icon(Icons.check),
-                    label: 'Resolve',
-                    baseColor: AppColors.main,
-                    textColor: AppColors.red,
-                    progressColor: AppColors.red,
-                    holdDuration: const Duration(seconds: 2),
-                    onConfirmed: () async {
-                      await ApiService().resolveMaintenanceAction(
-                        actionId: widget.action.actionId!,
-                        resolvedByInitial: widget.currentUserId,
-                        noRepairNeeded: _noRepairNeeded,
-                        repairNotes: _repairNotes ?? '',
-                      );
-
-                      widget.onResolved();
-                    },
-                  ),
-                ),
-              ],
-            ),
           ],
         ),
       ),

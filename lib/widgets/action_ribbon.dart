@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'hold_to_confirm_button.dart';
+import '../config/device_config.dart';
 
 class ActionItem {
   final String label;
@@ -24,13 +25,11 @@ class ActionItem {
 
 class ActionRibbon extends StatefulWidget {
   final List<ActionItem> actions;
-  final double buttonWidth;
   final Color color;
 
   const ActionRibbon({
     super.key,
     required this.actions,
-    this.buttonWidth = 125,
     required this.color,
   });
 
@@ -73,7 +72,7 @@ class _ActionRibbonState extends State<ActionRibbon> {
 
                   // reserve space for two buttons + gap
                   final calculatedButtonWidth =
-                      ((availableWidth - dynamicGap) / 2) * 0.85;
+                      DeviceConfig.actionButtonWidth(context);
 
                   final groupWidth = visible.length == 2
                       ? calculatedButtonWidth * 2 + dynamicGap
