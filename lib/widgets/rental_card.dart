@@ -354,6 +354,7 @@ class _RentalCardState extends State<RentalCard> {
             child: Transform.scale(
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
+                emptyTextSize: 18,
                 serials: null,
                 initialText: widget.serialController.text,
                 onChanged: (serial) {
@@ -373,6 +374,7 @@ class _RentalCardState extends State<RentalCard> {
             child: Transform.scale(
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
+                emptyTextSize: 18, 
                 initialText: widget.stop.serialNumber ?? '',
                 readOnly: true,
                 colors: LiftSelectorColorScheme(

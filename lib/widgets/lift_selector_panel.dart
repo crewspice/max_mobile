@@ -22,6 +22,7 @@ class LiftSelectorPanel extends StatefulWidget {
   final ValueChanged<Lift>? onLiftSelected;
   final LiftSelectorColorScheme colors;
   final bool readOnly;
+  final double emptyTextSize;
 
   const LiftSelectorPanel({
     super.key,
@@ -31,6 +32,7 @@ class LiftSelectorPanel extends StatefulWidget {
     required this.onChanged,
     this.onLiftSelected,
     this.readOnly=false,
+    this.emptyTextSize = 14,
     this.colors=const LiftSelectorColorScheme(
       ball:AppColors.yellow,
       border:AppColors.yellow,
@@ -252,9 +254,14 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                   ),
                   child:_serial.isEmpty
                       ? Center(
-                          child:Text(
-                            'Enter Serial',
-                            style:TextStyle(color:widget.colors.border),
+                          child: MediaQuery.withNoTextScaling(
+                            child: Text(
+                              'Enter Serial',
+                              style: TextStyle(
+                                color: widget.colors.border,
+                                fontSize: widget.emptyTextSize,
+                              ),
+                            ),
                           ),
                         )
                       : Row(

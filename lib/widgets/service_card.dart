@@ -395,6 +395,7 @@ class _ServiceCardState extends State<ServiceCard> {
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
                 initialText: _serial,
+                emptyTextSize: 18, 
                 colors: const LiftSelectorColorScheme(
                   ball: AppColors.green,
                   border: AppColors.green,

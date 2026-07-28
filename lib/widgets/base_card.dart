@@ -26,14 +26,24 @@ class BaseCard extends StatelessWidget {
     this.completedView = false,
   }) : super(key: key);
 
-
-  Future<void> _launchDialer(String phone) async {
+  Future<void> _launchDialer(BuildContext context, String phone) async {
     if (phone.trim().isEmpty) return;
+
     final url = 'tel:$phone';
+
     if (await canLaunchUrlString(url)) {
-      await launchUrlString(url, mode: LaunchMode.externalApplication);
+      await launchUrlString(
+        url,
+        mode: LaunchMode.externalApplication,
+      );
     } else {
       debugPrint('Could not launch dialer for: $phone');
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Call: $phone'),
+        ),
+      );
     }
   }
 
@@ -556,7 +566,8 @@ class BaseCard extends StatelessWidget {
                                             offset: const Offset(-6, -10),
                                             child: GestureDetector(
                                               onTap: () => _launchDialer(
-                                                  stop.orderedByContactPhone!),
+                                                  context,
+                                                  stop.orderedByContactPhone!,),
                                               child: Image.asset(
                                                 'assets/calling-off.png',
                                                 width: 28,
@@ -596,7 +607,8 @@ class BaseCard extends StatelessWidget {
                                             offset: const Offset(-6, -10),
                                             child: GestureDetector(
                                               onTap: () => _launchDialer(
-                                                  stop.siteContactPhone!),
+                                                  context,
+                                                  stop.siteContactPhone!,),
                                               child: Image.asset(
                                                 'assets/calling-off.png',
                                                 width: 28,

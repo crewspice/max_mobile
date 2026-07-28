@@ -53,7 +53,7 @@ class DeviceConfig {
     final width = MediaQuery.of(context).size.width;
 
     if (width >= 900) {
-      return 145; // iPad
+      return 290; // iPad
     }
 
     if (width < 400) {
