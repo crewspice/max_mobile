@@ -169,14 +169,18 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
       child: ElevatedButton(
         onPressed: () => widget.onToggle(button.value),
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              active ? AppColors.yellow : AppColors.main,
-          foregroundColor:
-              active ? AppColors.main : AppColors.yellow,
+          backgroundColor: AppColors.main,
+          foregroundColor: AppColors.yellow,
           elevation: 0,
           padding: const EdgeInsets.symmetric(
             horizontal: 8,
             vertical: 12,
+          ),
+          side: BorderSide(
+            color: active
+                ? AppColors.yellow
+                : AppColors.yellow.withOpacity(.35),
+            width: active ? 2 : 1,
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),

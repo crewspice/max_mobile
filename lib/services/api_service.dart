@@ -356,24 +356,47 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> fetchDriverStatistics(String driverId) async {
-    final response = await http.get(Uri.parse('$userUrl/driver-stats'));
+  Future<Map<String, dynamic>> fetchUserStatistics(
+    String userInitial, {
+    int? year,
+    int? month,
+  }) async {
 
-    if (response.statusCode != 200) {
-      throw Exception('Failed to load driver statistics');
+    final String endpoint;
+
+    if (year != null && month != null) {
+      endpoint = '$userUrl/stats/month/$year/$month';
+    } else {
+      endpoint = '$userUrl/stats/current';
     }
 
-    List<dynamic> statsList = jsonDecode(utf8.decode(response.bodyBytes));
+    final response = await http.get(Uri.parse(endpoint));
 
-    // Find stats for the selected driver
-    final driverData = statsList.firstWhere(
-      (item) => item['driver'] == driverId,
-      orElse: () => {"driver": driverId, "driverSeconds": 0, "monthTotalSeconds": 0},
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load user statistics');
+    }
+
+    List<dynamic> statsList =
+        jsonDecode(utf8.decode(response.bodyBytes));
+
+
+    final userData = statsList.firstWhere(
+      (item) => item['userInitial'] == userInitial,
+      orElse: () => {
+        "userName": "",
+        "userInitial": userInitial,
+        "driveSeconds": 0,
+        "driveTotalSeconds": 0,
+        "pmChecks": 0,
+        "pmTotalChecks": 0,
+        "repairs": 0,
+        "repairTotal": 0,
+      },
     );
 
-    return driverData;
+    return userData;
   }
-  
+    
   Future<bool> updateRentalNotes({
     required int rentalItemId,
     required String notes,

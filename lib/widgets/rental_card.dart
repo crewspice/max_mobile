@@ -38,6 +38,15 @@ class RentalCard extends StatefulWidget {
 
 class _RentalCardState extends State<RentalCard> {
 
+  @override
+  void didUpdateWidget(RentalCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.stop.id != widget.stop.id) {
+      setState(() {});
+    }
+  }
+
   Future<File?> _pickImage({bool camera = true}) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
@@ -365,6 +374,34 @@ class _RentalCardState extends State<RentalCard> {
           ),
         ),
       );
+    } else if (widget.completedView &&
+        widget.stop.status == "Upcoming" &&
+        (widget.stop.serialNumber ?? '').isNotEmpty) {
+      // Completed delivery — serial number stamped by the driver at delivery time.
+      serialInput = Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Center(
+          child: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.8,
+            child: Transform.scale(
+              scale: DeviceConfig.liftSelectorScale(),
+              child: LiftSelectorPanel(
+                emptyTextSize: 18,
+                initialText: widget.stop.serialNumber ?? '',
+                readOnly: true,
+                colors: LiftSelectorColorScheme(
+                  ball: elementColor,
+                  border: elementColor,
+                  selectedBorder: elementColor,
+                  shadow: AppColors.main,
+                  text: AppColors.mainBackground,
+                ),
+                onChanged: (_) {},
+              ),
+            ),
+          ),
+        ),
+      );
     } else if (!requiresSerial && widget.stop.status != "Upcoming") {
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -374,7 +411,7 @@ class _RentalCardState extends State<RentalCard> {
             child: Transform.scale(
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
-                emptyTextSize: 18, 
+                emptyTextSize: 18,
                 initialText: widget.stop.serialNumber ?? '',
                 readOnly: true,
                 colors: LiftSelectorColorScheme(

@@ -181,17 +181,6 @@ class _UserSelectionScreenState
     );
   }
 
-  void _openAssignments(String userId) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => RentalListView(
-          driverId: userId,
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -314,7 +303,6 @@ class _UserSelectionScreenState
                               false,
                             );
                           },
-                          onAssignmentTap: _openAssignments,
                         ),
 
                         NonDriverOrbitSelector(

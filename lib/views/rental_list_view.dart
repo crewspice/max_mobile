@@ -27,7 +27,7 @@ class RentalListView extends StatefulWidget {
 class _RentalListViewState extends State<RentalListView> {
   late Future<List<Stop>> futureStops;
   List<Stop> stops = [];
-  List<TextEditingController> serialControllers = [];
+  Map<int, TextEditingController> serialControllers = {};
 
   @override
   void initState() {
@@ -51,7 +51,7 @@ class _RentalListViewState extends State<RentalListView> {
 
   @override
   void dispose() {
-    for (var controller in serialControllers) {
+    for (var controller in serialControllers.values) {
       controller.dispose();
     }
     super.dispose();
@@ -71,6 +71,15 @@ class _RentalListViewState extends State<RentalListView> {
     
   Future<void> _refreshRentals() async {
     final result = await _fetchStopsForDriverWithFallback(widget.driverId);
+
+    setState(() {
+      stops = [];
+      serialControllers.clear();
+    });
+
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    if (!mounted) return;
 
     setState(() {
       stops = result;
@@ -199,12 +208,16 @@ class _RentalListViewState extends State<RentalListView> {
             );
           }
 
-          if (serialControllers.length != stops.length) {
-            serialControllers = List.generate(
-              stops.length,
-              (_) => TextEditingController(),
+          for (final stop in stops) {
+            serialControllers.putIfAbsent(
+              stop.id,
+              () => TextEditingController(),
             );
           }
+
+          serialControllers.removeWhere(
+            (id, controller) => !stops.any((s) => s.id == id),
+          );
 
           return RefreshIndicator(
             color: AppColors.main,
@@ -217,8 +230,9 @@ class _RentalListViewState extends State<RentalListView> {
 
                 if (stop.type == 'RENTAL') {
                   return RentalCard(
+                    key: ValueKey(stop.id),
                     stop: stop,
-                    serialController: serialControllers[index],
+                    serialController: serialControllers[stop.id]!,
                     completedView: widget.completed,
                     unassignedView: widget.unassigned,
                     onRefresh: _refreshRentals,
@@ -232,6 +246,7 @@ class _RentalListViewState extends State<RentalListView> {
 
                 if (stop.type == 'SERVICE') {
                   return ServiceCard(
+                    key: ValueKey(stop.id),
                     stop: stop,
                     onRefresh: _refreshRentals,
                     completedView: widget.completed,
@@ -241,6 +256,7 @@ class _RentalListViewState extends State<RentalListView> {
 
                 if (stop.liftType == 'HQ') {
                   return BaseCard(
+                    key: ValueKey(stop.id),
                     stop: stop,
                     onRefresh: _refreshRentals,
                     completedView: widget.completed,

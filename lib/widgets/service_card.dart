@@ -440,6 +440,68 @@ class _ServiceCardState extends State<ServiceCard> {
       ),
     );
 
+    // Completed Change Out / Service Change Out stops carry the old and new
+    // serials joined by a colon (stamped server-side at completion time, e.g.
+    // "6742:6749"). Once completed, split that pair into two read-only panels
+    // stacked with a label between them instead of the single serialSelector.
+    Widget buildSerialPanel(String text) {
+      return SizedBox(
+        width: MediaQuery.of(context).size.width * 0.8,
+        child: Transform.scale(
+          scale: DeviceConfig.liftSelectorScale(),
+          child: LiftSelectorPanel(
+            emptyTextSize: 18,
+            initialText: text,
+            readOnly: true,
+            colors: const LiftSelectorColorScheme(
+              ball: AppColors.green,
+              border: AppColors.green,
+              selectedBorder: AppColors.green,
+              shadow: AppColors.main,
+              text: AppColors.mainBackground,
+            ),
+            onChanged: (_) {},
+          ),
+        ),
+      );
+    }
+
+    Widget buildDoubleSerialSelector({
+      required String oldSerial,
+      required String newSerial,
+      required String label,
+    }) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Center(
+          child: Column(
+            children: [
+              buildSerialPanel(oldSerial),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6.0),
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.green,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              buildSerialPanel(newSerial),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final String rawSerial = _stop.serialNumber ?? '';
+    final int colonIndex = rawSerial.indexOf(':');
+    final bool hasSerialPair = widget.completedView && colonIndex != -1;
+    final String oldSerial = hasSerialPair ? rawSerial.substring(0, colonIndex) : '';
+    final String newSerial = hasSerialPair ? rawSerial.substring(colonIndex + 1) : '';
+
     // --- Content setup (unchanged) ---
     Widget content = const SizedBox.shrink();
 
@@ -451,27 +513,35 @@ class _ServiceCardState extends State<ServiceCard> {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          serialSelector,
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                'to: ',
-                style: TextStyle(
-                  fontSize: 20,
-                  color: AppColors.green,
+          if (hasSerialPair)
+            buildDoubleSerialSelector(
+              oldSerial: oldSerial,
+              newSerial: newSerial,
+              label: "to ${_stop.newLiftType}: ",
+            )
+          else ...[
+            serialSelector,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'to: ',
+                  style: TextStyle(
+                    fontSize: 20,
+                    color: AppColors.green,
+                  ),
                 ),
-              ),
-              Text(
-                _stop.newLiftType!,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.green,
+                Text(
+                  _stop.newLiftType!,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.green,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
 
           if (_stop.reason != null && _stop.reason != "")
             Text(
@@ -488,7 +558,14 @@ class _ServiceCardState extends State<ServiceCard> {
       content = Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          serialSelector,
+          if (hasSerialPair)
+            buildDoubleSerialSelector(
+              oldSerial: oldSerial,
+              newSerial: newSerial,
+              label: "to: ",
+            )
+          else
+            serialSelector,
           if (_stop.reason != null && _stop.reason != "")
             SizedBox(
               width: double.infinity,

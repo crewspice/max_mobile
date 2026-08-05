@@ -3,7 +3,7 @@ import 'rental_list_view.dart';
 import 'maintenance_view.dart';
 import 'maintenance_view.dart';
 import 'truck_view.dart';
-import 'driver_statistics_screen.dart';
+import 'user_statistics_screen.dart';
 import 'user_selection_screen.dart';
 import 'completed_stops_screen.dart';
 import 'menu_screen.dart';
@@ -38,6 +38,7 @@ class _HomeScreenState extends State<HomeScreen> {
       MaterialPageRoute(
         builder: (_) => MenuScreen(
           currentUserId: widget.currentUserId,
+          maintenanceOnly: widget.maintenanceOnly,
         ),
       ),
     );

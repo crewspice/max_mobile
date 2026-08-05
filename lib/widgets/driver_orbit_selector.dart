@@ -11,13 +11,10 @@ class DriverOrbitSelector extends StatefulWidget {
     String truckId,
   ) onUserTap;
 
-  final void Function(String userId) onAssignmentTap;
-
   const DriverOrbitSelector({
     super.key,
     required this.users,
     required this.onUserTap,
-    required this.onAssignmentTap,
   });
 
   @override
@@ -149,9 +146,6 @@ class _DriverOrbitSelectorState
                           user['truckId'].toString(),
                         );
                       },
-                      onAssignmentTap: () {
-                        widget.onAssignmentTap(user['initial']);
-                      },
                     ),
                   ),
                 ),
@@ -199,7 +193,6 @@ class _DriverOrbitSelectorState
                         user['truckId'].toString(),
                       );
                     },
-                    onAssignmentTap: () {},
                   ),
                 ),
               );
@@ -224,14 +217,12 @@ class _DriverNode extends StatelessWidget {
   final Color accentColor;
 
   final VoidCallback onTap;
-  final VoidCallback onAssignmentTap;
 
   const _DriverNode({
     required this.user,
     required this.uiScale,
     required this.accentColor,
     required this.onTap,
-    required this.onAssignmentTap,
   });
 
   @override
@@ -309,17 +300,13 @@ class _DriverNode extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    GestureDetector(
-                      onTap:
-                          hasRoute ? onAssignmentTap : null,
-                      child: Opacity(
-                        opacity: hasRoute ? 1 : 0.25,
-                        child: Image.asset(
-                          'assets/assignment.png',
-                          width: 34 * uiScale,
-                          height: 34 * uiScale,
-                          color: accentColor,
-                        ),
+                    Opacity(
+                      opacity: hasRoute ? 1 : 0.25,
+                      child: Image.asset(
+                        'assets/assignment.png',
+                        width: 34 * uiScale,
+                        height: 34 * uiScale,
+                        color: accentColor,
                       ),
                     ),
                   ],

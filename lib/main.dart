@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 import 'views/user_selection_screen.dart';
-import 'views/driver_statistics_screen.dart';
+import 'views/user_statistics_screen.dart';
 import 'theme/app_colors.dart';
 
 /// Background message handler
@@ -69,7 +69,7 @@ class _RentalAppState extends State<RentalApp> {
       routes: {
         '/statistics': (context) {
           final driverId = ModalRoute.of(context)!.settings.arguments as String;
-          return DriverStatisticsScreen(driverId: driverId);
+          return UserStatisticsScreen(driverId: driverId);
         },
       },
     );

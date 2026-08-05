@@ -41,6 +41,56 @@ class SelectedLiftWorkspace extends StatefulWidget {
 
 class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
 
+  Widget _recordButton({
+    required String label,
+    required bool active,
+    required Color glowColor,
+    required VoidCallback onPressed,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: active
+            ? [
+                BoxShadow(
+                  color: glowColor.withOpacity(.55),
+                  blurRadius: 10,
+                  spreadRadius: 2,
+                ),
+              ]
+            : null,
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.main,
+          foregroundColor: AppColors.yellow,
+          elevation: 0,
+          side: active
+              ? BorderSide(
+                  color: glowColor,
+                  width: 2,
+                )
+              : BorderSide.none,
+          padding: const EdgeInsets.symmetric(
+            horizontal: 8,
+            vertical: 12,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: DeviceConfig.isIphone ? 11 : 14,
+          ),
+        ),
+      ),
+    );
+  }
+
   String _formatDate(DateTime? date) {
     if (date == null) return 'Unknown';
 
@@ -130,52 +180,26 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
                 const SizedBox(width: 8),
 
                 Expanded(
-                  child: ElevatedButton(
+                  child: _recordButton(
+                    label: 'Repair',
+                    active: widget.ui.selectedRecord == RecordMode.repair,
+                    glowColor: AppColors.green,
                     onPressed: () {
                       widget.ui.selectRecord(RecordMode.repair);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          widget.ui.selectedRecord == RecordMode.repair
-                              ? AppColors.yellow
-                              : AppColors.main,
-                      foregroundColor:
-                          widget.ui.selectedRecord == RecordMode.repair
-                              ? AppColors.main
-                              : AppColors.yellow,
-                    ),
-                    child: Text(
-                      'Repair',
-                      style: TextStyle(
-                        fontSize: DeviceConfig.isIphone ? 11 : 14,
-                      ),
-                    ),
                   ),
                 ),
 
                 const SizedBox(width: 8),
 
                 Expanded(
-                  child: ElevatedButton(
+                  child: _recordButton(
+                    label: 'Issue',
+                    active: widget.ui.selectedRecord == RecordMode.issue,
+                    glowColor: AppColors.red,
                     onPressed: () {
                       widget.ui.selectRecord(RecordMode.issue);
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          widget.ui.selectedRecord == RecordMode.issue
-                              ? AppColors.yellow
-                              : AppColors.main,
-                      foregroundColor:
-                          widget.ui.selectedRecord == RecordMode.issue
-                              ? AppColors.main
-                              : AppColors.yellow,
-                    ),
-                    child: Text(
-                      'Issue',
-                      style: TextStyle(
-                        fontSize: DeviceConfig.isIphone ? 11 : 14,
-                      ),
-                    ),
                   ),
                 ),
               ],

@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'completed_stops_screen.dart';
-import 'driver_statistics_screen.dart';
+import 'user_statistics_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
 class MenuScreen extends StatelessWidget {
   final String currentUserId;
+  final bool maintenanceOnly;
 
   const MenuScreen({
     super.key,
     required this.currentUserId,
+    this.maintenanceOnly = false,
   });
 
   @override
@@ -49,7 +51,7 @@ class MenuScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.bar_chart, color: AppColors.yellow),
             title: const Text(
-              'Driver Statistics',
+              'User Statistics',
               style: TextStyle(color: AppColors.yellow),
             ),
             onTap: () {
@@ -63,27 +65,30 @@ class MenuScreen extends StatelessWidget {
 
           const Divider(color: AppColors.yellow),
 
-          ListTile(
-            leading: const Icon(Icons.check_circle_outline,
-                color: AppColors.yellow),
-            title: const Text(
-              'Completed Stops',
-              style: TextStyle(color: AppColors.yellow),
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CompletedStopsScreen(
-                    driverId: currentUserId,
+          if (!maintenanceOnly)
+            ListTile(
+              leading: const Icon(
+                Icons.check_circle_outline,
+                color: AppColors.yellow,
+              ),
+              title: const Text(
+                'Completed Stops',
+                style: TextStyle(color: AppColors.yellow),
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CompletedStopsScreen(
+                      driverId: currentUserId,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
 
-          const Divider(color: AppColors.yellow),
-
+          if (!maintenanceOnly)
+            const Divider(color: AppColors.yellow),
           ListTile(
             leading: const Icon(Icons.pending_actions,
                 color: AppColors.yellow),

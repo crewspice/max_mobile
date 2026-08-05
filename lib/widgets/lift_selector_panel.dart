@@ -89,6 +89,24 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     _syncLatitudes();
   }
 
+  @override
+  void didUpdateWidget(covariant LiftSelectorPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (oldWidget.initialText != widget.initialText) {
+      setState(() {
+        _serial = widget.initialText;
+        _inputController.text = widget.initialText;
+        _liftSelected = widget.readOnly;
+        _syncLatitudes();
+      });
+    }
+
+    if (oldWidget.readOnly != widget.readOnly) {
+      setState(() {});
+    }
+  }
+
   double _getScale(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     return (screenWidth / 390).clamp(0.85, 1.8);
