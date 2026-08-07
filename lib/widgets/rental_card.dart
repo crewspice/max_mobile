@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import '../models/stop.dart';
+import '../models/lift_option.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../widgets/hold_to_confirm_button.dart';
@@ -37,6 +38,7 @@ class RentalCard extends StatefulWidget {
 
 
 class _RentalCardState extends State<RentalCard> {
+  int? _selectedRentalItemId;
 
   @override
   void didUpdateWidget(RentalCard oldWidget) {
@@ -46,6 +48,15 @@ class _RentalCardState extends State<RentalCard> {
       setState(() {});
     }
   }
+
+  // Dispatch stamps a pickup stop's serialNumber as this literal sentinel
+  // when the customer had no preference between several interchangeable
+  // units at the site — the driver has to tell us which one they picked up.
+  bool get _isNoPreference =>
+      !widget.completedView &&
+      !widget.unassignedView &&
+      widget.stop.status == 'Called Off' &&
+      (widget.stop.serialNumber?.trim() == 'noPref');
 
   Future<File?> _pickImage({bool camera = true}) async {
     final picker = ImagePicker();
@@ -84,24 +95,21 @@ class _RentalCardState extends State<RentalCard> {
     return typed.trim();
   }
 
+  // 33rt and 45b only have a single unit company-wide, so their serial is
+  // always fixed ("33"/"45") and never needs typing or validating.
+  bool isSpecialLiftType(String? liftType) {
+    final lower = liftType?.toLowerCase().trim() ?? '';
+    return lower.startsWith('45') || lower.startsWith('33');
+  }
+
 
   Future<void> _handlePhotoUpload(BuildContext context) async {
-    String serial = widget.serialController.text.trim();
-    if (!await _validateSerial(serial)) {
+    final serial = computeSerial(widget.stop.liftType, widget.serialController.text);
+
+    if (!isSpecialLiftType(widget.stop.liftType) && !await _validateSerial(serial)) {
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid or empty serial number')));
       return;
-    }
-
-    if (widget.stop.liftType != null) {
-      final lower = widget.stop.liftType!.toLowerCase();
-      if (lower.startsWith("45")) {
-        serial = "45";
-      } else if (lower.startsWith("33")) {
-        serial = "33";
-      } else {
-        serial = widget.serialController.text.trim();
-      }
     }
 
     final file = await _pickImage();
@@ -117,23 +125,15 @@ class _RentalCardState extends State<RentalCard> {
   }
 
   Future<void> _handleGalleryUpload(BuildContext context) async {
-    String serial = widget.serialController.text.trim();
-    if (!await _validateSerial(serial)) {
+    final serial = computeSerial(widget.stop.liftType, widget.serialController.text);
+
+    if (!isSpecialLiftType(widget.stop.liftType) && !await _validateSerial(serial)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Invalid or empty serial number')),
       );
       return;
     }
-    if (widget.stop.liftType != null) {
-      final lower = widget.stop.liftType!.toLowerCase();
-      if (lower.startsWith("45")) {
-        serial = "45";
-      } else if (lower.startsWith("33")) {
-        serial = "33";
-      } else {
-        serial = widget.serialController.text.trim();
-      }
-    }
+
     final file = await _pickImage(camera: false);
     if (file != null) {
       final compressed = await _compressImage(file);
@@ -160,12 +160,22 @@ class _RentalCardState extends State<RentalCard> {
 
 
   Future<void> _handlePickupComplete(BuildContext context) async {
+    if (_isNoPreference && _selectedRentalItemId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select which lift you picked up first'),
+        ),
+      );
+      return;
+    }
+
     final api = ApiService();
 
     final success = await api.recordPickup(
       widget.stop.id,
       widget.stop.truck ?? "null",   // or "TRUCK101"
       widget.stop.driverId ?? "null",   // or "Jake"
+      selectedRentalItemId: _selectedRentalItemId,
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -173,6 +183,80 @@ class _RentalCardState extends State<RentalCard> {
     );
 
     if (success) await widget.onRefresh();
+  }
+
+  Future<void> _openLiftOptionPicker(BuildContext context) async {
+    final api = ApiService();
+    final options = await api.fetchLiftOptionsForRentalItem(widget.stop.id);
+
+    if (!context.mounted) return;
+
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No lift options found for this site.'),
+        ),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<LiftOption>(
+      context: context,
+      backgroundColor: AppColors.main,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.yellow.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Which lift did you pick up?',
+                style: TextStyle(
+                  color: AppColors.yellow,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final option in options)
+                ListTile(
+                  title: Text(
+                    option.liftType,
+                    style: const TextStyle(
+                      color: AppColors.yellow,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    option.serialNumber,
+                    style: const TextStyle(color: AppColors.yellow),
+                  ),
+                  onTap: () => Navigator.pop(context, option),
+                ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      setState(() {
+        _selectedRentalItemId = selected.rentalItemId;
+      });
+    }
   }
 
   void _showRentalPhoto(BuildContext context) {
@@ -402,6 +486,9 @@ class _RentalCardState extends State<RentalCard> {
           ),
         ),
       );
+    } else if (_isNoPreference) {
+      // Selecting which lift was picked up now lives in the action ribbon.
+      serialInput = const SizedBox.shrink();
     } else if (!requiresSerial && widget.stop.status != "Upcoming") {
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0),
@@ -453,11 +540,7 @@ class _RentalCardState extends State<RentalCard> {
             label: "Take Photo",
             icon: Icons.camera_alt,
             color: elementColor,
-            onPressed: requiresSerial
-                ? () => _handlePhotoUpload(context)
-                : () async {
-                  // existing camera upload code
-                },
+            onPressed: () => _handlePhotoUpload(context),
           ),
         );
 
@@ -523,6 +606,20 @@ class _RentalCardState extends State<RentalCard> {
           ),
         );
       }
+    }
+
+    if (_isNoPreference) {
+      actions.insert(
+        0,
+        ActionItem(
+          label: _selectedRentalItemId == null ? "Select" : "Selected",
+          icon: _selectedRentalItemId == null
+              ? Icons.question_mark
+              : Icons.rule,
+          color: elementColor,
+          onPressed: () => _openLiftOptionPicker(context),
+        ),
+      );
     }
 
     Widget actionTray = _ActionTray(

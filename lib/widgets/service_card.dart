@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import '../models/stop.dart';
+import '../models/lift_option.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../theme/app_colors.dart';
@@ -33,6 +34,16 @@ class ServiceCard extends StatefulWidget {
 class _ServiceCardState extends State<ServiceCard> {
   late Stop _stop;
   String _serial = '';
+  int? _selectedRentalItemId;
+
+  // Dispatch stamps a stop's serialNumber as this literal sentinel when the
+  // customer had no preference between several interchangeable units at the
+  // site — the driver has to tell us which one they actually serviced. This
+  // applies to any service type, not just the two Change Out variants.
+  bool get _isNoPreference =>
+      !widget.completedView &&
+      !widget.unassignedView &&
+      (_stop.serialNumber?.trim() == 'noPref');
 
   @override
   void initState() {
@@ -57,6 +68,21 @@ class _ServiceCardState extends State<ServiceCard> {
   bool _skipSerial(String serviceType) {
     return serviceType == "MOVE" ||
         serviceType == "SERVICE";
+  }
+
+  // The 33rt and 45b lift types only have a single unit company-wide, so
+  // their serial is always fixed ("33"/"45") — the driver never has to type
+  // one in for a delivery or Change Out involving the new lift being dropped off.
+  bool get _isSpecialLiftType {
+    final liftType = _stop.newLiftType?.toLowerCase().trim() ?? '';
+    return liftType.startsWith('45') || liftType.startsWith('33');
+  }
+
+  String _computeSerial(String typed) {
+    final liftType = _stop.newLiftType?.toLowerCase().trim() ?? '';
+    if (liftType.startsWith('45')) return '45';
+    if (liftType.startsWith('33')) return '33';
+    return typed.trim();
   }
 
   Future<File?> _pickImage({bool camera = true}) async {
@@ -85,8 +111,100 @@ class _ServiceCardState extends State<ServiceCard> {
     return await api.validateSerialNumber(serial);
   }
 
-  Future<void> _handlePhotoUpload(BuildContext context) async {
-    final serial = _serial.trim();
+  String _noPreferenceVerb() {
+    final type = _stop.serviceType?.trim() ?? '';
+    switch (type) {
+      case 'Change Out':
+      case 'Service Change Out':
+        return 'change out';
+      case 'Move':
+        return 'move';
+      case 'Service':
+        return 'service';
+      default:
+        return 'service';
+    }
+  }
+
+  Future<void> _openLiftOptionPicker(BuildContext context) async {
+    final api = ApiService();
+    final options = await api.fetchLiftOptionsForService(_stop.id);
+
+    if (!context.mounted) return;
+
+    if (options.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No lift options found for this site.'),
+        ),
+      );
+      return;
+    }
+
+    final selected = await showModalBottomSheet<LiftOption>(
+      context: context,
+      backgroundColor: AppColors.main,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 10),
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.green.withOpacity(0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Which lift did you ${_noPreferenceVerb()}?',
+                style: const TextStyle(
+                  color: AppColors.green,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final option in options)
+                ListTile(
+                  title: Text(
+                    option.liftType,
+                    style: const TextStyle(
+                      color: AppColors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  subtitle: Text(
+                    option.serialNumber,
+                    style: const TextStyle(color: AppColors.green),
+                  ),
+                  onTap: () => Navigator.pop(context, option),
+                ),
+              const SizedBox(height: 10),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      setState(() {
+        _selectedRentalItemId = selected.rentalItemId;
+      });
+    }
+  }
+
+  Future<void> _handlePhotoUpload(
+    BuildContext context, {
+    bool camera = true,
+  }) async {
+    final serial = _computeSerial(_serial);
     final type = widget.stop.serviceType?.trim() ?? "";
 
     final requiresSerial = _requiresSerial(type);
@@ -95,8 +213,8 @@ class _ServiceCardState extends State<ServiceCard> {
     print("DEBUG: stop.type=${widget.stop.type}");
     print("DEBUG: stop.serviceType=${widget.stop.serviceType}");
 
-    // Validate serial if required
-    if (!skipSerial && requiresSerial) {
+    // Validate serial if required (33rt/45b's fixed serial never needs validating)
+    if (!skipSerial && requiresSerial && !_isSpecialLiftType) {
       final isValid = await _validateSerial(serial);
       if (!isValid) {
         print("DEBUG: serial validation failed for type=$type");
@@ -107,8 +225,17 @@ class _ServiceCardState extends State<ServiceCard> {
       }
     }
 
+    if (_isNoPreference && _selectedRentalItemId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select which lift you picked up first'),
+        ),
+      );
+      return;
+    }
+
     // Pick and upload photo
-    final file = await _pickImage();
+    final file = await _pickImage(camera: camera);
     if (file != null) {
       final compressed = await _compressImage(file);
       final api = ApiService();
@@ -117,6 +244,7 @@ class _ServiceCardState extends State<ServiceCard> {
         compressed,
         widget.stop.id,
         serialNumber: requiresSerial ? serial : null, // ✅ now safe
+        selectedRentalItemId: _selectedRentalItemId,
         widget.stop.truck ?? "null",
         widget.stop.driverId ?? "null"
       );
@@ -308,84 +436,67 @@ class _ServiceCardState extends State<ServiceCard> {
         ),
       );
     } else {
-      actions.add(
-        ActionItem(
-          label: "See Photo",
-          icon: Icons.photo,
-          color: AppColors.green,
-          onPressed: () => _showServicePhoto(context),
-        ),
+      final seePhoto = ActionItem(
+        label: "See Photo",
+        icon: Icons.photo,
+        color: AppColors.green,
+        onPressed: () => _showServicePhoto(context),
       );
 
       if (!widget.unassignedView) {
-        actions.add(
-          ActionItem(
-            label: "Take Photo",
-            icon: Icons.camera_alt,
-            color: AppColors.green,
-            onPressed: () => _handlePhotoUpload(context),
-          ),
+        final takePhoto = ActionItem(
+          label: "Take Photo",
+          icon: Icons.camera_alt,
+          color: AppColors.green,
+          onPressed: () => _handlePhotoUpload(context),
         );
 
-        actions.add(
-          ActionItem(
-            label: "Upload",
-            icon: Icons.upload,
-            color: AppColors.green,
-            onPressed: () async {
-              final serial = _serial.trim();
-
-              if (requiresSerial && !await _validateSerial(serial)) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Invalid or empty serial number'),
-                  ),
-                );
-                return;
-              }
-
-              final file = await _pickImage(camera: false);
-
-              if (file != null) {
-                final compressed = await _compressImage(file);
-                final api = ApiService();
-
-                final success = await api.uploadPhoto(
-                  compressed,
-                  _stop.id,
-                  serialNumber: requiresSerial ? serial : null,
-                );
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      success ? 'Photo uploaded!' : 'Upload failed',
-                    ),
-                  ),
-                );
-
-                if (success) {
-                  await widget.onRefresh();
-                }
-              }
-            },
-          ),
+        final upload = ActionItem(
+          label: "Upload",
+          icon: Icons.upload,
+          color: AppColors.green,
+          onPressed: () => _handlePhotoUpload(context, camera: false),
         );
 
-        actions.add(
-          ActionItem(
-            label: "Cancel",
-            icon: Icons.block,
-            color: AppColors.green,
-            onPressed: () => _showCancelDialog(context),
-          ),
+        final cancel = ActionItem(
+          label: "Cancel",
+          icon: Icons.block,
+          color: AppColors.green,
+          onPressed: () => _showCancelDialog(context),
         );
+
+        if (_isNoPreference) {
+          // Select is inserted at index 0 below — lead with the photo steps
+          // that actually finish the stop before See Photo/Cancel.
+          actions.addAll([takePhoto, upload, seePhoto, cancel]);
+        } else {
+          actions.addAll([seePhoto, takePhoto, upload, cancel]);
+        }
+      } else {
+        actions.add(seePhoto);
       }
+    }
+
+    if (_isNoPreference) {
+      actions.insert(
+        0,
+        ActionItem(
+          label: _selectedRentalItemId == null ? "Select" : "Selected",
+          icon: _selectedRentalItemId == null
+              ? Icons.question_mark
+              : Icons.rule,
+          color: AppColors.green,
+          onPressed: () => _openLiftOptionPicker(context),
+        ),
+      );
     }
 
     Widget serialInput = Container();
 
-    if (!widget.completedView && requiresSerial && !widget.unassignedView) {
+    if (!widget.completedView &&
+        requiresSerial &&
+        !widget.unassignedView &&
+        !_isSpecialLiftType) {
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 0.0),
         child: Center(
@@ -520,7 +631,7 @@ class _ServiceCardState extends State<ServiceCard> {
               label: "to ${_stop.newLiftType}: ",
             )
           else ...[
-            serialSelector,
+            _isNoPreference ? const SizedBox.shrink() : serialSelector,
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -565,7 +676,7 @@ class _ServiceCardState extends State<ServiceCard> {
               label: "to: ",
             )
           else
-            serialSelector,
+            _isNoPreference ? const SizedBox.shrink() : serialSelector,
           if (_stop.reason != null && _stop.reason != "")
             SizedBox(
               width: double.infinity,
@@ -584,7 +695,7 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            serialSelector,
+            _isNoPreference ? const SizedBox.shrink() : serialSelector,
             if (_stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 "New Site:",
@@ -623,7 +734,7 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            serialSelector,
+            _isNoPreference ? const SizedBox.shrink() : serialSelector,
             if (_stop.reason != null && _stop.reason != "")
               Text(
                 "\"${_stop.reason!}\"",

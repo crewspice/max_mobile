@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:path/path.dart';
-import 'package:mime/mime.dart';
 import '../models/stop.dart';
 import '../models/lift.dart';
 import '../models/lift_maintenance_snapshot.dart';
@@ -10,6 +8,7 @@ import '../models/lift_pm_history_item.dart';
 import '../models/lift_maintenance_history_item.dart';
 import '../models/lift_rental_history_item.dart';
 import '../models/inventory_item.dart';
+import '../models/lift_option.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 
@@ -117,48 +116,6 @@ class ApiService {
         .toList();
   }
 
-  /// Upload Photo with Rental ID and optional Serial Number
-  Future<bool> uploadPhoto(File imageFile, int rentalId, {String? serialNumber}) async {
-    final String uploadUrl = '$baseUrl/recordDeliveryWithPhoto';
-
-    var request = http.MultipartRequest('POST', Uri.parse(uploadUrl))
-      ..fields['rentalId'] = rentalId.toString();
-
-    if (serialNumber != null && serialNumber.isNotEmpty) {
-      request.fields['serialNumber'] = serialNumber;
-    }
-
-    String? mimeType = lookupMimeType(imageFile.path);
-    var fileStream = http.ByteStream(imageFile.openRead());
-    var length = await imageFile.length();
-
-    var multipartFile = http.MultipartFile(
-      'photoFile',
-      fileStream,
-      length,
-      filename: basename(imageFile.path),
-      contentType: mimeType != null ? MediaType.parse(mimeType) : null,
-    );
-
-    request.files.add(multipartFile);
-
-    try {
-      final response = await request.send();
-
-      if (response.statusCode == 200) {
-        print('Photo uploaded successfully.');
-        return true;
-      } else {
-        print('Failed to upload photo: ${await response.stream.bytesToString()}');
-        return false;
-      }
-    } catch (e) {
-      print('Error: $e');
-      return false;
-    }
-  }
-
-
   Future<bool> recordDeliveryWithPhoto(
     File imageFile,
     int rentalId,
@@ -167,7 +124,7 @@ class ApiService {
     String driver,
     {String? nullRouteId}
   ) async {
-    final String url = '$routeUrl/recordDeliveryWithPhoto';
+    final String url = routeUrl;
 
     var request = http.MultipartRequest('POST', Uri.parse(url))
       ..fields['rentalId'] = rentalId.toString()
@@ -203,7 +160,12 @@ class ApiService {
   }
 
 
-  Future<bool> recordPickup(int rentalId, String truck, String driver) async {
+  Future<bool> recordPickup(
+    int rentalId,
+    String truck,
+    String driver, {
+    int? selectedRentalItemId,
+  }) async {
     final String url = '$routeUrl/recordPickup';
 
     try {
@@ -216,6 +178,8 @@ class ApiService {
           'rentalId': rentalId.toString(),
           'truck': truck,
           'driver': driver,
+          if (selectedRentalItemId != null)
+            'selectedRentalItemId': selectedRentalItemId.toString(),
         },
       );
 
@@ -239,6 +203,7 @@ class ApiService {
     String truck,
     String driver, {
     String? serialNumber,
+    int? selectedRentalItemId,
   }) async {
     final String url = '$routeUrl/recordServiceWithPhoto';
 
@@ -250,6 +215,11 @@ class ApiService {
     // Optional serial number
     if (serialNumber != null && serialNumber.isNotEmpty) {
       request.fields['serialNumber'] = serialNumber;
+    }
+
+    // Which physical lift the driver picked up, for "no preference" sites
+    if (selectedRentalItemId != null) {
+      request.fields['selectedRentalItemId'] = selectedRentalItemId.toString();
     }
 
     // Add photo file
@@ -352,6 +322,46 @@ class ApiService {
       }
     } catch (e) {
       print('🔥 Exception while fetching names: $e');
+      return [];
+    }
+  }
+
+  /// Candidate lifts for a "no preference" Change Out service stop.
+  Future<List<LiftOption>> fetchLiftOptionsForService(int serviceId) async {
+    final String url = '$baseUrl/proximity-groups/service/$serviceId';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        return data.map((e) => LiftOption.fromJson(e)).toList();
+      } else {
+        print('❌ Failed to fetch lift options: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('🔥 Exception while fetching lift options: $e');
+      return [];
+    }
+  }
+
+  /// Candidate lifts for a "no preference" pickup.
+  Future<List<LiftOption>> fetchLiftOptionsForRentalItem(int rentalItemId) async {
+    final String url = '$baseUrl/proximity-groups/rental-item/$rentalItemId';
+
+    try {
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        List<dynamic> data = json.decode(utf8.decode(response.bodyBytes));
+        return data.map((e) => LiftOption.fromJson(e)).toList();
+      } else {
+        print('❌ Failed to fetch lift options: ${response.statusCode}');
+        return [];
+      }
+    } catch (e) {
+      print('🔥 Exception while fetching lift options: $e');
       return [];
     }
   }
