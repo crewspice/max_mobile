@@ -226,7 +226,7 @@ class BaseCard extends StatelessWidget {
                       notes: updatedNotes,
                     )
                   : await api.updateRentalNotes(
-                      rentalItemId: stop.id,
+                      rentalId: stop.id,
                       notes: updatedNotes,
                     );
 

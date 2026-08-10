@@ -1,6 +1,6 @@
 class Stop {
   final int id;
-  final int orderId;
+  final int siteId;
   final String type; // "SERVICE" or "RENTAL"
 
   // Rental-specific
@@ -40,7 +40,7 @@ class Stop {
 
   Stop({
     required this.id,
-    required this.orderId,
+    required this.siteId,
     required this.type,
     this.driverId,
     this.name,
@@ -77,7 +77,7 @@ class Stop {
   // ⭐ IMPORTANT: Immutable update pattern
   Stop copyWith({
     int? id,
-    int? orderId,
+    int? siteId,
     String? type,
     String? driverId,
     String? name,
@@ -111,7 +111,7 @@ class Stop {
   }) {
     return Stop(
       id: id ?? this.id,
-      orderId: orderId ?? this.orderId,
+      siteId: siteId ?? this.siteId,
       type: type ?? this.type,
       driverId: driverId ?? this.driverId,
       name: name ?? this.name,
@@ -152,7 +152,7 @@ class Stop {
   factory Stop.fromJson(Map<String, dynamic> json) {
     return Stop(
       id: json['id'],
-      orderId: json['orderId'],
+      siteId: json['siteId'],
       type: json['type'],
       driverId: json['driverId'],
       name: json['name'],
@@ -189,7 +189,7 @@ class Stop {
   Map<String, dynamic> toJson() {
     return {
       "id": id,
-      "orderId": orderId,
+      "siteId": siteId,
       "type": type,
       "driverId": driverId,
       "name": name,

@@ -59,7 +59,7 @@ class ApiService {
         final stop = Stop.fromJson(json);
         return Stop(
           id: stop.id,
-          orderId: stop.orderId,
+          siteId: stop.siteId,
           type: stop.type,
           name: stop.name,
           status: stop.status,
@@ -164,7 +164,7 @@ class ApiService {
     int rentalId,
     String truck,
     String driver, {
-    int? selectedRentalItemId,
+    int? selectedRentalId,
   }) async {
     final String url = '$routeUrl/recordPickup';
 
@@ -178,8 +178,8 @@ class ApiService {
           'rentalId': rentalId.toString(),
           'truck': truck,
           'driver': driver,
-          if (selectedRentalItemId != null)
-            'selectedRentalItemId': selectedRentalItemId.toString(),
+          if (selectedRentalId != null)
+            'selectedRentalId': selectedRentalId.toString(),
         },
       );
 
@@ -203,7 +203,7 @@ class ApiService {
     String truck,
     String driver, {
     String? serialNumber,
-    int? selectedRentalItemId,
+    int? selectedRentalId,
   }) async {
     final String url = '$routeUrl/recordServiceWithPhoto';
 
@@ -218,8 +218,8 @@ class ApiService {
     }
 
     // Which physical lift the driver picked up, for "no preference" sites
-    if (selectedRentalItemId != null) {
-      request.fields['selectedRentalItemId'] = selectedRentalItemId.toString();
+    if (selectedRentalId != null) {
+      request.fields['selectedRentalId'] = selectedRentalId.toString();
     }
 
     // Add photo file
@@ -347,8 +347,8 @@ class ApiService {
   }
 
   /// Candidate lifts for a "no preference" pickup.
-  Future<List<LiftOption>> fetchLiftOptionsForRentalItem(int rentalItemId) async {
-    final String url = '$baseUrl/proximity-groups/rental-item/$rentalItemId';
+  Future<List<LiftOption>> fetchLiftOptionsForRental(int rentalId) async {
+    final String url = '$baseUrl/proximity-groups/rental/$rentalId';
 
     try {
       final response = await http.get(Uri.parse(url));
@@ -408,13 +408,13 @@ class ApiService {
   }
     
   Future<bool> updateRentalNotes({
-    required int rentalItemId,
+    required int rentalId,
     required String notes,
   }) async {
     print("RAW NOTES: $notes");
     print("JSON BODY: ${jsonEncode({'notes': notes})}");
     print("CODE UNITS: ${notes.codeUnits}");
-    final uri = Uri.parse('$baseUrl/$rentalItemId/notes');
+    final uri = Uri.parse('$baseUrl/$rentalId/notes');
 
     print('➡️ SENDING REQUEST');
     print('URL: $uri');

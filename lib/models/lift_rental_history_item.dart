@@ -1,6 +1,6 @@
 class LiftRentalHistoryItem {
-  final int? rentalItemId;
-  final int? rentalOrderId;
+  final int? rentalId;
+  final int? siteId;
   final DateTime? startDate;
   final DateTime? endDate;
   final String? status;
@@ -11,8 +11,8 @@ class LiftRentalHistoryItem {
   final String? driverId;
 
   LiftRentalHistoryItem({
-    required this.rentalItemId,
-    this.rentalOrderId,
+    required this.rentalId,
+    this.siteId,
     this.startDate,
     this.endDate,
     this.status,
@@ -25,8 +25,8 @@ class LiftRentalHistoryItem {
 
   factory LiftRentalHistoryItem.fromJson(Map<String, dynamic> json) {
     return LiftRentalHistoryItem(
-      rentalItemId: json['rentalItemId'] as int?,
-      rentalOrderId: json['rentalOrderId'] as int?,
+      rentalId: json['rentalId'] as int?,
+      siteId: json['siteId'] as int?,
       startDate: json['startDate'] != null
           ? DateTime.parse(json['startDate'])
           : null,

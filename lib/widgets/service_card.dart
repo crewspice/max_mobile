@@ -34,7 +34,7 @@ class ServiceCard extends StatefulWidget {
 class _ServiceCardState extends State<ServiceCard> {
   late Stop _stop;
   String _serial = '';
-  int? _selectedRentalItemId;
+  int? _selectedRentalId;
 
   // Dispatch stamps a stop's serialNumber as this literal sentinel when the
   // customer had no preference between several interchangeable units at the
@@ -195,7 +195,7 @@ class _ServiceCardState extends State<ServiceCard> {
 
     if (selected != null) {
       setState(() {
-        _selectedRentalItemId = selected.rentalItemId;
+        _selectedRentalId = selected.rentalId;
       });
     }
   }
@@ -225,7 +225,7 @@ class _ServiceCardState extends State<ServiceCard> {
       }
     }
 
-    if (_isNoPreference && _selectedRentalItemId == null) {
+    if (_isNoPreference && _selectedRentalId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Select which lift you picked up first'),
@@ -244,7 +244,7 @@ class _ServiceCardState extends State<ServiceCard> {
         compressed,
         widget.stop.id,
         serialNumber: requiresSerial ? serial : null, // ✅ now safe
-        selectedRentalItemId: _selectedRentalItemId,
+        selectedRentalId: _selectedRentalId,
         widget.stop.truck ?? "null",
         widget.stop.driverId ?? "null"
       );
@@ -481,8 +481,8 @@ class _ServiceCardState extends State<ServiceCard> {
       actions.insert(
         0,
         ActionItem(
-          label: _selectedRentalItemId == null ? "Select" : "Selected",
-          icon: _selectedRentalItemId == null
+          label: _selectedRentalId == null ? "Select" : "Selected",
+          icon: _selectedRentalId == null
               ? Icons.question_mark
               : Icons.rule,
           color: AppColors.green,

@@ -119,7 +119,7 @@ class _RentalListViewState extends State<RentalListView> {
     List<Stop> ghostStops = [
       Stop(
         id: -1,
-        orderId: -1,
+        siteId: -1,
         type: 'GHOST_SUMMARY',
         driverId: '',
         liftType: '',

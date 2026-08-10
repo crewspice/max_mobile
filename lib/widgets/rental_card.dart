@@ -38,7 +38,7 @@ class RentalCard extends StatefulWidget {
 
 
 class _RentalCardState extends State<RentalCard> {
-  int? _selectedRentalItemId;
+  int? _selectedRentalId;
 
   @override
   void didUpdateWidget(RentalCard oldWidget) {
@@ -160,7 +160,7 @@ class _RentalCardState extends State<RentalCard> {
 
 
   Future<void> _handlePickupComplete(BuildContext context) async {
-    if (_isNoPreference && _selectedRentalItemId == null) {
+    if (_isNoPreference && _selectedRentalId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Select which lift you picked up first'),
@@ -175,7 +175,7 @@ class _RentalCardState extends State<RentalCard> {
       widget.stop.id,
       widget.stop.truck ?? "null",   // or "TRUCK101"
       widget.stop.driverId ?? "null",   // or "Jake"
-      selectedRentalItemId: _selectedRentalItemId,
+      selectedRentalId: _selectedRentalId,
     );
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -187,7 +187,7 @@ class _RentalCardState extends State<RentalCard> {
 
   Future<void> _openLiftOptionPicker(BuildContext context) async {
     final api = ApiService();
-    final options = await api.fetchLiftOptionsForRentalItem(widget.stop.id);
+    final options = await api.fetchLiftOptionsForRental(widget.stop.id);
 
     if (!context.mounted) return;
 
@@ -254,7 +254,7 @@ class _RentalCardState extends State<RentalCard> {
 
     if (selected != null) {
       setState(() {
-        _selectedRentalItemId = selected.rentalItemId;
+        _selectedRentalId = selected.rentalId;
       });
     }
   }
@@ -612,8 +612,8 @@ class _RentalCardState extends State<RentalCard> {
       actions.insert(
         0,
         ActionItem(
-          label: _selectedRentalItemId == null ? "Select" : "Selected",
-          icon: _selectedRentalItemId == null
+          label: _selectedRentalId == null ? "Select" : "Selected",
+          icon: _selectedRentalId == null
               ? Icons.question_mark
               : Icons.rule,
           color: elementColor,
