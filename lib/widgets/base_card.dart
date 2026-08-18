@@ -527,7 +527,8 @@ class BaseCard extends StatelessWidget {
                                       ),
                                     ),
                                   ),
-                                _buildNotesRow(elementColor, context),
+                                if (!DeviceConfig.isIphone)
+                                  _buildNotesRow(elementColor, context),
                               ],
                           ),
                         ),
@@ -647,6 +648,8 @@ class BaseCard extends StatelessWidget {
                 ),
               ],
             ),
+
+            if (DeviceConfig.isIphone) _buildNotesRow(elementColor, context),
 
             const SizedBox(height: 10),
 

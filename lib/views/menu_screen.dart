@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'completed_stops_screen.dart';
 import 'user_statistics_screen.dart';
+import 'edit_profile_screen.dart';
+import 'driver_chat_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
 class MenuScreen extends StatelessWidget {
   final String currentUserId;
+  final String userName;
   final bool maintenanceOnly;
+  final bool driverChatUnlocked;
 
   const MenuScreen({
     super.key,
     required this.currentUserId,
+    required this.userName,
     this.maintenanceOnly = false,
+    this.driverChatUnlocked = false,
   });
 
   @override
@@ -108,6 +114,49 @@ class MenuScreen extends StatelessWidget {
               );
             },
           ),
+
+          const Divider(color: AppColors.yellow),
+
+          ListTile(
+            leading: const Icon(Icons.account_circle, color: AppColors.yellow),
+            title: const Text(
+              'Profile Picture',
+              style: TextStyle(color: AppColors.yellow),
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EditProfileScreen(
+                    currentUserId: currentUserId,
+                  ),
+                ),
+              );
+            },
+          ),
+
+          if (driverChatUnlocked)
+            const Divider(color: AppColors.yellow),
+
+          if (driverChatUnlocked)
+            ListTile(
+              leading: const Icon(Icons.lock_open, color: AppColors.yellow),
+              title: const Text(
+                'Driver Chat',
+                style: TextStyle(color: AppColors.yellow),
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => DriverChatScreen(
+                      currentUserId: currentUserId,
+                      userName: userName,
+                    ),
+                  ),
+                );
+              },
+            ),
         ],
       ),
     );

@@ -20,6 +20,8 @@ class AppColors {
   // Color set picked online
   static const Color main = Color(0xFF1D1B2C);
   static const Color mainBackground = Color(0xFF0B0B12);
+  // Three steps in the mainBackground -> main progression (same per-channel delta).
+  static const Color mainLight = Color(0xFF534B7A);
   // static const Color red = Color(0xFFD2B6C1);
   // static const Color yellow = Color(0xFFCFD2B6);
   // static const Color green = Color(0xFFB6D2C8);

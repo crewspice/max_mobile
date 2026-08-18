@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import '../theme/app_colors.dart';
 import '../theme/color_field.dart';
+import 'user_avatar.dart';
 
 class NonDriverOrbitSelector extends StatefulWidget {
   final List<Map<String, dynamic>> users;
@@ -102,17 +102,10 @@ class _NonDriverOrbitSelectorState
                         user['truckId'].toString(),
                       );
                     },
-                    child: CircleAvatar(
+                    child: UserAvatar(
+                      initials: user['initial'],
                       radius: 22 * uiScale,
-                      backgroundColor: color,
-                      child: Text(
-                        user['initial'],
-                        style: TextStyle(
-                          fontSize: 18 * uiScale,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.main,
-                        ),
-                      ),
+                      color: color,
                     ),
                   ),
                 ),

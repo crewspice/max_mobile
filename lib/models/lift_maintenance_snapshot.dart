@@ -9,6 +9,7 @@ class LiftMaintenanceSnapshot {
   final DateTime? pmCompletedAt;
   final String? pmCompletedByFullName;
   final String? pmCompletedByNickname;
+  final String? pmCompletedByInitials;
   final String? pmNotes;
 
   // ✅ Active maintenance actions
@@ -21,6 +22,7 @@ class LiftMaintenanceSnapshot {
     this.pmCompletedAt,
     this.pmCompletedByFullName,
     this.pmCompletedByNickname,
+    this.pmCompletedByInitials,
     this.pmNotes,
     this.maintenanceActions = const [],
   });
@@ -37,6 +39,7 @@ class LiftMaintenanceSnapshot {
           : null,
       pmCompletedByFullName: json['pmCompletedByFullName'],
       pmCompletedByNickname: json['pmCompletedByNickname'],
+      pmCompletedByInitials: json['pmCompletedByInitials'],
       pmNotes: json['pmNotes'],
 
       // Maintenance Actions

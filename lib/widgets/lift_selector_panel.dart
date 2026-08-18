@@ -127,6 +127,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
 
   void _checkLift(){
     if(!isLiftMode)return;
+    if(_serial.isEmpty)return;
     final match=widget.lifts!.where((l)=>(l.serialNumber??'').toLowerCase()==_serial.toLowerCase());
     if(match.isNotEmpty)_selectLift(match.first);
   }
@@ -390,12 +391,6 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                       item is Lift?item.serialNumber??'':item,
                       style:TextStyle(color:widget.colors.border),
                     ),
-                    subtitle:item is Lift
-                        ? Text(
-                            item.model??'',
-                            style:TextStyle(color:widget.colors.border),
-                          )
-                        : null,
                     onTap:()=>item is Lift?_selectLift(item):_setSerial(item),
                   );
                 },

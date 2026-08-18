@@ -37,6 +37,8 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
   }
 
   Future<void> _submit() async {
+    if (_notesController.text.trim().isEmpty) return;
+
     try {
       await ApiService().submitMaintenanceAction(
         liftId: widget.liftId,
@@ -206,6 +208,8 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
         ? 'Save Repair'
         : 'Submit Issue';
 
+    final hasNotes = _notesController.text.trim().isNotEmpty;
+
     return OrnateCard(
       color: AppColors.red,
       child: Column(
@@ -227,11 +231,12 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
 
           HoldToConfirmButton(
             icon: const Icon(Icons.check),
-            label: button,
+            label: hasNotes ? button : 'Notes required',
             baseColor: AppColors.main,
             textColor: AppColors.red,
             progressColor: AppColors.red,
             holdDuration: const Duration(seconds: 2),
+            enabled: hasNotes,
             onConfirmed: _submit,
           ),
         ],

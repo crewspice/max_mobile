@@ -40,6 +40,7 @@ class _RentalListViewState extends State<RentalListView> {
       widget.driverId,
       completed: widget.completed,
       unassigned: widget.unassigned,
+      asSelf: true,
     );
 
     setState(() {
@@ -94,6 +95,7 @@ class _RentalListViewState extends State<RentalListView> {
         driverId,
         completed: widget.completed,
         unassigned: widget.unassigned,
+        asSelf: true,
       );
       if (stops.isNotEmpty) {
         return stops; // normal route data exists → show it
@@ -102,7 +104,9 @@ class _RentalListViewState extends State<RentalListView> {
       // ignore errors for primary driver
     }
 
-    // fallback: fetch all drivers to build summary
+    // fallback: fetch all drivers to build a company-wide summary. This is
+    // browsing, not the driver viewing their own route, so asSelf stays
+    // false — must not mark other drivers' routes as "seen" by them.
     const driverIds = ['JS', 'K', 'A', 'JC', 'J', 'B'];
     Map<String, bool> driverHasRoutes = {};
 

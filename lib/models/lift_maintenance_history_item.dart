@@ -15,6 +15,7 @@ class LiftMaintenanceHistoryItem {
   final String? performedByNickname;
   final String? performedByInitials;
   final String? reportedBy;
+  final String? reportedByInitials;
 
   LiftMaintenanceHistoryItem({
     required this.actionId,
@@ -33,6 +34,7 @@ class LiftMaintenanceHistoryItem {
     this.performedByNickname,
     this.performedByInitials,
     this.reportedBy,
+    this.reportedByInitials,
   });
 
   factory LiftMaintenanceHistoryItem.fromJson(Map<String, dynamic> json) {
@@ -57,6 +59,7 @@ class LiftMaintenanceHistoryItem {
       performedByNickname: json['performedByNickname'] as String?,
       performedByInitials: json['performedByInitials'] as String?,
       reportedBy: json['reportedBy'] as String?,
+      reportedByInitials: json['reportedByInitials'] as String?,
     );
   }
 }

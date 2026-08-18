@@ -9,6 +9,7 @@ import '../models/lift_maintenance_history_item.dart';
 import '../models/lift_rental_history_item.dart';
 import '../models/inventory_item.dart';
 import '../models/lift_option.dart';
+import '../models/chat_message.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 
@@ -17,6 +18,46 @@ class ApiService {
   final String userUrl = "http://5.78.73.173:8080/user";
   final String routeUrl = "http://5.78.73.173:8080/routes";
   final String maintenanceUrl = "http://5.78.73.173:8080/maintenance";
+  final String chatUrl = "http://5.78.73.173:8080/driver-chat";
+
+  /// Fetch chat messages. Pass sinceId to get only messages newer than it
+  /// (for polling); omit it for the initial page of recent history.
+  Future<List<ChatMessage>> fetchChatMessages({int? sinceId}) async {
+    final uri = sinceId != null
+        ? Uri.parse('$chatUrl/messages?sinceId=$sinceId')
+        : Uri.parse('$chatUrl/messages');
+
+    final response = await http.get(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load chat messages');
+    }
+
+    final List<dynamic> decoded =
+        json.decode(utf8.decode(response.bodyBytes));
+
+    return decoded.map((m) => ChatMessage.fromJson(m)).toList();
+  }
+
+  Future<void> sendChatMessage({
+    required String senderUserId,
+    required String senderName,
+    required String body,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$chatUrl/messages'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'senderUserId': senderUserId,
+        'senderName': senderName,
+        'body': body,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to send chat message');
+    }
+  }
 
   /// Fetch all driver IDs/initials that have routes (excluding "null")
   Future<List<Map<String, dynamic>>> fetchUserSelection() async {
@@ -32,11 +73,17 @@ class ApiService {
     return jsonList.cast<Map<String, dynamic>>();
   }
   
-  /// Fetch route stops or completed stops by driver ID
+  /// Fetch route stops or completed stops by driver ID.
+  ///
+  /// [asSelf] must only be true when this is the logged-in driver viewing
+  /// their own route (not the "what's everyone else up to" summary fetch
+  /// that loops over every driver ID) — the API uses it to decide whether
+  /// this counts as the driver having "seen" their route.
   Future<List<Stop>> fetchStopsByDriver(
     String driverId, {
     bool completed = false,
     bool unassigned = false,
+    bool asSelf = false,
   }) async {
 
     String endpoint;
@@ -46,7 +93,7 @@ class ApiService {
     } else if (unassigned) {
       endpoint = "$routeUrl/stops/unassigned";
     } else {
-      endpoint = "$routeUrl/driver/$driverId";
+      endpoint = "$routeUrl/driver/$driverId${asSelf ? '?asSelf=true' : ''}";
     }
 
     final response = await http.get(Uri.parse(endpoint));
@@ -114,6 +161,21 @@ class ApiService {
     return inventoryJson
         .map((json) => InventoryItem.fromJson(json))
         .toList();
+  }
+
+  /// Whether the signed-in driver has an active route, and whether their
+  /// assigned truck is near the shop (with the truck's own lat/lng so the
+  /// caller can compare it against the phone's current location).
+  Future<Map<String, dynamic>> fetchShopStatus(String driverId) async {
+    final response = await http.get(
+      Uri.parse("$routeUrl/driver/$driverId/shop-status"),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to load shop status');
+    }
+
+    return json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
   }
 
   Future<bool> recordDeliveryWithPhoto(
@@ -544,6 +606,24 @@ class ApiService {
     }
   }
 
+  // Truck inventory only carries a serial number, not a liftId.
+  Future<LiftMaintenanceSnapshot?> fetchLiftMaintenanceSnapshotBySerial(
+    String serialNumber,
+  ) async {
+    final response = await http.get(
+      Uri.parse('$maintenanceUrl/snapshot/by-serial/$serialNumber'),
+    );
+
+    if (response.statusCode == 200) {
+      final jsonMap = jsonDecode(utf8.decode(response.bodyBytes));
+      return LiftMaintenanceSnapshot.fromJson(jsonMap);
+    } else if (response.statusCode == 404) {
+      return null;
+    } else {
+      throw Exception('Failed to load lift maintenance snapshot');
+    }
+  }
+
   Future<void> registerDevice(String userId, String token) async {
     await http.post(
       Uri.parse('$userUrl/register-device'),
@@ -552,6 +632,68 @@ class ApiService {
         'token': token,
       },
     );
+  }
+
+  /// URL a user's profile picture is served from — may 404 if they haven't
+  /// set one, callers should fall back to the default avatar in that case.
+  String profilePictureUrl(String initial) {
+    return 'http://5.78.73.173:8080/profile/profile_$initial.jpg';
+  }
+
+  Future<bool> uploadProfilePicture(String initial, File imageFile) async {
+    final uri = Uri.parse('$userUrl/profile-picture');
+
+    var request = http.MultipartRequest('POST', uri)
+      ..fields['initial'] = initial;
+
+    request.files.add(await http.MultipartFile.fromPath(
+      'photoFile',
+      imageFile.path,
+      contentType: MediaType('image', 'jpeg'),
+    ));
+
+    try {
+      final response = await request.send();
+
+      if (response.statusCode == 200) {
+        print('Profile picture updated successfully.');
+        return true;
+      } else {
+        print('Failed to update profile picture: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error uploading profile picture: $e');
+      return false;
+    }
+  }
+
+  Future<bool> hasProfilePicture(String initial) async {
+    try {
+      final response = await http.get(Uri.parse(profilePictureUrl(initial)));
+      return response.statusCode == 200;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> resetProfilePicture(String initial) async {
+    final uri = Uri.parse('$userUrl/profile-picture?initial=$initial');
+
+    try {
+      final response = await http.delete(uri);
+
+      if (response.statusCode == 200) {
+        print('Profile picture reset successfully.');
+        return true;
+      } else {
+        print('Failed to reset profile picture: ${response.statusCode}');
+        return false;
+      }
+    } catch (e) {
+      print('Error resetting profile picture: $e');
+      return false;
+    }
   }
 
   Future<List<LiftPmHistoryItem>> fetchPmHistory(int liftId) async {

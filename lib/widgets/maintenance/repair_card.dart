@@ -4,6 +4,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../hold_to_confirm_button.dart';
 import '../ornate_card.dart';
+import '../user_avatar.dart';
 import 'maintenance_dialogs.dart';
 import '../../config/device_config.dart';
 
@@ -93,15 +94,29 @@ class _RepairCardState extends State<RepairCard> {
 
             if ((widget.action.reportedBy ?? '').isNotEmpty)
               Center(
-                child: Text(
-                  widget.action.notes != null &&
-                          widget.action.notes!.isNotEmpty
-                      ? '- ${widget.action.reportedBy}'
-                      : 'Reported by: ${widget.action.reportedBy}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: AppColors.red,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (widget.action.reportedByInitials != null) ...[
+                      UserAvatar(
+                        initials: widget.action.reportedByInitials,
+                        radius: 10,
+                        color: AppColors.red,
+                        textColor: AppColors.main,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
+                    Text(
+                      widget.action.notes != null &&
+                              widget.action.notes!.isNotEmpty
+                          ? '- ${widget.action.reportedBy}'
+                          : 'Reported by: ${widget.action.reportedBy}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: AppColors.red,
+                      ),
+                    ),
+                  ],
                 ),
               ),
 

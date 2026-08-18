@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
+import 'user_avatar.dart';
 
 class DriverOrbitSelector extends StatefulWidget {
   final List<Map<String, dynamic>> users;
@@ -236,17 +237,10 @@ class _DriverNode extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(100),
           onTap: onTap,
-          child: CircleAvatar(
+          child: UserAvatar(
+            initials: user['initial'],
             radius: 22 * uiScale,
-            backgroundColor: accentColor,
-            child: Text(
-              user['initial'],
-              style: TextStyle(
-                fontSize: 18 * uiScale,
-                fontWeight: FontWeight.bold,
-                color: AppColors.main,
-              ),
-            ),
+            color: accentColor,
           ),
         ),
       );
@@ -287,17 +281,10 @@ class _DriverNode extends StatelessWidget {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    CircleAvatar(
+                    UserAvatar(
+                      initials: user['initial'],
                       radius: 18 * uiScale,
-                      backgroundColor: accentColor,
-                      child: Text(
-                        user['initial'],
-                        style: TextStyle(
-                          fontSize: 18 * uiScale,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.main,
-                        ),
-                      ),
+                      color: accentColor,
                     ),
                     const SizedBox(width: 6),
                     Opacity(

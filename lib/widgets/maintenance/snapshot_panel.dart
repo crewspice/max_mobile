@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import '../../models/lift.dart';
 import '../../models/lift_maintenance_snapshot.dart';
 import '../../theme/app_colors.dart';
+import '../../views/pm_checklist_screen.dart';
 import '../ornate_card.dart';
+import '../user_avatar.dart';
 
 class SnapshotPanel extends StatelessWidget {
   final Lift lift;
@@ -50,15 +52,45 @@ class SnapshotPanel extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                     ),
                     ),
+                    const Spacer(),
+                    InkWell(
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const PmChecklistScreen(),
+                          ),
+                        );
+                      },
+                      child: Icon(
+                        Icons.checklist,
+                        color: color,
+                        size: 22,
+                      ),
+                    ),
                 ],
             ),
             if (snapshot.pmId != null) ...[
             const SizedBox(height: 6),
-            Text(
-                '${needsAnnual ? 'Last PM:' : 'Last:'} '
-                '${snapshot.pmCompletedByNickname ?? 'Unknown'} on '
-                '${snapshot.pmCompletedAt != null ? _formatDate(snapshot.pmCompletedAt!) : 'Unknown'}',
-                style: TextStyle(color: color),
+            Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                    UserAvatar(
+                        initials: snapshot.pmCompletedByInitials,
+                        radius: 10,
+                        color: color,
+                        textColor: AppColors.main,
+                    ),
+                    const SizedBox(width: 6),
+                    Expanded(
+                        child: Text(
+                            '${needsAnnual ? 'Last PM:' : 'Last:'} '
+                            '${snapshot.pmCompletedByNickname ?? 'Unknown'} on '
+                            '${snapshot.pmCompletedAt != null ? _formatDate(snapshot.pmCompletedAt!) : 'Unknown'}',
+                            style: TextStyle(color: color),
+                        ),
+                    ),
+                ],
             ),
           ],
         ],

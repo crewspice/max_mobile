@@ -4,10 +4,29 @@ import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../models/inventory_item.dart';
 import '../widgets/hold_to_confirm_button.dart';
+import '../widgets/user_avatar.dart';
 import '../theme/app_colors.dart';
 import 'package:image/image.dart' as img;
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/ornate_card.dart';
+
+class _LiftPopupDetails {
+  final bool isPickup;
+  final String? customerName;
+  final String? address;
+  final DateTime? lastPmDate;
+  final String? lastPmPerformerInitials;
+  final int? unresolvedActionCount;
+
+  const _LiftPopupDetails({
+    required this.isPickup,
+    this.customerName,
+    this.address,
+    this.lastPmDate,
+    this.lastPmPerformerInitials,
+    this.unresolvedActionCount,
+  });
+}
 
 class GridPos {
   final int row;
@@ -321,10 +340,58 @@ class _TruckViewState extends State<TruckView> {
     );
   }
 
+  Widget _detailRowWidget(
+    String label,
+    Widget value,
+  ) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.yellow,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          Expanded(child: value),
+        ],
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) =>
+      '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  Future<_LiftPopupDetails> _fetchLiftPopupDetails(InventoryItem item) async {
+    final snapshot =
+        await ApiService().fetchLiftMaintenanceSnapshotBySerial(item.serialNumber);
+
+    final address = [item.streetAddress, item.city]
+        .where((s) => s != null && s.isNotEmpty)
+        .join(', ');
+
+    return _LiftPopupDetails(
+      isPickup: item.isPickup,
+      customerName: item.customerName,
+      address: address.isEmpty ? null : address,
+      lastPmDate: snapshot?.pmCompletedAt,
+      lastPmPerformerInitials: snapshot?.pmCompletedByInitials,
+      unresolvedActionCount: snapshot?.maintenanceActions.length,
+    );
+  }
+
   void _showLiftDetails(
     BuildContext context,
     InventoryItem item,
   ) {
+    final detailsFuture = _fetchLiftPopupDetails(item);
+
     showDialog(
       context: context,
       builder: (context) {
@@ -341,7 +408,7 @@ class _TruckViewState extends State<TruckView> {
               ),
               const SizedBox(width: 10),
               Text(
-                "${item.liftType} Lift",
+                "${item.liftType} • ${item.serialNumber}",
                 style: const TextStyle(
                   color: AppColors.yellow,
                 ),
@@ -355,40 +422,79 @@ class _TruckViewState extends State<TruckView> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
 
-                _detailRow(
-                  "Serial Number",
-                  item.serialNumber,
-                ),
+                FutureBuilder<_LiftPopupDetails>(
+                  future: detailsFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            color: AppColors.yellow,
+                          ),
+                        ),
+                      );
+                    }
 
-                _detailRow(
-                  "Position",
-                  item.position ?? "Unknown",
-                ),
+                    if (snapshot.hasError || snapshot.data == null) {
+                      return _detailRow(
+                        "Details",
+                        "Unable to load",
+                      );
+                    }
 
-                const Divider(
-                  color: AppColors.yellow,
-                ),
+                    final details = snapshot.data!;
+                    final hasJobSite = details.customerName != null;
 
-                // Future API fields
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _detailRow(
+                          details.isPickup ? "From Customer" : "To Customer",
+                          hasJobSite
+                              ? details.customerName!
+                              : "No job site recorded",
+                        ),
 
-                _detailRow(
-                  "Customer",
-                  "Loading...",
-                ),
+                        if (hasJobSite)
+                          _detailRow(
+                            details.isPickup ? "From Address" : "To Address",
+                            details.address ?? "Unknown",
+                          ),
 
-                _detailRow(
-                  "Address",
-                  "Loading...",
-                ),
+                        const Divider(
+                          color: AppColors.yellow,
+                        ),
 
-                _detailRow(
-                  "Last PM Date",
-                  "Loading...",
-                ),
+                        _detailRowWidget(
+                          "Last PM",
+                          Row(
+                            children: [
+                              Text(
+                                details.lastPmDate != null
+                                    ? _formatDate(details.lastPmDate!)
+                                    : "None recorded",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              if (details.lastPmPerformerInitials != null) ...[
+                                const SizedBox(width: 8),
+                                UserAvatar(
+                                  initials: details.lastPmPerformerInitials,
+                                  radius: 12,
+                                  color: AppColors.yellow,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
 
-                _detailRow(
-                  "Last PM Performer",
-                  "Loading...",
+                        _detailRow(
+                          "Pending Repairs",
+                          (details.unresolvedActionCount ?? 0).toString(),
+                        ),
+                      ],
+                    );
+                  },
                 ),
 
               ],
