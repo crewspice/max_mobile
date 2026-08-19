@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:google_fonts/google_fonts.dart';
+import '../config/device_config.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/user_avatar.dart';
@@ -25,6 +26,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   bool _uploading = false;
   int _cacheBust = 0;
   bool _hasCustomImage = false;
+
+  double get _avatarDiameter => DeviceConfig.isIpad ? 260 : 160;
 
   @override
   void initState() {
@@ -155,7 +158,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ).createShader(bounds);
           },
           child: Text(
-            "Profile Picture",
+            DeviceConfig.isIphone ? "Profile Pic" : "Profile Picture",
             style: GoogleFonts.permanentMarker(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -173,14 +176,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? ClipOval(
                     child: Image.file(
                       _pickedFile!,
-                      width: 160,
-                      height: 160,
+                      width: _avatarDiameter,
+                      height: _avatarDiameter,
                       fit: BoxFit.cover,
                     ),
                   )
                 : UserAvatar(
                     initials: widget.currentUserId,
-                    radius: 80,
+                    radius: _avatarDiameter / 2,
                     color: AppColors.yellow,
                     cacheBust: _cacheBust,
                   ),
@@ -208,7 +211,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              width: 220,
+              width: DeviceConfig.isIpad ? 220 * 1.7 : 220,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.main,
