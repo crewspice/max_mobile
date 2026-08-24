@@ -9,24 +9,8 @@ import '../theme/app_colors.dart';
 import 'package:image/image.dart' as img;
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/ornate_card.dart';
-
-class _LiftPopupDetails {
-  final bool isPickup;
-  final String? customerName;
-  final String? address;
-  final DateTime? lastPmDate;
-  final String? lastPmPerformerInitials;
-  final int? unresolvedActionCount;
-
-  const _LiftPopupDetails({
-    required this.isPickup,
-    this.customerName,
-    this.address,
-    this.lastPmDate,
-    this.lastPmPerformerInitials,
-    this.unresolvedActionCount,
-  });
-}
+import '../config/device_config.dart';
+import '../utils/lift_assets.dart';
 
 class GridPos {
   final int row;
@@ -45,12 +29,8 @@ GridPos? parseGridPosition(String? pos) {
 
   final row = int.parse(match.group(1)!);
 
-  final col = switch (match.group(2)!) {
-    'a' => 1,
-    'b' => 2,
-    'c' => 3,
-    _ => null
-  };
+  final col =
+      switch (match.group(2)!) { 'a' => 1, 'b' => 2, 'c' => 3, _ => null };
 
   if (col == null) return null;
 
@@ -72,6 +52,21 @@ class TruckView extends StatefulWidget {
 }
 
 class _TruckViewState extends State<TruckView> {
+  static const _spectrumGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [AppColors.yellow, AppColors.green, AppColors.red],
+  );
+
+  Widget _gradientDivider() {
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 8),
+      child: DecoratedBox(
+        decoration: BoxDecoration(gradient: _spectrumGradient),
+        child: SizedBox(height: 1, width: double.infinity),
+      ),
+    );
+  }
 
   // 📸 Image picker
   Future<XFile?> _pickImage({bool camera = true}) async {
@@ -154,8 +149,7 @@ class _TruckViewState extends State<TruckView> {
                               foregroundColor: AppColors.mainBackground,
                             ),
                             onPressed: () async {
-                              final file =
-                                  await _pickImage(camera: false);
+                              final file = await _pickImage(camera: false);
                               if (file != null) {
                                 setState(() => selectedImage = file);
                               }
@@ -236,11 +230,9 @@ class _TruckViewState extends State<TruckView> {
                             ? null
                             : () async {
                                 if (selectedImage == null) {
-                                  ScaffoldMessenger.of(context)
-                                      .showSnackBar(
+                                  ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
-                                        content:
-                                            Text("Photo required")),
+                                        content: Text("Photo required")),
                                   );
                                   return;
                                 }
@@ -249,18 +241,17 @@ class _TruckViewState extends State<TruckView> {
 
                                 final api = ApiService();
 
-                                final success =
-                                    await api.recordTruckIssue(
+                                final success = await api.recordTruckIssue(
                                   image: File(selectedImage!.path),
                                   truckId: widget.truckId!,
                                   driverId: widget.driverId,
-                                  description: descriptionController.text.trim(),
+                                  description:
+                                      descriptionController.text.trim(),
                                 );
 
                                 Navigator.pop(context);
 
-                                ScaffoldMessenger.of(context)
-                                    .showSnackBar(
+                                ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(success
                                         ? 'Issue submitted'
@@ -283,29 +274,6 @@ class _TruckViewState extends State<TruckView> {
         );
       },
     );
-  }
-
-  String _liftAsset(String liftType) {
-    switch (liftType.trim().toLowerCase()) {
-      case "12m":
-        return "assets/12m.png";
-      case "19s":
-        return "assets/19s.png";
-      case "26":
-        return "assets/26.png";
-      case "26s":
-        return "assets/26s.png";
-      case "32":
-        return "assets/32.png";
-      case "33rt":
-        return "assets/33rt.png";
-      case "40":
-        return "assets/40.png";
-      case "45b":
-        return "assets/45b.png";
-      default:
-        return "assets/26.png"; // fallback
-    }
   }
 
   Widget _detailRow(
@@ -368,149 +336,247 @@ class _TruckViewState extends State<TruckView> {
   String _formatDate(DateTime date) =>
       '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  Future<_LiftPopupDetails> _fetchLiftPopupDetails(InventoryItem item) async {
-    final snapshot =
-        await ApiService().fetchLiftMaintenanceSnapshotBySerial(item.serialNumber);
+  // Ports the "months, weeks, & days" formatting used by the desktop app's
+  // PopupCard/PopupDisc (business-day based, 5-day weeks / 4-week months).
+  String _formatDaysOnRent(int businessDays) {
+    final months = businessDays ~/ 20;
+    final remainder = businessDays % 20;
+    final weeks = remainder ~/ 5;
+    final days = remainder % 5;
 
-    final address = [item.streetAddress, item.city]
-        .where((s) => s != null && s.isNotEmpty)
-        .join(', ');
-
-    return _LiftPopupDetails(
-      isPickup: item.isPickup,
-      customerName: item.customerName,
-      address: address.isEmpty ? null : address,
-      lastPmDate: snapshot?.pmCompletedAt,
-      lastPmPerformerInitials: snapshot?.pmCompletedByInitials,
-      unresolvedActionCount: snapshot?.maintenanceActions.length,
-    );
+    final sb = StringBuffer();
+    if (months > 0) {
+      sb.write('$months ${months == 1 ? "month" : "months"}');
+    }
+    if (weeks > 0) {
+      if (sb.isNotEmpty) sb.write(', ');
+      sb.write('$weeks ${weeks == 1 ? "week" : "weeks"}');
+    }
+    if (days > 0) {
+      if (sb.isNotEmpty) sb.write(', & ');
+      sb.write('$days ${days == 1 ? "day" : "days"}');
+    }
+    return sb.isEmpty ? "0 days" : sb.toString();
   }
 
   void _showLiftDetails(
     BuildContext context,
-    InventoryItem item,
+    InventoryItem initialItem,
   ) {
-    final detailsFuture = _fetchLiftPopupDetails(item);
-
     showDialog(
       context: context,
+      barrierColor: Colors.black87,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: AppColors.mainBackground,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Row(
-            children: [
-              Icon(
-                Icons.precision_manufacturing,
-                color: AppColors.yellow,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                "${item.liftType} • ${item.serialNumber}",
-                style: const TextStyle(
-                  color: AppColors.yellow,
-                ),
-              ),
-            ],
-          ),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+        var currentItem = initialItem;
 
-                FutureBuilder<_LiftPopupDetails>(
-                  future: detailsFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            color: AppColors.yellow,
-                          ),
-                        ),
-                      );
-                    }
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final address = [currentItem.streetAddress, currentItem.city]
+                .where((s) => s != null && s.isNotEmpty)
+                .join(', ');
+            final hasJobSite = currentItem.customerName != null &&
+                currentItem.customerName!.isNotEmpty;
+            final pmColor =
+                currentItem.upToDate ? AppColors.green : AppColors.red;
 
-                    if (snapshot.hasError || snapshot.data == null) {
-                      return _detailRow(
-                        "Details",
-                        "Unable to load",
-                      );
-                    }
+            Future<void> handleRefresh() async {
+              try {
+                final inventory =
+                    await ApiService().fetchInventoryByDriver(widget.driverId);
+                final updated = inventory.firstWhere(
+                  (i) => i.serialNumber == currentItem.serialNumber,
+                  orElse: () => currentItem,
+                );
+                setDialogState(() {
+                  currentItem = updated;
+                });
+              } catch (_) {
+                // Keep showing the last known data on failure.
+              }
+            }
 
-                    final details = snapshot.data!;
-                    final hasJobSite = details.customerName != null;
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _detailRow(
-                          details.isPickup ? "From Customer" : "To Customer",
-                          hasJobSite
-                              ? details.customerName!
-                              : "No job site recorded",
-                        ),
-
-                        if (hasJobSite)
-                          _detailRow(
-                            details.isPickup ? "From Address" : "To Address",
-                            details.address ?? "Unknown",
-                          ),
-
-                        const Divider(
-                          color: AppColors.yellow,
-                        ),
-
-                        _detailRowWidget(
-                          "Last PM",
-                          Row(
-                            children: [
-                              Text(
-                                details.lastPmDate != null
-                                    ? _formatDate(details.lastPmDate!)
-                                    : "None recorded",
-                                style: const TextStyle(color: Colors.white),
-                              ),
-                              if (details.lastPmPerformerInitials != null) ...[
-                                const SizedBox(width: 8),
-                                UserAvatar(
-                                  initials: details.lastPmPerformerInitials,
-                                  radius: 12,
-                                  color: AppColors.yellow,
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.symmetric(horizontal: 20),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      height: 3,
+                      decoration:
+                          const BoxDecoration(gradient: _spectrumGradient),
+                    ),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          Container(width: 3, color: AppColors.yellow),
+                          Expanded(
+                            child: Container(
+                              color: AppColors.mainBackground,
+                              constraints: const BoxConstraints(maxHeight: 480),
+                              padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
+                              child: RefreshIndicator(
+                                color: AppColors.main,
+                                backgroundColor: AppColors.yellow,
+                                onRefresh: handleRefresh,
+                                child: SingleChildScrollView(
+                                  physics:
+                                      const AlwaysScrollableScrollPhysics(),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Icon(
+                                            Icons.precision_manufacturing,
+                                            color: AppColors.yellow,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            child: Text(
+                                              "${currentItem.liftType} • ${currentItem.serialNumber}",
+                                              style: const TextStyle(
+                                                color: AppColors.yellow,
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 16,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            currentItem.upToDate
+                                                ? Icons.check_circle
+                                                : Icons.warning,
+                                            color: pmColor,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Text(
+                                            currentItem.upToDate
+                                                ? "Up to date"
+                                                : "Needs PM",
+                                            style: TextStyle(
+                                              color: pmColor,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      _gradientDivider(),
+                                      Text(
+                                        currentItem.isPickup
+                                            ? "Coming from:"
+                                            : "Delivering to:",
+                                        style: const TextStyle(
+                                          color: AppColors.yellow,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      if (hasJobSite) ...[
+                                        Text(
+                                          currentItem.customerName!,
+                                          style: const TextStyle(
+                                              color: Colors.white),
+                                        ),
+                                        if (address.isNotEmpty)
+                                          Text(
+                                            address,
+                                            style: const TextStyle(
+                                                color: Colors.white70),
+                                          ),
+                                        if (currentItem.isPickup &&
+                                            currentItem.daysOnRent != null) ...[
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            "${_formatDaysOnRent(currentItem.daysOnRent!)} on rent",
+                                            style: const TextStyle(
+                                              color: AppColors.yellow,
+                                              fontStyle: FontStyle.italic,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        ],
+                                      ] else
+                                        const Text(
+                                          "No job site recorded",
+                                          style:
+                                              TextStyle(color: Colors.white70),
+                                        ),
+                                      _gradientDivider(),
+                                      _detailRowWidget(
+                                        "Last PM",
+                                        Row(
+                                          children: [
+                                            Text(
+                                              currentItem.lastPmDate != null
+                                                  ? _formatDate(
+                                                      currentItem.lastPmDate!)
+                                                  : "None recorded",
+                                              style: const TextStyle(
+                                                  color: Colors.white),
+                                            ),
+                                            if (currentItem
+                                                    .lastPmPerformerInitials !=
+                                                null) ...[
+                                              const SizedBox(width: 8),
+                                              UserAvatar(
+                                                initials: currentItem
+                                                    .lastPmPerformerInitials,
+                                                radius: 12,
+                                                color: AppColors.yellow,
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      ),
+                                      _detailRow(
+                                        "Pending Repairs",
+                                        (currentItem.pendingRepairs ?? 0)
+                                            .toString(),
+                                      ),
+                                      Align(
+                                        alignment: Alignment.centerRight,
+                                        child: TextButton(
+                                          onPressed: () =>
+                                              Navigator.pop(context),
+                                          child: const Text(
+                                            "Close",
+                                            style: TextStyle(
+                                              color: AppColors.yellow,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
-                            ],
+                              ),
+                            ),
                           ),
-                        ),
-
-                        _detailRow(
-                          "Pending Repairs",
-                          (details.unresolvedActionCount ?? 0).toString(),
-                        ),
-                      ],
-                    );
-                  },
-                ),
-
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                "Close",
-                style: TextStyle(
-                  color: AppColors.yellow,
+                          Container(width: 3, color: AppColors.red),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      height: 3,
+                      decoration:
+                          const BoxDecoration(gradient: _spectrumGradient),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -539,19 +605,57 @@ class _TruckViewState extends State<TruckView> {
     );
   }
 
-  Widget _buildLiftMarker(
+  // The `position` field (e.g. "2b") only loosely says which row/column a
+  // lift is nominally in — sometimes a row has lifts in b+c only, sometimes
+  // just a, etc. Rather than pinning each lift to its literal lettered slot,
+  // group by row and center however many lifts actually landed there: 1 lift
+  // sits dead-center, 2 sit symmetrically spaced around center, 3 falls back
+  // to the original a/b/c spacing.
+  List<Widget> _buildLiftMarkers(
     BuildContext context,
-    InventoryItem item,
+    List<InventoryItem> inventory,
     double gridLeft,
     double gridTop,
     double cellW,
     double cellH,
   ) {
-    final pos = parseGridPosition(item.position);
+    final Map<int, List<InventoryItem>> byRow = {};
+    for (final item in inventory) {
+      final row = parseGridPosition(item.position)?.row ?? 1;
+      byRow.putIfAbsent(row, () => []).add(item);
+    }
 
-    final row = pos?.row ?? 1;
-    final col = pos?.col ?? 1;
+    final rowCenterX = gridLeft + (cellW * 3) / 2;
+    final markers = <Widget>[];
 
+    for (final row in byRow.keys.toList()..sort()) {
+      final rowItems = byRow[row]!
+        ..sort((a, b) {
+          final colA = parseGridPosition(a.position)?.col ?? 1;
+          final colB = parseGridPosition(b.position)?.col ?? 1;
+          return colA.compareTo(colB);
+        });
+
+      final centerY = gridTop + ((row - 1) * cellH) + (cellH / 2);
+      final n = rowItems.length;
+
+      for (var i = 0; i < n; i++) {
+        final centerX = rowCenterX + (i - (n - 1) / 2) * cellW;
+        markers.add(
+          _buildLiftMarker(context, rowItems[i], centerX, centerY),
+        );
+      }
+    }
+
+    return markers;
+  }
+
+  Widget _buildLiftMarker(
+    BuildContext context,
+    InventoryItem item,
+    double centerX,
+    double centerY,
+  ) {
     final Color markerColor;
 
     if (item.serialNumber == "0") {
@@ -562,17 +666,19 @@ class _TruckViewState extends State<TruckView> {
       markerColor = AppColors.red;
     }
 
+    final imageHeight = DeviceConfig.device == "ipad" ? 90.0 : 60.0;
+
     return Positioned(
-      left: gridLeft + ((col - 1) * cellW) + (cellW / 2) - 30,
-      top: gridTop + ((row - 1) * cellH) + (cellH / 2) - 30,
+      left: centerX - 30,
+      top: centerY - (imageHeight / 2),
       child: GestureDetector(
         onTap: () => _showLiftDetails(context, item),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Image.asset(
-              _liftAsset(item.liftType),
-              height: 60,
+              liftAssetPath(item.liftType),
+              height: imageHeight,
               fit: BoxFit.contain,
               color: markerColor,
               colorBlendMode: BlendMode.srcIn,
@@ -628,8 +734,7 @@ class _TruckViewState extends State<TruckView> {
         return FutureBuilder<bool>(
           future: ApiService().needsInspection(widget.truckId!),
           builder: (context, inspectionSnapshot) {
-            final needsInspection =
-                inspectionSnapshot.data ?? false;
+            final needsInspection = inspectionSnapshot.data ?? false;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,118 +752,118 @@ class _TruckViewState extends State<TruckView> {
                           color: AppColors.yellow,
                         ),
                       ),
-
                       const SizedBox(height: 12),
-
                       if (needsInspection)
-
-                      OrnateCard(
-                        color: AppColors.red,
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                const Icon(
-                                  Icons.warning,
+                        OrnateCard(
+                          color: AppColors.red,
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  const Icon(
+                                    Icons.warning,
+                                    color: AppColors.red,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      "Truck ${widget.truckId} needs inspection",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: AppColors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              const Text(
+                                "No inspection recorded for this month.",
+                                style: TextStyle(
                                   color: AppColors.red,
                                 ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    "Truck ${widget.truckId} needs inspection",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: AppColors.red,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 6),
-                            const Text(
-                              "No inspection recorded for this month.",
-                              style: TextStyle(
-                                color: AppColors.red,
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      backgroundColor: AppColors.mainBackground,
-                                      side: const BorderSide(
-                                        color: AppColors.red,
-                                        width: 2,
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        backgroundColor:
+                                            AppColors.mainBackground,
+                                        side: const BorderSide(
+                                          color: AppColors.red,
+                                          width: 2,
+                                        ),
                                       ),
-                                    ),
-                                    onPressed: () => _openIssueFlow(context),
-                                    icon: const Icon(
-                                      Icons.report_problem,
-                                      color: AppColors.red,
-                                    ),
-                                    label: const Text(
-                                      "Record Issue",
-                                      style: TextStyle(
+                                      onPressed: () => _openIssueFlow(context),
+                                      icon: const Icon(
+                                        Icons.report_problem,
                                         color: AppColors.red,
+                                      ),
+                                      label: const Text(
+                                        "Record Issue",
+                                        style: TextStyle(
+                                          color: AppColors.red,
+                                        ),
                                       ),
                                     ),
                                   ),
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: HoldToConfirmButton(
-                                    label: "No Issues",
-                                    baseColor: AppColors.mainBackground,
-                                    textColor: AppColors.red,
-                                    progressColor: AppColors.red,
-                                    icon: const Icon(
-                                      Icons.check,
-                                      color: AppColors.red,
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: HoldToConfirmButton(
+                                      label: "No Issues",
+                                      baseColor: AppColors.mainBackground,
+                                      textColor: AppColors.red,
+                                      progressColor: AppColors.red,
+                                      icon: const Icon(
+                                        Icons.check,
+                                        color: AppColors.red,
+                                      ),
+                                      onConfirmed: () async {
+                                        try {
+                                          await ApiService()
+                                              .recordTruckInspection(
+                                            truckId: widget.truckId!,
+                                            driverId: widget.driverId,
+                                          );
+
+                                          if (!context.mounted) return;
+
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'Inspection recorded successfully.',
+                                              ),
+                                            ),
+                                          );
+
+                                          setState(() {});
+                                        } catch (e) {
+                                          if (!context.mounted) return;
+
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                'Failed to record inspection: $e',
+                                              ),
+                                            ),
+                                          );
+                                        }
+                                      },
                                     ),
-                                    onConfirmed: () async {
-                                      try {
-                                        await ApiService().recordTruckInspection(
-                                          truckId: widget.truckId!,
-                                          driverId: widget.driverId,
-                                        );
-
-                                        if (!context.mounted) return;
-
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(
-                                            content: Text(
-                                              'Inspection recorded successfully.',
-                                            ),
-                                          ),
-                                        );
-
-                                        setState(() {});
-                                      } catch (e) {
-                                        if (!context.mounted) return;
-
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          SnackBar(
-                                            content: Text(
-                                              'Failed to record inspection: $e',
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 12),
-
                       Text(
                         "Inventory",
                         style: GoogleFonts.permanentMarker(
@@ -770,7 +875,6 @@ class _TruckViewState extends State<TruckView> {
                     ],
                   ),
                 ),
-
                 Expanded(
                   child: inventory.isEmpty
                       ? Center(
@@ -782,9 +886,10 @@ class _TruckViewState extends State<TruckView> {
                           ),
                           child: LayoutBuilder(
                             builder: (context, constraints) {
-
-                              final gridWidth = constraints.maxWidth / 2.6; // middle third
-                              final gridLeft = (constraints.maxWidth - gridWidth) / 2 + 20;
+                              final gridWidth =
+                                  constraints.maxWidth / 2.6; // middle third
+                              final gridLeft =
+                                  (constraints.maxWidth - gridWidth) / 2 + 10;
 
                               final gridHeight = constraints.maxHeight * 0.68;
                               final gridTop = constraints.maxHeight * 0.30;
@@ -793,23 +898,19 @@ class _TruckViewState extends State<TruckView> {
 
                               return Stack(
                                 children: [
-
                                   Positioned.fill(
                                     child: Image.asset(
                                       'assets/overhead-truck.png',
                                       fit: BoxFit.contain,
                                     ),
                                   ),
-
-                                  ...inventory.map(
-                                    (item) => _buildLiftMarker(
-                                      context,
-                                      item,
-                                      gridLeft,
-                                      gridTop,
-                                      cellW,
-                                      cellH,
-                                    ),
+                                  ..._buildLiftMarkers(
+                                    context,
+                                    inventory,
+                                    gridLeft,
+                                    gridTop,
+                                    cellW,
+                                    cellH,
                                   ),
                                 ],
                               );

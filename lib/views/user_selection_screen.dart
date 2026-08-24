@@ -40,42 +40,6 @@ class _UserSelectionScreenState
     futureUsers = ApiService().fetchUserSelection();
 
     _loadPermissionFlag();
-
-    FirebaseMessaging.onMessage.listen((message) {
-      if (!mounted) return;
-
-      if (message.notification != null) {
-        showDialog(
-          context: context,
-          builder: (_) => AlertDialog(
-            backgroundColor: AppColors.mainBackground,
-            title: Text(
-              message.notification!.title ?? 'Notification',
-              style: const TextStyle(
-                color: AppColors.yellow,
-              ),
-            ),
-            content: Text(
-              message.notification!.body ?? '',
-              style: const TextStyle(
-                color: AppColors.yellow,
-              ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'OK',
-                  style: TextStyle(
-                    color: AppColors.yellow,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      }
-    });
   }
 
   @override

@@ -24,6 +24,14 @@ void main() async {
   // Register background handler
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
+  // Let iOS show the native banner/sound even while the app is foregrounded,
+  // instead of silently handing the message to onMessage only.
+  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+    alert: true,
+    badge: true,
+    sound: true,
+  );
+
   runApp(const RentalApp());
 }
 

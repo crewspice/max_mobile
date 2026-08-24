@@ -12,11 +12,7 @@ enum HistoryFilter {
 class MaintenanceUiState extends ChangeNotifier {
   RecordMode? selectedRecord;
 
-  final Set<HistoryFilter> selectedHistory = {
-    HistoryFilter.pms,
-    HistoryFilter.rentals,
-    HistoryFilter.issues,
-  };
+  final Set<HistoryFilter> selectedHistory = {};
 
   int? expandedHistory;
 
@@ -66,13 +62,7 @@ class MaintenanceUiState extends ChangeNotifier {
     expandedRepairs.clear();
     noRepairNeeded.clear();
 
-    selectedHistory
-      ..clear()
-      ..addAll({
-        HistoryFilter.pms,
-        HistoryFilter.rentals,
-        HistoryFilter.issues,
-      });
+    selectedHistory.clear();
 
     notifyListeners();
   }

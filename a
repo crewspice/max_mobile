@@ -1,0 +1,28 @@
+[33m24d7dc3[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m profile pics
+ lib/models/chat_message.dart                       |  25 [32m++[m
+ lib/models/inventory_item.dart                     |  22 [32m+[m[31m-[m
+ lib/models/lift_maintenance_history_item.dart      |   3 [32m+[m
+ lib/models/lift_maintenance_snapshot.dart          |   3 [32m+[m
+ lib/services/api_service.dart                      | 146 [32m++++++++++[m[31m-[m
+ lib/theme/app_colors.dart                          |   2 [32m+[m
+ lib/utils/shop_geofence.dart                       |  51 [32m++++[m
+ lib/views/driver_chat_screen.dart                  | 273 [32m+++++++++++++++++++++[m
+ lib/views/edit_profile_screen.dart                 | 246 [32m+++++++++++++++++++[m
+ lib/views/home_screen.dart                         |  61 [32m+++++[m
+ lib/views/menu_screen.dart                         |  49 [32m++++[m
+ lib/views/pm_checklist_screen.dart                 | 193 [32m+++++++++++++++[m
+ lib/views/rental_list_view.dart                    |   6 [32m+[m[31m-[m
+ lib/views/truck_view.dart                          | 162 [32m+++++++++[m[31m---[m
+ lib/widgets/base_card.dart                         |   5 [32m+[m[31m-[m
+ lib/widgets/driver_orbit_selector.dart             |  27 [32m+[m[31m-[m
+ lib/widgets/hold_to_confirm_button.dart            | 216 [32m++++++++[m[31m--------[m
+ lib/widgets/lift_selector_panel.dart               |   7 [32m+[m[31m-[m
+ lib/widgets/maintenance/issue_entry_card.dart      |   7 [32m+[m[31m-[m
+ lib/widgets/maintenance/repair_card.dart           |  33 [32m++[m[31m-[m
+ lib/widgets/maintenance/snapshot_panel.dart        |  42 [32m+++[m[31m-[m
+ .../maintenance/timeline_tiles/issue_tile.dart     |  93 [32m+++++[m[31m--[m
+ .../maintenance/timeline_tiles/pm_tile.dart        |  76 [32m+++[m[31m---[m
+ .../maintenance/timeline_tiles/rental_tile.dart    | 156 [32m++++++[m[31m------[m
+ lib/widgets/non_driver_orbit_selector.dart         |  15 [32m+[m[31m-[m
+ lib/widgets/user_avatar.dart                       |  72 [32m++++++[m
+ 26 files changed, 1661 insertions(+), 330 deletions(-)

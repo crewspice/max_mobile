@@ -266,31 +266,28 @@ class _ServiceCardState extends State<ServiceCard> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Delivery Photo',
-            style: TextStyle(
-              color: AppColors.main,
-            ),
-          ),
+        return Dialog(
           backgroundColor: AppColors.green,
-          content: Image.network(
-            imageUrl,
-            errorBuilder: (context, error, stackTrace) {
-              return Text('Image not found or failed to load.');
-            },
-          ),
-          actions: [
-            TextButton(
-              child: Text(
-                'Close',
-                style: TextStyle(
-                  color: AppColors.main,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    imageUrl,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('Image not found or failed to load.'),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -369,7 +366,7 @@ class _ServiceCardState extends State<ServiceCard> {
                     baseColor: AppColors.main,
                     progressColor: AppColors.main,
                     textColor: elementColor,
-                    holdDuration: const Duration(seconds: 1),
+                    holdDuration: const Duration(seconds: 2),
                     onConfirmed: () async {
                       Navigator.pop(context);
 

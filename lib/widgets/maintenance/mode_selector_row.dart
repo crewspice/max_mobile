@@ -21,7 +21,13 @@ class ModeSelectorRow<T> extends StatefulWidget {
 }
 
 class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
-  int offset = 0;
+  int _offset = 0;
+  bool _movingRight = true;
+
+  static const double arrowWidth = 42;
+  static const double diameter = 76;
+  static const double gap = 24;
+  static const double rowHeight = 84;
 
   Color _spectrumColor(double x) {
     x = x.clamp(0, 1);
@@ -43,6 +49,8 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
 
   @override
   Widget build(BuildContext context) {
+    if (widget.buttons.isEmpty) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -57,85 +65,98 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
         ],
         LayoutBuilder(
           builder: (context, constraints) {
-            const arrowWidth = 42.0;
-            const gap = 8.0;
-            const buttonMinWidth = 95.0;
+            const maxVisible = 3;
 
-            final needsArrow =
-                widget.buttons.length * buttonMinWidth >
+            final fitsAll = widget.buttons.length <= maxVisible &&
+                widget.buttons.length * (diameter + gap) - gap <=
                     constraints.maxWidth;
 
-            final availableWidth = constraints.maxWidth -
-                (needsArrow ? arrowWidth + gap : 0);
+            final buttonsAreaWidth =
+                constraints.maxWidth - (fitsAll ? 0 : arrowWidth * 2);
 
-            final count = needsArrow
-                ? (availableWidth / (buttonMinWidth + gap))
+            final pageTarget =
+                widget.buttons.length <= maxVisible ? widget.buttons.length : maxVisible;
+
+            final visibleCount = fitsAll
+                ? widget.buttons.length
+                : ((buttonsAreaWidth + gap) / (diameter + gap))
                     .floor()
-                    .clamp(1, widget.buttons.length)
-                : widget.buttons.length;
+                    .clamp(1, pageTarget);
 
-            final visible = widget.buttons
-                .skip(offset)
-                .take(count)
-                .toList();
+            final maxOffset =
+                (widget.buttons.length - 1).clamp(0, widget.buttons.length);
 
-            final buttonWidth =
-                (availableWidth - gap * (visible.length - 1)) /
-                    visible.length;
+            final offset = _offset.clamp(0, maxOffset);
+
+            final hasLeft = !fitsAll && offset > 0;
+            final hasRight = !fitsAll && offset + visibleCount < widget.buttons.length;
+
+            final visible =
+                widget.buttons.skip(offset).take(visibleCount).toList();
 
             return Row(
               children: [
-                SizedBox(
-                  width: availableWidth,
-                  height: 50,
-                  child: Stack(
-                    children: [
-                      for (int i = 0; i < visible.length; i++)
-                        Positioned(
-                          left: i * (buttonWidth + gap),
-                          width: buttonWidth,
-                          height: 50,
-                          child: _button(
-                            visible[i],
-                            (i * (buttonWidth + gap)) +
-                                (buttonWidth / 2),
-                            availableWidth,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (needsArrow) ...[
-                  const SizedBox(width: gap),
-                  SizedBox(
-                    width: arrowWidth,
-                    height: 45,
-                    child: OutlinedButton(
-                      onPressed: () {
-                        setState(() {
-                          offset += count;
+                if (!fitsAll)
+                  hasLeft
+                      ? _arrow(Icons.chevron_left, () {
+                          setState(() {
+                            _movingRight = false;
+                            _offset =
+                                (offset - visibleCount).clamp(0, maxOffset);
+                          });
+                        })
+                      : const SizedBox(width: arrowWidth),
 
-                          if (offset >= widget.buttons.length) {
-                            offset = 0;
-                          }
-                        });
+                Expanded(
+                  child: ClipRect(
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 300),
+                      switchInCurve: Curves.easeOutCubic,
+                      switchOutCurve: Curves.easeInCubic,
+                      transitionBuilder: (child, animation) {
+                        final isOld = child.key != ValueKey(offset);
+
+                        final beginOffset = isOld
+                            ? (_movingRight ? -1.0 : 1.0)
+                            : (_movingRight ? 1.0 : -1.0);
+
+                        return SlideTransition(
+                          position: Tween<Offset>(
+                            begin: Offset(beginOffset, 0),
+                            end: Offset.zero,
+                          ).animate(animation),
+                          child: child,
+                        );
                       },
-                      style: OutlinedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        side: const BorderSide(
-                          color: AppColors.yellow,
+                      child: SizedBox(
+                        key: ValueKey(offset),
+                        width: double.infinity,
+                        height: rowHeight,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            for (int i = 0; i < visible.length; i++) ...[
+                              _button(visible[i]),
+                              if (i < visible.length - 1)
+                                const SizedBox(width: gap),
+                            ],
+                          ],
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(18),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.chevron_right,
-                        color: AppColors.yellow,
                       ),
                     ),
                   ),
-                ],
+                ),
+
+                if (!fitsAll)
+                  hasRight
+                      ? _arrow(Icons.chevron_right, () {
+                          setState(() {
+                            _movingRight = true;
+                            _offset =
+                                (offset + visibleCount).clamp(0, maxOffset);
+                          });
+                        })
+                      : const SizedBox(width: arrowWidth),
               ],
             );
           },
@@ -144,18 +165,57 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
     );
   }
 
-  Widget _button(
-    ModeButton<T> button,
-    double centerX,
-    double rowWidth,
-  ) {
+  Widget _arrow(IconData icon, VoidCallback onTap) {
+    return SizedBox(
+      width: arrowWidth,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: onTap,
+          child: Container(
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.mainBackground,
+              border: Border.all(
+                color: AppColors.yellow,
+                width: 1.2,
+              ),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(
+              icon,
+              color: AppColors.yellow,
+              size: 22,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _button(ModeButton<T> button) {
     final active = widget.selected.contains(button.value);
-    final glowColor = _spectrumColor(centerX / rowWidth);
+
+    final index = widget.buttons.indexOf(button);
+    final t = widget.buttons.length <= 1
+        ? 0.0
+        : index / (widget.buttons.length - 1);
+    final glowColor = _spectrumColor(t);
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
+      width: diameter,
+      height: diameter,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        shape: BoxShape.circle,
+        color: AppColors.main,
+        border: Border.all(
+          color: active
+              ? AppColors.yellow
+              : AppColors.yellow.withOpacity(.35),
+          width: active ? 2 : 1,
+        ),
         boxShadow: active
             ? [
                 BoxShadow(
@@ -166,31 +226,28 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
               ]
             : null,
       ),
-      child: ElevatedButton(
-        onPressed: () => widget.onToggle(button.value),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.main,
-          foregroundColor: AppColors.yellow,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 12,
+      child: Material(
+        shape: const CircleBorder(),
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => widget.onToggle(button.value),
+          child: Padding(
+            padding: const EdgeInsets.all(4),
+            child: Center(
+              child: Text(
+                button.label,
+                maxLines: 2,
+                softWrap: true,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.yellow,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ),
-          side: BorderSide(
-            color: active
-                ? AppColors.yellow
-                : AppColors.yellow.withOpacity(.35),
-            width: active ? 2 : 1,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        child: Text(
-          button.label,
-          maxLines: 1,
-          softWrap: false,
-          overflow: TextOverflow.ellipsis,
         ),
       ),
     );

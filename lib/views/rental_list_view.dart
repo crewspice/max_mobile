@@ -1,10 +1,15 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../models/stop.dart';
 import '../widgets/rental_card.dart';
 import '../widgets/service_card.dart';
 import '../widgets/base_card.dart';
+import '../widgets/ornate_card.dart';
+import '../widgets/hold_to_confirm_button.dart';
 import '../theme/app_colors.dart';
+import '../utils/shop_geofence.dart' as shop_geofence;
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -29,6 +34,12 @@ class _RentalListViewState extends State<RentalListView> {
   List<Stop> stops = [];
   Map<int, TextEditingController> serialControllers = {};
 
+  // Trucks used on this route with no inspection in the last rolling week,
+  // and which of those the driver has dismissed for this app session only
+  // (no persistence - reappears next cold start / screen re-entry).
+  Set<String> staleTrucks = {};
+  Set<String> dismissedTrucks = {};
+
   @override
   void initState() {
     super.initState();
@@ -36,18 +47,48 @@ class _RentalListViewState extends State<RentalListView> {
   }
 
   Future<List<Stop>> _loadStops() async {
+    final position = await shop_geofence.getCurrentPosition();
+
     final result = await ApiService().fetchStopsByDriver(
       widget.driverId,
       completed: widget.completed,
       unassigned: widget.unassigned,
-      asSelf: true,
+      deviceLat: position?.latitude,
+      deviceLng: position?.longitude,
     );
 
     setState(() {
       stops = result;
     });
 
+    _checkStaleTrucks(result);
+
     return result;
+  }
+
+  // Only the driver's active route (not the completed/unassigned history
+  // screens, which reuse this same view) should warn about upcoming trucks.
+  Future<void> _checkStaleTrucks(List<Stop> loadedStops) async {
+    if (widget.completed || widget.unassigned) return;
+
+    final truckIds = loadedStops
+        .map((s) => s.truck)
+        .whereType<String>()
+        .where((t) => t.isNotEmpty)
+        .toSet()
+        .toList();
+
+    if (truckIds.isEmpty) return;
+
+    try {
+      final stale = await ApiService().needsInspectionRollingWeek(truckIds);
+      if (!mounted) return;
+      setState(() {
+        staleTrucks = stale.toSet();
+      });
+    } catch (_) {
+      // Non-critical - just skip the reminder if the check fails.
+    }
   }
 
   @override
@@ -86,16 +127,21 @@ class _RentalListViewState extends State<RentalListView> {
       stops = result;
       futureStops = Future.value(result);
     });
+
+    _checkStaleTrucks(result);
   }
 
   // Fetch stops for one driver, but fallback to all drivers if empty/error
   Future<List<Stop>> _fetchStopsForDriverWithFallback(String driverId) async {
     try {
+      final position = await shop_geofence.getCurrentPosition();
+
       final stops = await ApiService().fetchStopsByDriver(
         driverId,
         completed: widget.completed,
         unassigned: widget.unassigned,
-        asSelf: true,
+        deviceLat: position?.latitude,
+        deviceLng: position?.longitude,
       );
       if (stops.isNotEmpty) {
         return stops; // normal route data exists → show it
@@ -105,8 +151,10 @@ class _RentalListViewState extends State<RentalListView> {
     }
 
     // fallback: fetch all drivers to build a company-wide summary. This is
-    // browsing, not the driver viewing their own route, so asSelf stays
-    // false — must not mark other drivers' routes as "seen" by them.
+    // browsing, not the driver viewing their own route, so device location
+    // is not sent — must not mark other drivers' routes as "seen" by them
+    // just because this phone happens to be near their truck (e.g. everyone
+    // parked together at the shop).
     const driverIds = ['JS', 'K', 'A', 'JC', 'J', 'B'];
     Map<String, bool> driverHasRoutes = {};
 
@@ -223,61 +271,411 @@ class _RentalListViewState extends State<RentalListView> {
             (id, controller) => !stops.any((s) => s.id == id),
           );
 
-          return RefreshIndicator(
-            color: AppColors.main,
-            backgroundColor: AppColors.yellow,
-            onRefresh: _refreshRentals,
-            child: ListView.builder(
-              itemCount: stops.length,
-              itemBuilder: (context, index) {
-                final stop = stops[index];
+          final visibleStaleTrucks = staleTrucks
+              .difference(dismissedTrucks)
+              .toList()
+            ..sort();
 
-                if (stop.type == 'RENTAL') {
-                  return RentalCard(
-                    key: ValueKey(stop.id),
-                    stop: stop,
-                    serialController: serialControllers[stop.id]!,
-                    completedView: widget.completed,
-                    unassignedView: widget.unassigned,
-                    onRefresh: _refreshRentals,
-                    onNotesUpdated: (updatedStop) {
-                      setState(() {
-                        stops[index] = updatedStop;
-                      });
-                    },
-                  );
-                }
+          return Stack(
+            children: [
+              RefreshIndicator(
+                color: AppColors.main,
+                backgroundColor: AppColors.yellow,
+                onRefresh: _refreshRentals,
+                child: ListView.builder(
+                  itemCount: stops.length,
+                  itemBuilder: (context, index) {
+                    final stop = stops[index];
 
-                if (stop.type == 'SERVICE') {
-                  return ServiceCard(
-                    key: ValueKey(stop.id),
-                    stop: stop,
-                    onRefresh: _refreshRentals,
-                    completedView: widget.completed,
-                    unassignedView: widget.unassigned,
-                  );
-                }
+                    if (stop.type == 'RENTAL') {
+                      return RentalCard(
+                        key: ValueKey(stop.id),
+                        stop: stop,
+                        serialController: serialControllers[stop.id]!,
+                        completedView: widget.completed,
+                        unassignedView: widget.unassigned,
+                        onRefresh: _refreshRentals,
+                        onNotesUpdated: (updatedStop) {
+                          setState(() {
+                            stops[index] = updatedStop;
+                          });
+                        },
+                      );
+                    }
 
-                if (stop.liftType == 'HQ') {
-                  return BaseCard(
-                    key: ValueKey(stop.id),
-                    stop: stop,
-                    onRefresh: _refreshRentals,
-                    completedView: widget.completed,
-                    onNotesUpdated: (updatedStop) {
-                      setState(() {
-                        stops[index] = updatedStop;
-                      });
-                    },
-                  );
-                }
+                    if (stop.type == 'SERVICE') {
+                      return ServiceCard(
+                        key: ValueKey(stop.id),
+                        stop: stop,
+                        onRefresh: _refreshRentals,
+                        completedView: widget.completed,
+                        unassignedView: widget.unassigned,
+                      );
+                    }
 
-                return const SizedBox.shrink();
-              },
-            ),
+                    if (stop.liftType == 'HQ') {
+                      return BaseCard(
+                        key: ValueKey(stop.id),
+                        stop: stop,
+                        onRefresh: _refreshRentals,
+                        completedView: widget.completed,
+                        onNotesUpdated: (updatedStop) {
+                          setState(() {
+                            stops[index] = updatedStop;
+                          });
+                        },
+                      );
+                    }
+
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+              if (visibleStaleTrucks.isNotEmpty)
+                _buildStaleTruckOverlay(visibleStaleTrucks.first),
+            ],
           );
         },
       ),
+    );
+  }
+
+  // Styled to match the truck-page inspection warning (truck_view.dart),
+  // but blown up into a full-screen barrier so the driver has to deal with
+  // it (or explicitly Dismiss) before they can get back to the route -
+  // dismissal isn't persisted, so it reappears on next cold start / screen
+  // re-entry.
+  Widget _buildStaleTruckOverlay(String truckId) {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black87,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: OrnateCard(
+          color: AppColors.red,
+          padding: EdgeInsets.zero,
+          child: Container(
+            color: AppColors.mainBackground,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.warning,
+                      color: AppColors.red,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        "Truck $truckId needs inspection",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.red,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  "No inspection recorded in the last 7 days.",
+                  style: TextStyle(
+                    color: AppColors.red,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: AppColors.mainBackground,
+                          side: const BorderSide(
+                            color: AppColors.red,
+                            width: 2,
+                          ),
+                        ),
+                        onPressed: () =>
+                            _openTruckIssueFlow(context, truckId),
+                        icon: const Icon(
+                          Icons.report_problem,
+                          color: AppColors.red,
+                        ),
+                        label: const Text(
+                          "Record Issue",
+                          style: TextStyle(
+                            color: AppColors.red,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: HoldToConfirmButton(
+                        label: "No Issues",
+                        baseColor: AppColors.mainBackground,
+                        textColor: AppColors.red,
+                        progressColor: AppColors.red,
+                        icon: const Icon(
+                          Icons.check,
+                          color: AppColors.red,
+                        ),
+                        onConfirmed: () => _recordNoIssues(truckId),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () {
+                      setState(() {
+                        dismissedTrucks.add(truckId);
+                      });
+                    },
+                    child: const Text(
+                      "Dismiss",
+                      style: TextStyle(color: AppColors.red),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _recordNoIssues(String truckId) async {
+    try {
+      await ApiService().recordTruckInspection(
+        truckId: truckId,
+        driverId: widget.driverId,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        staleTrucks.remove(truckId);
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Inspection recorded successfully.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to record inspection: $e'),
+        ),
+      );
+    }
+  }
+
+  Future<XFile?> _pickImage({bool camera = true}) async {
+    final picker = ImagePicker();
+    return await picker.pickImage(
+      source: camera ? ImageSource.camera : ImageSource.gallery,
+    );
+  }
+
+  void _openTruckIssueFlow(BuildContext context, String truckId) {
+    final descriptionController = TextEditingController();
+    XFile? selectedImage;
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              color: AppColors.main,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  bottom: MediaQuery.of(context).viewInsets.bottom,
+                  left: 16,
+                  right: 16,
+                  top: 16,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Report Issue",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.red,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.red,
+                              foregroundColor: AppColors.mainBackground,
+                            ),
+                            onPressed: () async {
+                              final file = await _pickImage();
+                              if (file != null) {
+                                setModalState(() => selectedImage = file);
+                              }
+                            },
+                            child: const Text("Take Photo"),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.red,
+                              foregroundColor: AppColors.mainBackground,
+                            ),
+                            onPressed: () async {
+                              final file = await _pickImage(camera: false);
+                              if (file != null) {
+                                setModalState(() => selectedImage = file);
+                              }
+                            },
+                            icon: const Icon(Icons.upload),
+                            label: const Text("Upload"),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    if (selectedImage != null)
+                      Container(
+                        decoration: BoxDecoration(
+                          border: Border.all(
+                            color: AppColors.yellow,
+                            width: 2,
+                          ),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: Image.file(
+                          File(selectedImage!.path),
+                          height: 120,
+                        ),
+                      ),
+                    const SizedBox(height: 12),
+
+                    TextField(
+                      controller: descriptionController,
+                      maxLines: 3,
+                      style: const TextStyle(
+                        color: AppColors.red,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: "Describe the issue",
+                        labelStyle: const TextStyle(
+                          color: AppColors.red,
+                        ),
+                        filled: true,
+                        fillColor: Colors.black26,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: AppColors.red,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: AppColors.red,
+                          ),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: AppColors.red,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.red,
+                          foregroundColor: AppColors.mainBackground,
+                        ),
+                        onPressed: isSubmitting
+                            ? null
+                            : () async {
+                                if (selectedImage == null) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text("Photo required")),
+                                  );
+                                  return;
+                                }
+
+                                setModalState(() => isSubmitting = true);
+
+                                final success =
+                                    await ApiService().recordTruckIssue(
+                                  image: File(selectedImage!.path),
+                                  truckId: truckId,
+                                  driverId: widget.driverId,
+                                  description:
+                                      descriptionController.text.trim(),
+                                );
+
+                                Navigator.pop(context);
+
+                                if (success && mounted) {
+                                  setState(() {
+                                    staleTrucks.remove(truckId);
+                                  });
+                                }
+
+                                if (!mounted) return;
+
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(success
+                                        ? 'Issue submitted'
+                                        : 'Submission failed'),
+                                  ),
+                                );
+                              },
+                        child: isSubmitting
+                            ? const CircularProgressIndicator()
+                            : const Text("Submit Issue"),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

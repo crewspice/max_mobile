@@ -95,27 +95,28 @@ class MenuScreen extends StatelessWidget {
 
           if (!maintenanceOnly)
             const Divider(color: AppColors.yellow),
-          ListTile(
-            leading: const Icon(Icons.pending_actions,
-                color: AppColors.yellow),
-            title: const Text(
-              'Unassigned Stops',
-              style: TextStyle(color: AppColors.yellow),
-            ),
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => CompletedStopsScreen(
-                    driverId: currentUserId,
-                    unassigned: true,
+          if (!maintenanceOnly)
+            ListTile(
+              leading: const Icon(Icons.pending_actions,
+                  color: AppColors.yellow),
+              title: const Text(
+                'Unassigned Stops',
+                style: TextStyle(color: AppColors.yellow),
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => CompletedStopsScreen(
+                      driverId: currentUserId,
+                      unassigned: true,
+                    ),
                   ),
-                ),
-              );
-            },
-          ),
+                );
+              },
+            ),
 
-          const Divider(color: AppColors.yellow),
+          if (!maintenanceOnly) const Divider(color: AppColors.yellow),
 
           ListTile(
             leading: const Icon(Icons.account_circle, color: AppColors.yellow),

@@ -273,31 +273,28 @@ class _RentalCardState extends State<RentalCard> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Delivery Photo',
-            style: TextStyle(
-              color: AppColors.main,
-            ),
-          ),
+        return Dialog(
           backgroundColor: elementColor,
-          content: Image.network(
-            imageUrl,
-            errorBuilder: (context, error, stackTrace) {
-              return Text('Image not found or failed to load.');
-            },
-          ),
-          actions: [
-            TextButton(
-              child: Text(
-                'Close',
-                style: TextStyle(
-                  color: AppColors.main,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: Stack(
+              alignment: Alignment.bottomRight,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Image.network(
+                    imageUrl,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text('Image not found or failed to load.'),
+                      );
+                    },
+                  ),
                 ),
-              ),
-              onPressed: () => Navigator.of(context).pop(),
+              ],
             ),
-          ],
+          ),
         );
       },
     );
@@ -380,7 +377,7 @@ class _RentalCardState extends State<RentalCard> {
                     baseColor: AppColors.main,
                     progressColor: AppColors.main,
                     textColor: elementColor,
-                    holdDuration: const Duration(seconds: 1),
+                    holdDuration: const Duration(seconds: 2),
                     onConfirmed: () async {
                       final bool onArrival = selected == 1;
 

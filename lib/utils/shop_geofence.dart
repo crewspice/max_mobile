@@ -2,7 +2,7 @@ import 'package:geolocator/geolocator.dart';
 
 /// How close the driver's phone must be to their assigned truck's
 /// last-reported position to count as "with the truck" (miles).
-const double kNearTruckThresholdMiles = 0.5;
+const double kNearTruckThresholdMiles = 0.75;
 
 const double _metersPerMile = 1609.344;
 

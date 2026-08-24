@@ -7,7 +7,7 @@ import '../../views/maintenance_ui_state.dart';
 import 'timeline/timeline_builder.dart';
 import 'maintenance_timeline.dart';
 
-class HistoryTimelineLoader extends StatelessWidget {
+class HistoryTimelineLoader extends StatefulWidget {
   final int liftId;
   final MaintenanceUiState ui;
 
@@ -18,46 +18,56 @@ class HistoryTimelineLoader extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  State<HistoryTimelineLoader> createState() => _HistoryTimelineLoaderState();
+}
 
+class _HistoryTimelineLoaderState extends State<HistoryTimelineLoader> {
+  Future<List<dynamic>>? _historyFuture;
+
+  @override
+  void didUpdateWidget(covariant HistoryTimelineLoader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.liftId != widget.liftId) {
+      _historyFuture = null;
+    }
+  }
+
+  void _ensureLoaded() {
+    _historyFuture ??= Future.wait([
+      ApiService().fetchPmHistory(widget.liftId),
+      ApiService().fetchMaintenanceHistory(widget.liftId),
+      ApiService().fetchRentalHistory(widget.liftId),
+    ]);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return ListenableBuilder(
-      listenable: ui,
+      listenable: widget.ui,
       builder: (context, _) {
+        if (widget.ui.selectedHistory.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        _ensureLoaded();
 
         return FutureBuilder(
-          future: Future.wait([
-            ApiService().fetchPmHistory(liftId),
-            ApiService().fetchMaintenanceHistory(liftId),
-            ApiService().fetchRentalHistory(liftId),
-          ]),
+          future: _historyFuture,
           builder: (context, snapshot) {
-
             if (!snapshot.hasData) {
               return const CircularProgressIndicator();
             }
 
-            final pms =
-                snapshot.data![0] as List<LiftPmHistoryItem>;
-
-            final issues =
-                snapshot.data![1] as List<LiftMaintenanceHistoryItem>;
-
-            final rentals =
-                snapshot.data![2] as List<LiftRentalHistoryItem>;
-
+            final pms = snapshot.data![0] as List<LiftPmHistoryItem>;
+            final issues = snapshot.data![1] as List<LiftMaintenanceHistoryItem>;
+            final rentals = snapshot.data![2] as List<LiftRentalHistoryItem>;
 
             final events = buildTimeline(
               pms: pms,
               issues: issues,
               rentals: rentals,
-              filters: ui.selectedHistory,
+              filters: widget.ui.selectedHistory,
             );
-
-
-            print(
-              "FILTERS: ${ui.selectedHistory} EVENTS: ${events.length}",
-            );
-
 
             return MaintenanceTimeline(
               events: events,

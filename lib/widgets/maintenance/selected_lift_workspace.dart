@@ -47,10 +47,19 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
     required Color glowColor,
     required VoidCallback onPressed,
   }) {
+    const diameter = 76.0;
+
     return AnimatedContainer(
       duration: const Duration(milliseconds: 250),
+      width: diameter,
+      height: diameter,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        shape: BoxShape.circle,
+        color: AppColors.main,
+        border: Border.all(
+          color: active ? glowColor : AppColors.yellow.withOpacity(.35),
+          width: active ? 2 : 1,
+        ),
         boxShadow: active
             ? [
                 BoxShadow(
@@ -61,30 +70,24 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
               ]
             : null,
       ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.main,
-          foregroundColor: AppColors.yellow,
-          elevation: 0,
-          side: active
-              ? BorderSide(
-                  color: glowColor,
-                  width: 2,
-                )
-              : BorderSide.none,
-          padding: const EdgeInsets.symmetric(
-            horizontal: 8,
-            vertical: 12,
-          ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(18),
-          ),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: DeviceConfig.isIphone ? 11 : 14,
+      child: Material(
+        shape: const CircleBorder(),
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 2,
+              softWrap: true,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.yellow,
+                fontSize: DeviceConfig.isIphone ? 11 : 13,
+              ),
+            ),
           ),
         ),
       ),
@@ -160,47 +163,40 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
             const SizedBox(height: 6),
 
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
 
-                Expanded(
-                  child: HoldToConfirmButton(
-                    icon: !DeviceConfig.isIpad ? null : const Icon(Icons.check),
-                    label: widget.snapshot.needsAnnual == true
-                        ? 'Annual'
-                        : 'PM',
-                    textSize: DeviceConfig.isIphone ? 10 : 14,
-                    baseColor: AppColors.main,
-                    textColor: AppColors.yellow,
-                    progressColor: AppColors.yellow,
-                    holdDuration: const Duration(seconds: 2),
-                    onConfirmed: _submitPm,
-                  ),
+                HoldToConfirmButton(
+                  icon: !DeviceConfig.isIpad ? null : const Icon(Icons.check),
+                  label: widget.snapshot.needsAnnual == true
+                      ? 'Annual'
+                      : 'PM',
+                  textSize: DeviceConfig.isIphone ? 11 : 13,
+                  baseColor: AppColors.main,
+                  textColor: AppColors.yellow,
+                  progressColor: AppColors.yellow,
+                  holdDuration: const Duration(seconds: 2),
+                  circular: true,
+                  diameter: 76,
+                  onConfirmed: _submitPm,
                 ),
 
-                const SizedBox(width: 8),
-
-                Expanded(
-                  child: _recordButton(
-                    label: 'Repair',
-                    active: widget.ui.selectedRecord == RecordMode.repair,
-                    glowColor: AppColors.green,
-                    onPressed: () {
-                      widget.ui.selectRecord(RecordMode.repair);
-                    },
-                  ),
+                _recordButton(
+                  label: 'Repair',
+                  active: widget.ui.selectedRecord == RecordMode.repair,
+                  glowColor: AppColors.green,
+                  onPressed: () {
+                    widget.ui.selectRecord(RecordMode.repair);
+                  },
                 ),
 
-                const SizedBox(width: 8),
-
-                Expanded(
-                  child: _recordButton(
-                    label: 'Issue',
-                    active: widget.ui.selectedRecord == RecordMode.issue,
-                    glowColor: AppColors.red,
-                    onPressed: () {
-                      widget.ui.selectRecord(RecordMode.issue);
-                    },
-                  ),
+                _recordButton(
+                  label: 'Issue',
+                  active: widget.ui.selectedRecord == RecordMode.issue,
+                  glowColor: AppColors.red,
+                  onPressed: () {
+                    widget.ui.selectRecord(RecordMode.issue);
+                  },
                 ),
               ],
             ),

@@ -9,6 +9,10 @@ class InventoryItem {
   final String? city;
   final String? customerName;
   final String? actionType;
+  final int? daysOnRent;
+  final DateTime? lastPmDate;
+  final String? lastPmPerformerInitials;
+  final int? pendingRepairs;
 
   InventoryItem({
     required this.liftType,
@@ -21,6 +25,10 @@ class InventoryItem {
     this.city,
     this.customerName,
     this.actionType,
+    this.daysOnRent,
+    this.lastPmDate,
+    this.lastPmPerformerInitials,
+    this.pendingRepairs,
   });
 
   bool get isPickup => actionType == 'Pickup';
@@ -37,6 +45,12 @@ class InventoryItem {
       city: json['city'],
       customerName: json['customerName'],
       actionType: json['actionType'],
+      daysOnRent: json['daysOnRent'] as int?,
+      lastPmDate: json['lastPmDate'] != null
+          ? DateTime.parse(json['lastPmDate'])
+          : null,
+      lastPmPerformerInitials: json['lastPmPerformerInitials'],
+      pendingRepairs: json['pendingRepairs'] as int?,
     );
   }
 }

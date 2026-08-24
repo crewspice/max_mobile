@@ -7,6 +7,8 @@ import '../models/lift_maintenance_snapshot.dart';
 import '../models/lift_pm_history_item.dart';
 import '../models/lift_maintenance_history_item.dart';
 import '../models/lift_rental_history_item.dart';
+import '../models/yard_list_item.dart';
+import '../models/yard_shortage_warning.dart';
 import '../models/inventory_item.dart';
 import '../models/lift_option.dart';
 import '../models/chat_message.dart';
@@ -33,8 +35,7 @@ class ApiService {
       throw Exception('Failed to load chat messages');
     }
 
-    final List<dynamic> decoded =
-        json.decode(utf8.decode(response.bodyBytes));
+    final List<dynamic> decoded = json.decode(utf8.decode(response.bodyBytes));
 
     return decoded.map((m) => ChatMessage.fromJson(m)).toList();
   }
@@ -61,8 +62,7 @@ class ApiService {
 
   /// Fetch all driver IDs/initials that have routes (excluding "null")
   Future<List<Map<String, dynamic>>> fetchUserSelection() async {
-    final response =
-        await http.get(Uri.parse('$userUrl/selection'));
+    final response = await http.get(Uri.parse('$userUrl/selection'));
 
     if (response.statusCode != 200) {
       throw Exception('Failed to fetch user selection');
@@ -72,20 +72,21 @@ class ApiService {
 
     return jsonList.cast<Map<String, dynamic>>();
   }
-  
+
   /// Fetch route stops or completed stops by driver ID.
   ///
-  /// [asSelf] must only be true when this is the logged-in driver viewing
-  /// their own route (not the "what's everyone else up to" summary fetch
-  /// that loops over every driver ID) — the API uses it to decide whether
-  /// this counts as the driver having "seen" their route.
+  /// [deviceLat]/[deviceLng] should only be passed when this is the
+  /// logged-in driver viewing their own route (not the "what's everyone
+  /// else up to" summary fetch that loops over every driver ID) — the API
+  /// only counts the route as "seen" by that driver when this device's GPS
+  /// is actually close to the route's truck.
   Future<List<Stop>> fetchStopsByDriver(
     String driverId, {
     bool completed = false,
     bool unassigned = false,
-    bool asSelf = false,
+    double? deviceLat,
+    double? deviceLng,
   }) async {
-
     String endpoint;
 
     if (completed) {
@@ -93,7 +94,8 @@ class ApiService {
     } else if (unassigned) {
       endpoint = "$routeUrl/stops/unassigned";
     } else {
-      endpoint = "$routeUrl/driver/$driverId${asSelf ? '?asSelf=true' : ''}";
+      endpoint = "$routeUrl/driver/$driverId"
+          "${deviceLat != null && deviceLng != null ? '?deviceLat=$deviceLat&deviceLng=$deviceLng' : ''}";
     }
 
     final response = await http.get(Uri.parse(endpoint));
@@ -139,7 +141,6 @@ class ApiService {
           driverId: driverId,
         );
       }).toList();
-
     } else {
       throw 'No route';
     }
@@ -158,9 +159,7 @@ class ApiService {
 
     final List<dynamic> inventoryJson = data['inventory'] ?? [];
 
-    return inventoryJson
-        .map((json) => InventoryItem.fromJson(json))
-        .toList();
+    return inventoryJson.map((json) => InventoryItem.fromJson(json)).toList();
   }
 
   /// Whether the signed-in driver has an active route, and whether their
@@ -178,14 +177,9 @@ class ApiService {
     return json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
   }
 
-  Future<bool> recordDeliveryWithPhoto(
-    File imageFile,
-    int rentalId,
-    String serialNumber,
-    String truck,
-    String driver,
-    {String? nullRouteId}
-  ) async {
+  Future<bool> recordDeliveryWithPhoto(File imageFile, int rentalId,
+      String serialNumber, String truck, String driver,
+      {String? nullRouteId}) async {
     final String url = routeUrl;
 
     var request = http.MultipartRequest('POST', Uri.parse(url))
@@ -220,7 +214,6 @@ class ApiService {
       return false;
     }
   }
-
 
   Future<bool> recordPickup(
     int rentalId,
@@ -257,7 +250,6 @@ class ApiService {
       return false;
     }
   }
-
 
   Future<bool> recordServiceWithPhoto(
     File imageFile,
@@ -345,9 +337,9 @@ class ApiService {
     }
   }
 
-
   Future<bool> validateSerialNumber(String serialNumber) async {
-    final String apiUrl = '$baseUrl/validateSerialNumber?serialNumber=$serialNumber';
+    final String apiUrl =
+        '$baseUrl/validateSerialNumber?serialNumber=$serialNumber';
 
     try {
       final response = await http.get(Uri.parse(apiUrl));
@@ -433,7 +425,6 @@ class ApiService {
     int? year,
     int? month,
   }) async {
-
     final String endpoint;
 
     if (year != null && month != null) {
@@ -448,9 +439,7 @@ class ApiService {
       throw Exception('Failed to load user statistics');
     }
 
-    List<dynamic> statsList =
-        jsonDecode(utf8.decode(response.bodyBytes));
-
+    List<dynamic> statsList = jsonDecode(utf8.decode(response.bodyBytes));
 
     final userData = statsList.firstWhere(
       (item) => item['userInitial'] == userInitial,
@@ -468,7 +457,7 @@ class ApiService {
 
     return userData;
   }
-    
+
   Future<bool> updateRentalNotes({
     required int rentalId,
     required String notes,
@@ -483,7 +472,8 @@ class ApiService {
     print('BODY: $notes');
 
     try {
-      final response = await http.put( // or patch
+      final response = await http.put(
+        // or patch
         uri,
         headers: {
           'Content-Type': 'application/json',
@@ -549,6 +539,29 @@ class ApiService {
     }
   }
 
+  Future<List<YardListItem>> fetchYardList() async {
+    final response = await http.get(Uri.parse('$maintenanceUrl/yard-list'));
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((e) => YardListItem.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load yard list');
+    }
+  }
+
+  Future<List<YardShortageWarning>> fetchYardShortageWarnings() async {
+    final response =
+        await http.get(Uri.parse('$maintenanceUrl/yard-list/warnings'));
+
+    if (response.statusCode == 200) {
+      final List data = jsonDecode(utf8.decode(response.bodyBytes));
+      return data.map((e) => YardShortageWarning.fromJson(e)).toList();
+    } else {
+      throw Exception('Failed to load yard shortage warnings');
+    }
+  }
+
   Future<void> submitPreventiveMaintenance({
     required int liftId,
     required String completedByInitial,
@@ -593,7 +606,8 @@ class ApiService {
     }
   }
 
-  Future<LiftMaintenanceSnapshot> fetchLiftMaintenanceSnapshot(int liftId) async {
+  Future<LiftMaintenanceSnapshot> fetchLiftMaintenanceSnapshot(
+      int liftId) async {
     final response = await http.get(
       Uri.parse('$maintenanceUrl/snapshot/$liftId'),
     );
@@ -601,24 +615,6 @@ class ApiService {
     if (response.statusCode == 200) {
       final jsonMap = jsonDecode(utf8.decode(response.bodyBytes));
       return LiftMaintenanceSnapshot.fromJson(jsonMap);
-    } else {
-      throw Exception('Failed to load lift maintenance snapshot');
-    }
-  }
-
-  // Truck inventory only carries a serial number, not a liftId.
-  Future<LiftMaintenanceSnapshot?> fetchLiftMaintenanceSnapshotBySerial(
-    String serialNumber,
-  ) async {
-    final response = await http.get(
-      Uri.parse('$maintenanceUrl/snapshot/by-serial/$serialNumber'),
-    );
-
-    if (response.statusCode == 200) {
-      final jsonMap = jsonDecode(utf8.decode(response.bodyBytes));
-      return LiftMaintenanceSnapshot.fromJson(jsonMap);
-    } else if (response.statusCode == 404) {
-      return null;
     } else {
       throw Exception('Failed to load lift maintenance snapshot');
     }
@@ -697,7 +693,8 @@ class ApiService {
   }
 
   Future<List<LiftPmHistoryItem>> fetchPmHistory(int liftId) async {
-    final response = await http.get(Uri.parse('$maintenanceUrl/pm-history/$liftId'));
+    final response =
+        await http.get(Uri.parse('$maintenanceUrl/pm-history/$liftId'));
     if (response.statusCode == 200) {
       final List data = jsonDecode(utf8.decode(response.bodyBytes));
       return data.map((e) => LiftPmHistoryItem.fromJson(e)).toList();
@@ -709,7 +706,8 @@ class ApiService {
   // -----------------------------
   // New: Maintenance / issue history
   // -----------------------------
-  Future<List<LiftMaintenanceHistoryItem>> fetchMaintenanceHistory(int liftId) async {
+  Future<List<LiftMaintenanceHistoryItem>> fetchMaintenanceHistory(
+      int liftId) async {
     final response =
         await http.get(Uri.parse('$maintenanceUrl/issue-history/$liftId'));
 
@@ -718,9 +716,7 @@ class ApiService {
         utf8.decode(response.bodyBytes),
       );
 
-      return data
-          .map((e) => LiftMaintenanceHistoryItem.fromJson(e))
-          .toList();
+      return data.map((e) => LiftMaintenanceHistoryItem.fromJson(e)).toList();
     } else {
       throw Exception('Failed to load maintenance history');
     }
@@ -735,15 +731,12 @@ class ApiService {
         utf8.decode(response.bodyBytes),
       );
 
-      return data
-          .map((e) => LiftRentalHistoryItem.fromJson(e))
-          .toList();
+      return data.map((e) => LiftRentalHistoryItem.fromJson(e)).toList();
     } else {
       throw Exception('Failed to load rental history');
     }
   }
 
-  
   Future<void> resolveMaintenanceAction({
     required int actionId,
     required String resolvedByInitial,
@@ -778,6 +771,28 @@ class ApiService {
     return res.body.trim().toLowerCase() == 'true';
   }
 
+  /// Returns the subset of [truckIds] with no inspection recorded in the
+  /// last rolling 7 days - stricter than [needsInspection], which only
+  /// checks the current calendar month.
+  Future<List<String>> needsInspectionRollingWeek(
+    List<String> truckIds,
+  ) async {
+    if (truckIds.isEmpty) return [];
+
+    final uri = Uri.parse('$maintenanceUrl/inspections/needs-week').replace(
+      queryParameters: {'truckIds': truckIds.join(',')},
+    );
+
+    final res = await http.get(uri);
+
+    if (res.statusCode != 200) {
+      throw Exception('Failed to check rolling-week inspections');
+    }
+
+    final List<dynamic> decoded = json.decode(utf8.decode(res.bodyBytes));
+    return decoded.cast<String>();
+  }
+
   Future<bool> recordIssue({
     required File image,
     required String truckId,
@@ -799,8 +814,8 @@ class ApiService {
   }
 
   Future<void> updateMaintenanceRepairNotes(
-      int actionId,
-      String repairNotes,
+    int actionId,
+    String repairNotes,
   ) async {
     final response = await http.put(
       Uri.parse('$maintenanceUrl/repair-notes/$actionId'),
@@ -843,7 +858,6 @@ class ApiService {
         return true;
       }
       return false;
-
     } catch (e) {
       return false;
     }
@@ -906,5 +920,4 @@ class ApiService {
       return false;
     }
   }
-
 }

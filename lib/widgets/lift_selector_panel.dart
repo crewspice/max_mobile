@@ -240,6 +240,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
             height:selectorHeight,
             child:Stack(
               alignment:Alignment.center,
+              clipBehavior:Clip.none,
               children:[
                 AnimatedContainer(
                   duration:const Duration(milliseconds:250),
@@ -306,6 +307,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                   margin: const EdgeInsets.symmetric(horizontal:3),
                                   child:Stack(
                                     alignment:Alignment.center,
+                                    clipBehavior:Clip.none,
                                     children:[
                                       AnimatedContainer(
                                         duration:const Duration(milliseconds:250),
@@ -335,6 +337,8 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                             child: MediaQuery.withNoTextScaling(
                                               child: Text(
                                                 _serial[i],
+                                                softWrap: false,
+                                                overflow: TextOverflow.visible,
                                                 style: GoogleFonts.knewave(
                                                   color: widget.colors.text,
                                                   fontSize: characterSize * .85,
