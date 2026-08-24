@@ -12,6 +12,7 @@ class MenuScreen extends StatelessWidget {
   final String userName;
   final bool maintenanceOnly;
   final bool driverChatUnlocked;
+  final VoidCallback? onAssessDriverStatus;
 
   const MenuScreen({
     super.key,
@@ -19,6 +20,7 @@ class MenuScreen extends StatelessWidget {
     required this.userName,
     this.maintenanceOnly = false,
     this.driverChatUnlocked = false,
+    this.onAssessDriverStatus,
   });
 
   @override
@@ -136,8 +138,7 @@ class MenuScreen extends StatelessWidget {
             },
           ),
 
-          if (driverChatUnlocked)
-            const Divider(color: AppColors.yellow),
+          Divider(color: AppColors.yellow.withOpacity(driverChatUnlocked ? 1 : 0.4)),
 
           if (driverChatUnlocked)
             ListTile(
@@ -157,6 +158,22 @@ class MenuScreen extends StatelessWidget {
                   ),
                 );
               },
+            )
+          else
+            ListTile(
+              leading: Icon(Icons.lock_outline, color: AppColors.yellow.withOpacity(0.4)),
+              title: Text(
+                "assess if I'm a driver",
+                style: TextStyle(color: AppColors.yellow.withOpacity(0.4)),
+              ),
+              onTap: onAssessDriverStatus == null
+                  ? null
+                  : () {
+                      onAssessDriverStatus!();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Assessing...')),
+                      );
+                    },
             ),
         ],
       ),

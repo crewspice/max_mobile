@@ -37,6 +37,11 @@ class _MaintenanceViewState extends State<MaintenanceView> {
   Lift? _selectedLift;
   Future<LiftMaintenanceSnapshot>? _snapshotFuture;
 
+  // While the user is actively typing a serial, the yard list button is
+  // hidden so the autocomplete dropdown and keyboard have room instead of
+  // competing with it for the bottom of the card.
+  bool _liftSearchActive = false;
+
   @override
   void initState() {
     super.initState();
@@ -65,6 +70,11 @@ class _MaintenanceViewState extends State<MaintenanceView> {
         _snapshotFuture = null;
         ui.resetForNewLift();
       });
+    }
+
+    final searching = serial.isNotEmpty;
+    if (searching != _liftSearchActive) {
+      setState(() => _liftSearchActive = searching);
     }
   }
 
@@ -173,9 +183,16 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                 ),
                               ),
                             ),
-                            YardListButton(
-                              onLiftSelected: _selectLift,
-                              currentUserId: widget.currentUserId,
+                            AnimatedCrossFade(
+                              duration: const Duration(milliseconds: 180),
+                              crossFadeState: _liftSearchActive
+                                  ? CrossFadeState.showSecond
+                                  : CrossFadeState.showFirst,
+                              firstChild: YardListButton(
+                                onLiftSelected: _selectLift,
+                                currentUserId: widget.currentUserId,
+                              ),
+                              secondChild: const SizedBox(width: double.infinity),
                             ),
                           ],
                         ),

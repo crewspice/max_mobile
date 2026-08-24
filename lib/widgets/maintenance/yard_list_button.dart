@@ -119,11 +119,6 @@ class _YardListSheet extends StatefulWidget {
   State<_YardListSheet> createState() => _YardListSheetState();
 }
 
-// Default view is always `yardList` — flipping the toggle to `inventory`
-// hands off to a full-screen route rather than swapping this sheet's body,
-// so this state only ever needs to reflect the pre-navigation moment.
-enum _ViewMode { yardList, inventory }
-
 class _YardListSheetState extends State<_YardListSheet> {
   // Fixed row heights let the scroll position map directly to a section
   // index without measuring rendered widgets.
@@ -138,9 +133,10 @@ class _YardListSheetState extends State<_YardListSheet> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<String?> _activeType = ValueNotifier<String?>(null);
 
-  // Untouched, this always stays `yardList` so default behavior is
-  // unchanged from before the toggle existed.
-  _ViewMode _viewMode = _ViewMode.yardList;
+  // Tapping the title reveals the row of extra actions (currently just
+  // Inventory Check) in place of the dots/banner, instead of each new
+  // action permanently claiming more of the title line.
+  bool _optionsOpen = false;
 
   late List<Object> _entries;
   late List<String> _types;
@@ -221,16 +217,15 @@ class _YardListSheetState extends State<_YardListSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final title =
-        _viewMode == _ViewMode.yardList ? 'Yard List' : 'Inventory';
+    const title = 'Yard List';
     final countSuffix = ' (${widget.items.length})';
     final titleChars = '$title$countSuffix';
     const titleStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
 
-    // The toggle sits to the left of the title, so the gradient math (which
-    // otherwise assumes the title starts flush at the row's left edge) gets
-    // this leading inset folded in.
-    const leadingInset = _ViewModeToggle.width + 10;
+    // Small chevron sits right after the title text as the affordance that
+    // it's tappable; its width is folded into the gradient math the same
+    // way the title's own width is.
+    const chevronWidth = 18.0;
 
     // Measured pixel widths, not character counts, so a char's gradient
     // color reflects where it actually lands on screen.
@@ -273,11 +268,11 @@ class _YardListSheetState extends State<_YardListSheet> {
               // true red only at the row's right edge, matching how the
               // title and banner are actually laid out on screen.
               final rowWidth = constraints.maxWidth;
-              final dotsStartX = leadingInset + titleWidth;
-              final dotsWidth = (rowWidth - leadingInset - titleWidth - bannerWidth)
+              final dotsStartX = titleWidth + chevronWidth;
+              final dotsWidth = (rowWidth - titleWidth - chevronWidth - bannerWidth)
                   .clamp(0.0, rowWidth);
 
-              double cursor = leadingInset;
+              double cursor = 0;
               final charColors = <Color>[];
               for (final w in charWidths) {
                 final centerX = cursor + w / 2;
@@ -306,40 +301,79 @@ class _YardListSheetState extends State<_YardListSheet> {
 
               return Row(
                 children: [
-                  _ViewModeToggle(
-                    mode: _viewMode,
-                    onChanged: (mode) {
-                      if (mode == _viewMode) return;
-                      setState(() => _viewMode = mode);
-                      if (mode == _ViewMode.inventory) {
-                        widget.onOpenInventoryCheck();
-                      }
-                    },
-                  ),
-                  const SizedBox(width: 10),
-                  Text.rich(
-                    TextSpan(
+                  GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() => _optionsOpen = !_optionsOpen),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        for (var i = 0; i < titleChars.length; i++)
+                        Text.rich(
                           TextSpan(
-                            text: titleChars[i],
-                            style: titleStyle.copyWith(color: charColors[i]),
+                            children: [
+                              for (var i = 0; i < titleChars.length; i++)
+                                TextSpan(
+                                  text: titleChars[i],
+                                  style: titleStyle.copyWith(
+                                      color: charColors[i]),
+                                ),
+                            ],
                           ),
+                        ),
+                        SizedBox(
+                          width: chevronWidth,
+                          child: AnimatedRotation(
+                            turns: _optionsOpen ? 0.5 : 0,
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOut,
+                            child: const Icon(
+                              Icons.expand_more,
+                              size: 18,
+                              color: AppColors.yellow,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   Expanded(
-                    child: _GradientDots(
-                      rowWidth: rowWidth,
-                      startX: dotsStartX,
+                    child: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 220),
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      transitionBuilder: (child, animation) => FadeTransition(
+                        opacity: animation,
+                        child: SizeTransition(
+                          sizeFactor: animation,
+                          axis: Axis.horizontal,
+                          axisAlignment: -1,
+                          child: child,
+                        ),
+                      ),
+                      child: _optionsOpen
+                          ? _YardListOptionsRow(
+                              key: const ValueKey('options'),
+                              onOpenInventoryCheck:
+                                  widget.onOpenInventoryCheck,
+                            )
+                          : Row(
+                              key: const ValueKey('browse'),
+                              children: [
+                                Expanded(
+                                  child: _GradientDots(
+                                    rowWidth: rowWidth,
+                                    startX: dotsStartX,
+                                  ),
+                                ),
+                                if (_bannerTypes.isNotEmpty)
+                                  _LiftTypeBanner(
+                                    types: _bannerTypes,
+                                    colors: bannerColors,
+                                    activeType: _activeType,
+                                  ),
+                              ],
+                            ),
                     ),
                   ),
-                  if (_bannerTypes.isNotEmpty)
-                    _LiftTypeBanner(
-                      types: _bannerTypes,
-                      colors: bannerColors,
-                      activeType: _activeType,
-                    ),
                 ],
               );
             },
@@ -578,95 +612,65 @@ class _LiftTypeBanner extends StatelessWidget {
   }
 }
 
-// Small pill-shaped two-segment toggle placed left of the sheet title.
-// Chrome (color/border) matches LiftSelectorPanel's empty-state styling so
-// it reads as part of the same visual language.
-class _ViewModeToggle extends StatelessWidget {
-  final _ViewMode mode;
-  final ValueChanged<_ViewMode> onChanged;
+// Revealed in place of the dots/banner when the title is tapped open. Each
+// entry is a pill button; add more entries here as new yard-list actions
+// show up instead of growing the title line itself.
+class _YardListOptionsRow extends StatelessWidget {
+  final VoidCallback onOpenInventoryCheck;
 
-  const _ViewModeToggle({required this.mode, required this.onChanged});
-
-  static const double width = 72;
-  static const double _height = 28;
+  const _YardListOptionsRow({
+    super.key,
+    required this.onOpenInventoryCheck,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final isInventory = mode == _ViewMode.inventory;
-
-    return Container(
-      width: width,
-      height: _height,
-      decoration: BoxDecoration(
-        color: AppColors.mainBackground.withOpacity(.85),
-        borderRadius: BorderRadius.circular(_height / 2),
-        border: Border.all(color: AppColors.yellow, width: .3),
-      ),
-      child: Stack(
-        children: [
-          AnimatedAlign(
-            duration: const Duration(milliseconds: 220),
-            curve: Curves.easeOut,
-            alignment:
-                isInventory ? Alignment.centerRight : Alignment.centerLeft,
-            child: Container(
-              width: width / 2,
-              height: _height,
-              decoration: BoxDecoration(
-                color: AppColors.green.withOpacity(.30),
-                borderRadius: BorderRadius.circular(_height / 2),
-              ),
+    return SizedBox(
+      height: 32,
+      child: Align(
+        alignment: Alignment.centerRight,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _pill(
+              icon: Icons.fact_check_outlined,
+              label: 'Inventory Check',
+              onTap: onOpenInventoryCheck,
             ),
-          ),
-          Row(
-            children: [
-              Expanded(
-                child: _segment(
-                  icon: Icons.list_alt,
-                  label: 'List',
-                  active: !isInventory,
-                  onTap: () => onChanged(_ViewMode.yardList),
-                ),
-              ),
-              Expanded(
-                child: _segment(
-                  icon: Icons.fact_check_outlined,
-                  label: 'Inv',
-                  active: isInventory,
-                  onTap: () => onChanged(_ViewMode.inventory),
-                ),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _segment({
+  Widget _pill({
     required IconData icon,
     required String label,
-    required bool active,
     required VoidCallback onTap,
   }) {
-    final color = active ? AppColors.green : AppColors.yellow.withOpacity(.55);
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      child: Center(
+      child: Container(
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: AppColors.green.withOpacity(.30),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.yellow, width: .3),
+        ),
         child: MediaQuery.withNoTextScaling(
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 12, color: color),
-              const SizedBox(width: 2),
+              Icon(icon, size: 14, color: AppColors.green),
+              const SizedBox(width: 6),
               Text(
                 label,
-                style: TextStyle(
-                  fontSize: 9,
+                style: const TextStyle(
+                  fontSize: 12,
                   fontWeight: FontWeight.bold,
-                  color: color,
+                  color: AppColors.green,
                 ),
               ),
             ],
