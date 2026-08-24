@@ -920,4 +920,118 @@ class ApiService {
       return false;
     }
   }
+
+  // -----------------------------
+  // Yard Inventory Check
+  // -----------------------------
+
+  /// Starts a new inventory check walk and returns the session plus the
+  /// predicted list of lifts expected to be in the yard.
+  Future<Map<String, dynamic>> startInventoryCheckSession(
+    String userId, {
+    String? deviceId,
+  }) async {
+    final uri = Uri.parse('$maintenanceUrl/inventory-check/sessions');
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'userId': userId,
+        if (deviceId != null) 'deviceId': deviceId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to start inventory check session');
+    }
+
+    return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+  }
+
+  /// Records a scanned/confirmed serial against a session. The server
+  /// classifies it as PREDICTED_CHECKED or UNEXPECTED_PRESENT.
+  Future<Map<String, dynamic>> recordInventoryCheckItem(
+    int sessionId,
+    String serialNumber, {
+    int? liftId,
+  }) async {
+    final uri = Uri.parse(
+      '$maintenanceUrl/inventory-check/sessions/$sessionId/items',
+    );
+
+    final response = await http.post(
+      uri,
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'serialNumber': serialNumber,
+        if (liftId != null) 'liftId': liftId,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to record inventory check item');
+    }
+
+    return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+  }
+
+  /// Undoes a previously recorded inventory check item (e.g. tapping a
+  /// checked-off row to move it back to unchecked).
+  Future<void> undoInventoryCheckItem(int sessionId, int itemId) async {
+    final uri = Uri.parse(
+      '$maintenanceUrl/inventory-check/sessions/$sessionId/items/$itemId',
+    );
+
+    final response = await http.delete(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to undo inventory check item');
+    }
+  }
+
+  /// Attaches a photo to an inventory check item (typically an unexpected
+  /// item). Clones recordTruckIssue's multipart shape.
+  Future<void> attachInventoryCheckItemPhoto(
+    int sessionId,
+    int itemId,
+    File photoFile,
+  ) async {
+    final uri = Uri.parse(
+      '$maintenanceUrl/inventory-check/sessions/$sessionId/items/$itemId/photo',
+    );
+
+    final request = http.MultipartRequest('POST', uri);
+
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'photoFile',
+        photoFile.path,
+        contentType: MediaType('image', 'jpeg'),
+      ),
+    );
+
+    final response = await request.send();
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to attach inventory check item photo');
+    }
+  }
+
+  /// Ends the walk and returns the summary counts.
+  Future<Map<String, dynamic>> finalizeInventoryCheckSession(
+    int sessionId,
+  ) async {
+    final uri = Uri.parse(
+      '$maintenanceUrl/inventory-check/sessions/$sessionId/finalize',
+    );
+
+    final response = await http.post(uri);
+
+    if (response.statusCode != 200) {
+      throw Exception('Failed to finalize inventory check session');
+    }
+
+    return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+  }
 }

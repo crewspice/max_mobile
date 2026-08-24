@@ -285,16 +285,8 @@ class _TruckViewState extends State<TruckView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.yellow,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          _detailLabel(label),
+          SizedBox(width: DeviceConfig.isIphone ? 8 : 0),
           Expanded(
             child: Text(
               value,
@@ -317,20 +309,25 @@ class _TruckViewState extends State<TruckView> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: const TextStyle(
-                color: AppColors.yellow,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
+          _detailLabel(label),
+          SizedBox(width: DeviceConfig.isIphone ? 8 : 0),
           Expanded(child: value),
         ],
       ),
     );
+  }
+
+  // On iPhone the label sizes to its text so the value sits close behind it;
+  // other devices keep the fixed column so unrelated rows stay aligned.
+  Widget _detailLabel(String label) {
+    final text = Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.yellow,
+        fontWeight: FontWeight.bold,
+      ),
+    );
+    return DeviceConfig.isIphone ? text : SizedBox(width: 120, child: text);
   }
 
   String _formatDate(DateTime date) =>
@@ -638,9 +635,11 @@ class _TruckViewState extends State<TruckView> {
 
       final centerY = gridTop + ((row - 1) * cellH) + (cellH / 2);
       final n = rowItems.length;
+      final colSpacing =
+          cellW + (n == 2 && DeviceConfig.isIphone ? 5.0 : 0.0);
 
       for (var i = 0; i < n; i++) {
-        final centerX = rowCenterX + (i - (n - 1) / 2) * cellW;
+        final centerX = rowCenterX + (i - (n - 1) / 2) * colSpacing;
         markers.add(
           _buildLiftMarker(context, rowItems[i], centerX, centerY),
         );

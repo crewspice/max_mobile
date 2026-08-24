@@ -173,7 +173,10 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                 ),
                               ),
                             ),
-                            YardListButton(onLiftSelected: _selectLift),
+                            YardListButton(
+                              onLiftSelected: _selectLift,
+                              currentUserId: widget.currentUserId,
+                            ),
                           ],
                         ),
                       ),

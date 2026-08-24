@@ -5,6 +5,8 @@ import '../../models/yard_list_item.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/lift_assets.dart';
+import '../../views/inventory_check_screen.dart';
+import '../hold_to_select_row.dart';
 
 // Mobile counterpart to the JavaFX Lifts scene's "Predictive Yard List"
 // report: lifts not currently out on rent, pulled from the same
@@ -13,12 +15,22 @@ import '../../utils/lift_assets.dart';
 // row selects that lift (same as picking it from the selector panel).
 class YardListButton extends StatelessWidget {
   final ValueChanged<Lift> onLiftSelected;
+  final String currentUserId;
 
-  const YardListButton({super.key, required this.onLiftSelected});
+  const YardListButton({
+    super.key,
+    required this.onLiftSelected,
+    required this.currentUserId,
+  });
 
   void _open(BuildContext context) {
+    // Captured before the sheet opens: the sheet's own builder context gets
+    // unmounted when it pops, so the inventory-check navigation (which
+    // happens after that pop) has to push from this context instead.
+    final outerContext = context;
+
     showModalBottomSheet(
-      context: context,
+      context: outerContext,
       backgroundColor: AppColors.main,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
@@ -52,6 +64,16 @@ class YardListButton extends StatelessWidget {
                 return _YardListSheet(
                   items: snapshot.data ?? [],
                   onLiftSelected: onLiftSelected,
+                  onOpenInventoryCheck: () {
+                    Navigator.of(outerContext).pop();
+                    Navigator.of(outerContext).push(
+                      MaterialPageRoute(
+                        builder: (_) => InventoryCheckScreen(
+                          currentUserId: currentUserId,
+                        ),
+                      ),
+                    );
+                  },
                 );
               },
             ),
@@ -85,12 +107,22 @@ class YardListButton extends StatelessWidget {
 class _YardListSheet extends StatefulWidget {
   final List<YardListItem> items;
   final ValueChanged<Lift> onLiftSelected;
+  final VoidCallback onOpenInventoryCheck;
 
-  const _YardListSheet({required this.items, required this.onLiftSelected});
+  const _YardListSheet({
+    required this.items,
+    required this.onLiftSelected,
+    required this.onOpenInventoryCheck,
+  });
 
   @override
   State<_YardListSheet> createState() => _YardListSheetState();
 }
+
+// Default view is always `yardList` — flipping the toggle to `inventory`
+// hands off to a full-screen route rather than swapping this sheet's body,
+// so this state only ever needs to reflect the pre-navigation moment.
+enum _ViewMode { yardList, inventory }
 
 class _YardListSheetState extends State<_YardListSheet> {
   // Fixed row heights let the scroll position map directly to a section
@@ -105,6 +137,10 @@ class _YardListSheetState extends State<_YardListSheet> {
 
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<String?> _activeType = ValueNotifier<String?>(null);
+
+  // Untouched, this always stays `yardList` so default behavior is
+  // unchanged from before the toggle existed.
+  _ViewMode _viewMode = _ViewMode.yardList;
 
   late List<Object> _entries;
   late List<String> _types;
@@ -185,10 +221,16 @@ class _YardListSheetState extends State<_YardListSheet> {
 
   @override
   Widget build(BuildContext context) {
-    const title = 'Yard List';
+    final title =
+        _viewMode == _ViewMode.yardList ? 'Yard List' : 'Inventory';
     final countSuffix = ' (${widget.items.length})';
     final titleChars = '$title$countSuffix';
     const titleStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
+
+    // The toggle sits to the left of the title, so the gradient math (which
+    // otherwise assumes the title starts flush at the row's left edge) gets
+    // this leading inset folded in.
+    const leadingInset = _ViewModeToggle.width + 10;
 
     // Measured pixel widths, not character counts, so a char's gradient
     // color reflects where it actually lands on screen.
@@ -231,11 +273,11 @@ class _YardListSheetState extends State<_YardListSheet> {
               // true red only at the row's right edge, matching how the
               // title and banner are actually laid out on screen.
               final rowWidth = constraints.maxWidth;
-              final dotsStartX = titleWidth;
-              final dotsWidth =
-                  (rowWidth - titleWidth - bannerWidth).clamp(0.0, rowWidth);
+              final dotsStartX = leadingInset + titleWidth;
+              final dotsWidth = (rowWidth - leadingInset - titleWidth - bannerWidth)
+                  .clamp(0.0, rowWidth);
 
-              double cursor = 0;
+              double cursor = leadingInset;
               final charColors = <Color>[];
               for (final w in charWidths) {
                 final centerX = cursor + w / 2;
@@ -264,6 +306,17 @@ class _YardListSheetState extends State<_YardListSheet> {
 
               return Row(
                 children: [
+                  _ViewModeToggle(
+                    mode: _viewMode,
+                    onChanged: (mode) {
+                      if (mode == _viewMode) return;
+                      setState(() => _viewMode = mode);
+                      if (mode == _ViewMode.inventory) {
+                        widget.onOpenInventoryCheck();
+                      }
+                    },
+                  ),
+                  const SizedBox(width: 10),
                   Text.rich(
                     TextSpan(
                       children: [
@@ -336,7 +389,7 @@ class _YardListSheetState extends State<_YardListSheet> {
 
                     return SizedBox(
                       height: _rowHeight,
-                      child: _HoldToSelectRow(
+                      child: HoldToSelectRow(
                         onConfirmed: () {
                           Navigator.of(context).pop();
                           widget.onLiftSelected(Lift(
@@ -525,81 +578,100 @@ class _LiftTypeBanner extends StatelessWidget {
   }
 }
 
-// Press-and-hold-to-confirm wrapper for a yard list row, in the same spirit
-// as HoldToConfirmButton elsewhere in the app: hold for [holdDuration] to
-// fill a progress overlay across the row and fire onConfirmed (selecting
-// the lift), release early to cancel.
-class _HoldToSelectRow extends StatefulWidget {
-  final Widget child;
-  final VoidCallback onConfirmed;
-  final Duration holdDuration;
+// Small pill-shaped two-segment toggle placed left of the sheet title.
+// Chrome (color/border) matches LiftSelectorPanel's empty-state styling so
+// it reads as part of the same visual language.
+class _ViewModeToggle extends StatelessWidget {
+  final _ViewMode mode;
+  final ValueChanged<_ViewMode> onChanged;
 
-  const _HoldToSelectRow({
-    required this.child,
-    required this.onConfirmed,
-    this.holdDuration = const Duration(milliseconds: 1500),
-  });
+  const _ViewModeToggle({required this.mode, required this.onChanged});
 
-  @override
-  State<_HoldToSelectRow> createState() => _HoldToSelectRowState();
-}
-
-class _HoldToSelectRowState extends State<_HoldToSelectRow>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: widget.holdDuration,
-  );
-
-  @override
-  void initState() {
-    super.initState();
-    _controller.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        widget.onConfirmed();
-        _controller.reset();
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _onTapDown(TapDownDetails _) => _controller.forward();
-  void _onTapUp(TapUpDetails _) => _controller.reverse();
-  void _onTapCancel() => _controller.reverse();
+  static const double width = 72;
+  static const double _height = 28;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTapDown: _onTapDown,
-      onTapUp: _onTapUp,
-      onTapCancel: _onTapCancel,
+    final isInventory = mode == _ViewMode.inventory;
+
+    return Container(
+      width: width,
+      height: _height,
+      decoration: BoxDecoration(
+        color: AppColors.mainBackground.withOpacity(.85),
+        borderRadius: BorderRadius.circular(_height / 2),
+        border: Border.all(color: AppColors.yellow, width: .3),
+      ),
       child: Stack(
         children: [
-          widget.child,
-          Positioned.fill(
-            child: IgnorePointer(
-              child: AnimatedBuilder(
-                animation: _controller,
-                builder: (context, _) {
-                  final progress = _controller.value;
-                  if (progress == 0) return const SizedBox.shrink();
-                  return FractionallySizedBox(
-                    alignment: Alignment.centerLeft,
-                    widthFactor: progress,
-                    child: Container(
-                      color: AppColors.green.withOpacity(0.18 + progress * 0.3),
-                    ),
-                  );
-                },
+          AnimatedAlign(
+            duration: const Duration(milliseconds: 220),
+            curve: Curves.easeOut,
+            alignment:
+                isInventory ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              width: width / 2,
+              height: _height,
+              decoration: BoxDecoration(
+                color: AppColors.green.withOpacity(.30),
+                borderRadius: BorderRadius.circular(_height / 2),
               ),
             ),
           ),
+          Row(
+            children: [
+              Expanded(
+                child: _segment(
+                  icon: Icons.list_alt,
+                  label: 'List',
+                  active: !isInventory,
+                  onTap: () => onChanged(_ViewMode.yardList),
+                ),
+              ),
+              Expanded(
+                child: _segment(
+                  icon: Icons.fact_check_outlined,
+                  label: 'Inv',
+                  active: isInventory,
+                  onTap: () => onChanged(_ViewMode.inventory),
+                ),
+              ),
+            ],
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget _segment({
+    required IconData icon,
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    final color = active ? AppColors.green : AppColors.yellow.withOpacity(.55);
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Center(
+        child: MediaQuery.withNoTextScaling(
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: FontWeight.bold,
+                  color: color,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
