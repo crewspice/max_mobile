@@ -63,8 +63,11 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
   bool get _isNoPreference=>widget.readOnly&&_serial.trim()=='noPref';
 
   static const _noPreferenceWord1='No';
-  static const _noPreferenceWord2='Preference';
-  static const _noPreferenceLength=_noPreferenceWord1.length+_noPreferenceWord2.length;
+  static const _noPreferenceWord2Full='Preference';
+  static const _noPreferenceWord2Short='Pref.';
+  String get _noPreferenceWord2=>
+      DeviceConfig.isIphone?_noPreferenceWord2Short:_noPreferenceWord2Full;
+  int get _noPreferenceLength=>_noPreferenceWord1.length+_noPreferenceWord2.length;
 
   double _scale = 1.0;
 
@@ -189,10 +192,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
   double selectorWidth(BuildContext context) {
     final scale = _getScale(context);
     if (_isNoPreference) {
-      final lineLength = DeviceConfig.isIphone
-          ? _noPreferenceWord2.length
-          : _noPreferenceLength;
-      return ((lineLength * 38) + 24) * scale;
+      return ((_noPreferenceLength * 38) + 24) * scale;
     }
     if (_serial.isNotEmpty) {
       return ((_serial.length * 38) + 24) * scale;
@@ -233,6 +233,14 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
       AppColors.red,
       (x - .5) * 2,
     )!;
+  }
+
+  // Text centers on the font's line box, not glyph ink, so short x-height
+  // lowercase letters (no ascender) sit visibly lower in the ball than
+  // digits/caps/ascender letters and need a bigger upward correction.
+  double _charVerticalNudge(String char) {
+    const xHeightOnly = 'acemnorsuvwxz.';
+    return xHeightOnly.contains(char) ? -0.34 : -0.24;
   }
 
   Widget _buildBall({
@@ -282,7 +290,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                 child: Transform.translate(
                   offset: Offset(
                     0,
-                    -characterFontSize * 0.18,
+                    characterFontSize * _charVerticalNudge(char),
                   ),
                   child: MediaQuery.withNoTextScaling(
                     child: Text(
@@ -337,7 +345,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     final selectorHeight = 50 * scale;
     final ballSize = 32 * scale;
     final characterSize = ballSize * 0.93;
-    final characterFontSize = characterSize * 1.05;
+    final characterFontSize = characterSize * 1.0;
 
     return Column(
       children:[
@@ -400,53 +408,29 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                       )
                       : _isNoPreference
                       ? Center(
-                          child: DeviceConfig.isIphone
-                              ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildWordBalls(
-                                      word: _noPreferenceWord1,
-                                      indexOffset: 0,
-                                      totalLength: _noPreferenceLength,
-                                      ballSize: ballSize,
-                                      characterFontSize: characterFontSize,
-                                      scale: scale,
-                                    ),
-                                    SizedBox(height: 4 * scale),
-                                    _buildWordBalls(
-                                      word: _noPreferenceWord2,
-                                      indexOffset: _noPreferenceWord1.length,
-                                      totalLength: _noPreferenceLength,
-                                      ballSize: ballSize,
-                                      characterFontSize: characterFontSize,
-                                      scale: scale,
-                                    ),
-                                  ],
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _buildWordBalls(
-                                      word: _noPreferenceWord1,
-                                      indexOffset: 0,
-                                      totalLength: _noPreferenceLength,
-                                      ballSize: ballSize,
-                                      characterFontSize: characterFontSize,
-                                      scale: scale,
-                                    ),
-                                    SizedBox(width: ballSize * 0.5),
-                                    _buildWordBalls(
-                                      word: _noPreferenceWord2,
-                                      indexOffset: _noPreferenceWord1.length,
-                                      totalLength: _noPreferenceLength,
-                                      ballSize: ballSize,
-                                      characterFontSize: characterFontSize,
-                                      scale: scale,
-                                    ),
-                                  ],
-                                ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildWordBalls(
+                                word: _noPreferenceWord1,
+                                indexOffset: 0,
+                                totalLength: _noPreferenceLength,
+                                ballSize: ballSize,
+                                characterFontSize: characterFontSize,
+                                scale: scale,
+                              ),
+                              SizedBox(width: ballSize * 0.5),
+                              _buildWordBalls(
+                                word: _noPreferenceWord2,
+                                indexOffset: _noPreferenceWord1.length,
+                                totalLength: _noPreferenceLength,
+                                ballSize: ballSize,
+                                characterFontSize: characterFontSize,
+                                scale: scale,
+                              ),
+                            ],
+                          ),
                         )
                       : Row(
                           mainAxisAlignment:MainAxisAlignment.center,
