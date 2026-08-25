@@ -62,6 +62,10 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
   // interchangeable units; only ever surfaces in read-only panels.
   bool get _isNoPreference=>widget.readOnly&&_serial.trim()=='noPref';
 
+  static const _noPreferenceWord1='No';
+  static const _noPreferenceWord2='Preference';
+  static const _noPreferenceLength=_noPreferenceWord1.length+_noPreferenceWord2.length;
+
   double _scale = 1.0;
 
   @override
@@ -163,14 +167,15 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
   }
 
   void _syncLatitudes(){
-    while(_latitudes.length<_serial.length){
+    final length=_isNoPreference?_noPreferenceLength:_serial.length;
+    while(_latitudes.length<length){
       _latitudes.add(
         (_random.nextDouble()*10-5) * _scale,
       );
     }
 
-    if(_latitudes.length>_serial.length){
-      _latitudes.removeRange(_serial.length,_latitudes.length);
+    if(_latitudes.length>length){
+      _latitudes.removeRange(length,_latitudes.length);
     }
   }
 
@@ -183,6 +188,12 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
 
   double selectorWidth(BuildContext context) {
     final scale = _getScale(context);
+    if (_isNoPreference) {
+      final lineLength = DeviceConfig.isIphone
+          ? _noPreferenceWord2.length
+          : _noPreferenceLength;
+      return ((lineLength * 38) + 24) * scale;
+    }
     if (_serial.isNotEmpty) {
       return ((_serial.length * 38) + 24) * scale;
     }
@@ -222,6 +233,100 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
       AppColors.red,
       (x - .5) * 2,
     )!;
+  }
+
+  Widget _buildBall({
+    required String char,
+    required int index,
+    required int totalLength,
+    required double ballSize,
+    required double characterFontSize,
+    required double scale,
+  }) {
+    return TweenAnimationBuilder<double>(
+      key: ValueKey('${char}_$index'),
+      tween: Tween<double>(begin: 1.6, end: 0),
+      duration: const Duration(milliseconds: 1350),
+      curve: Curves.elasticOut,
+      builder: (context, value, child) => Transform.translate(
+        offset: Offset(
+          value * 45 * scale,
+          _latitudes[index] * scale,
+        ),
+        child: Transform.rotate(angle: value * .15, child: child),
+      ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 3),
+        child: Stack(
+          alignment: Alignment.center,
+          clipBehavior: Clip.none,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              width: ballSize,
+              height: ballSize,
+              decoration: BoxDecoration(
+                color: widget.colors.ball,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: _gradientColorAt(
+                      totalLength <= 1 ? .5 : index / (totalLength - 1),
+                    ).withOpacity(.85),
+                    blurRadius: _liftSelected ? 4 : 2,
+                    spreadRadius: _liftSelected ? 2 : 1,
+                  ),
+                ],
+              ),
+              child: Center(
+                child: Transform.translate(
+                  offset: Offset(
+                    0,
+                    -characterFontSize * 0.18,
+                  ),
+                  child: MediaQuery.withNoTextScaling(
+                    child: Text(
+                      char,
+                      softWrap: false,
+                      overflow: TextOverflow.visible,
+                      style: GoogleFonts.knewave(
+                        color: widget.colors.text,
+                        fontSize: characterFontSize,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWordBalls({
+    required String word,
+    required int indexOffset,
+    required int totalLength,
+    required double ballSize,
+    required double characterFontSize,
+    required double scale,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (int i = 0; i < word.length; i++)
+          _buildBall(
+            char: word[i],
+            index: indexOffset + i,
+            totalLength: totalLength,
+            ballSize: ballSize,
+            characterFontSize: characterFontSize,
+            scale: scale,
+          ),
+      ],
+    );
   }
 
   @override
@@ -295,105 +400,65 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                       )
                       : _isNoPreference
                       ? Center(
-                          child: MediaQuery.withNoTextScaling(
-                            child: DeviceConfig.isIphone
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        'No',
-                                        style: TextStyle(
-                                          color: widget.colors.border,
-                                          fontSize: widget.emptyTextSize,
-                                          height: 1.1,
-                                        ),
-                                      ),
-                                      Text(
-                                        'Preference',
-                                        style: TextStyle(
-                                          color: widget.colors.border,
-                                          fontSize: widget.emptyTextSize,
-                                          height: 1.1,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : Text(
-                                    'No Preference',
-                                    style: TextStyle(
-                                      color: widget.colors.border,
-                                      fontSize: DeviceConfig.device == "ipad"
-                                          ? 26
-                                          : widget.emptyTextSize,
+                          child: DeviceConfig.isIphone
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildWordBalls(
+                                      word: _noPreferenceWord1,
+                                      indexOffset: 0,
+                                      totalLength: _noPreferenceLength,
+                                      ballSize: ballSize,
+                                      characterFontSize: characterFontSize,
+                                      scale: scale,
                                     ),
-                                  ),
-                          ),
+                                    SizedBox(height: 4 * scale),
+                                    _buildWordBalls(
+                                      word: _noPreferenceWord2,
+                                      indexOffset: _noPreferenceWord1.length,
+                                      totalLength: _noPreferenceLength,
+                                      ballSize: ballSize,
+                                      characterFontSize: characterFontSize,
+                                      scale: scale,
+                                    ),
+                                  ],
+                                )
+                              : Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    _buildWordBalls(
+                                      word: _noPreferenceWord1,
+                                      indexOffset: 0,
+                                      totalLength: _noPreferenceLength,
+                                      ballSize: ballSize,
+                                      characterFontSize: characterFontSize,
+                                      scale: scale,
+                                    ),
+                                    SizedBox(width: ballSize * 0.5),
+                                    _buildWordBalls(
+                                      word: _noPreferenceWord2,
+                                      indexOffset: _noPreferenceWord1.length,
+                                      totalLength: _noPreferenceLength,
+                                      ballSize: ballSize,
+                                      characterFontSize: characterFontSize,
+                                      scale: scale,
+                                    ),
+                                  ],
+                                ),
                         )
                       : Row(
                           mainAxisAlignment:MainAxisAlignment.center,
                           children:[
                             for(int i=0;i<_serial.length;i++)
-                              TweenAnimationBuilder<double>(
-                                key:ValueKey('${_serial[i]}_$i'),
-                                tween:Tween<double>(begin:1.6,end:0),
-                                duration:const Duration(milliseconds:1350),
-                                curve:Curves.elasticOut,
-                                builder:(context,value,child)=>Transform.translate(
-                                  offset: Offset(
-                                    value * 45 * scale,
-                                    _latitudes[i] * scale,
-                                  ),
-                                  child:Transform.rotate(angle:value*.15,child:child),
-                                ),
-                                child:Container(
-                                  margin: const EdgeInsets.symmetric(horizontal:3),
-                                  child:Stack(
-                                    alignment:Alignment.center,
-                                    clipBehavior:Clip.none,
-                                    children:[
-                                      AnimatedContainer(
-                                        duration:const Duration(milliseconds:250),
-                                        width:ballSize,
-                                        height:ballSize,
-                                        decoration:BoxDecoration(
-                                          color:widget.colors.ball,
-                                          shape:BoxShape.circle,
-                                          boxShadow:[
-                                            BoxShadow(
-                                              color:_gradientColorAt(
-                                                _serial.length<=1
-                                                  ? .5
-                                                  : i/(_serial.length-1),
-                                              ).withOpacity(.85),
-                                              blurRadius:_liftSelected?4:2,
-                                              spreadRadius:_liftSelected?2:1,
-                                            ),
-                                          ],
-                                        ),
-                                        child:Center(
-                                          child:Transform.translate(
-                                            offset: Offset(
-                                              0,
-                                              -characterFontSize * 0.152,
-                                            ),
-                                            child: MediaQuery.withNoTextScaling(
-                                              child: Text(
-                                                _serial[i],
-                                                softWrap: false,
-                                                overflow: TextOverflow.visible,
-                                                style: GoogleFonts.knewave(
-                                                  color: widget.colors.text,
-                                                  fontSize: characterFontSize,
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                              _buildBall(
+                                char: _serial[i],
+                                index: i,
+                                totalLength: _serial.length,
+                                ballSize: ballSize,
+                                characterFontSize: characterFontSize,
+                                scale: scale,
                               ),
                           ],
                         ),
