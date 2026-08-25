@@ -9,6 +9,26 @@ import '../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../config/device_config.dart';
 
+const String _deliveryMarker = '[[DELIVERED]]';
+
+class _NotesSplit {
+  final String preDelivery;
+  final String postDelivery;
+  final bool hasMarker;
+  const _NotesSplit(this.preDelivery, this.postDelivery, this.hasMarker);
+}
+
+_NotesSplit _splitNotes(String? notes) {
+  if (notes == null) return const _NotesSplit('', '', false);
+  final idx = notes.indexOf(_deliveryMarker);
+  if (idx == -1) return _NotesSplit(notes.trim(), '', false);
+  return _NotesSplit(
+    notes.substring(0, idx).trim(),
+    notes.substring(idx + _deliveryMarker.length).trim(),
+    true,
+  );
+}
+
 class BaseCard extends StatelessWidget {
   final Stop stop;
   final List<Widget> extraContent;
@@ -141,26 +161,47 @@ class BaseCard extends StatelessWidget {
   }
 
   Widget _buildNotesRow(Color elementColor, BuildContext context) {
+    final split = _splitNotes(stop.notes);
+    final baseStyle = TextStyle(
+      fontStyle: FontStyle.italic,
+      color: elementColor,
+    );
+
     return Padding(
       padding: const EdgeInsets.only(top: 10),
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              stop.notes != null && stop.notes!.isNotEmpty
-                  ? stop.notes!
-                  : "No notes yet",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontStyle: FontStyle.italic,
-                color: elementColor,
-              ),
-            ),
+            child: !split.hasMarker
+                ? Text(
+                    stop.notes != null && stop.notes!.isNotEmpty
+                        ? stop.notes!
+                        : "No notes yet",
+                    textAlign: TextAlign.center,
+                    style: baseStyle,
+                  )
+                : Text.rich(
+                    TextSpan(
+                      style: baseStyle,
+                      children: [
+                        TextSpan(
+                          text: "[Delivery] ",
+                          style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
+                        ),
+                        TextSpan(text: split.preDelivery),
+                        if (split.postDelivery.isNotEmpty)
+                          TextSpan(text: " ${split.postDelivery}"),
+                      ],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
           ),
           GestureDetector(
             onTap: () async {
-              final controller =
-                  TextEditingController(text: stop.notes ?? "");
+              final prefill = [split.preDelivery, split.postDelivery]
+                  .where((s) => s.isNotEmpty)
+                  .join('\n');
+              final controller = TextEditingController(text: prefill);
 
               final updatedNotes = await showDialog<String>(
                 context: context,
@@ -218,21 +259,36 @@ class BaseCard extends StatelessWidget {
 
               if (updatedNotes == null) return;
 
+              String reconstructed;
+              if (!split.hasMarker) {
+                reconstructed = updatedNotes;
+              } else {
+                final boundary = split.preDelivery.length;
+                if (updatedNotes.length >= boundary) {
+                  final head = updatedNotes.substring(0, boundary);
+                  final tail = updatedNotes.substring(boundary).trim();
+                  reconstructed =
+                      '$head\n$_deliveryMarker${tail.isNotEmpty ? '\n$tail' : ''}';
+                } else {
+                  reconstructed = '$updatedNotes\n$_deliveryMarker';
+                }
+              }
+
               final api = ApiService();
 
               final success = stop.type == "SERVICE"
                   ? await api.updateServiceNotes(
                       serviceId: stop.id,
-                      notes: updatedNotes,
+                      notes: reconstructed,
                     )
                   : await api.updateRentalNotes(
                       rentalId: stop.id,
-                      notes: updatedNotes,
+                      notes: reconstructed,
                     );
 
               if (success && onNotesUpdated != null) {
                 onNotesUpdated!(
-                  stop.copyWith(notes: updatedNotes),
+                  stop.copyWith(notes: reconstructed),
                 );
               }
             },

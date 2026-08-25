@@ -1,11 +1,13 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../config/device_config.dart';
 import '../../models/lift.dart';
 import '../../models/yard_list_item.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../utils/lift_assets.dart';
 import '../../views/inventory_check_screen.dart';
+import '../action_ribbon.dart';
 import '../hold_to_select_row.dart';
 
 // Mobile counterpart to the JavaFX Lifts scene's "Predictive Yard List"
@@ -133,9 +135,10 @@ class _YardListSheetState extends State<_YardListSheet> {
   final ScrollController _scrollController = ScrollController();
   final ValueNotifier<String?> _activeType = ValueNotifier<String?>(null);
 
-  // Tapping the title reveals the row of extra actions (currently just
-  // Inventory Check) in place of the dots/banner, instead of each new
-  // action permanently claiming more of the title line.
+  // Tapping the title swaps the whole row (title + dots/banner) for a
+  // centered action ribbon, with the title itself becoming one of the
+  // buttons — new actions just join that ribbon instead of each one
+  // permanently claiming more of the title line.
   bool _optionsOpen = false;
 
   late List<Object> _entries;
@@ -218,7 +221,8 @@ class _YardListSheetState extends State<_YardListSheet> {
   @override
   Widget build(BuildContext context) {
     const title = 'Yard List';
-    final countSuffix = ' (${widget.items.length})';
+    final countSuffix =
+        DeviceConfig.isIphone ? '' : ' (${widget.items.length})';
     final titleChars = '$title$countSuffix';
     const titleStyle = TextStyle(fontSize: 18, fontWeight: FontWeight.bold);
 
@@ -261,102 +265,116 @@ class _YardListSheetState extends State<_YardListSheet> {
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              // t = 0 at the left edge of this row, 1 at the right edge, so
-              // true green sits at the row's true horizontal midpoint and
-              // true red only at the row's right edge, matching how the
-              // title and banner are actually laid out on screen.
-              final rowWidth = constraints.maxWidth;
-              final dotsStartX = titleWidth + chevronWidth;
-              final dotsWidth = (rowWidth - titleWidth - chevronWidth - bannerWidth)
-                  .clamp(0.0, rowWidth);
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOut,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            // Toggled open, the title collapses into a button matching the
+            // Inventory Check one instead of sitting fixed to one side, so
+            // the whole line becomes a single centered action ribbon —
+            // reusing the rental-card widget gives future additions here
+            // paging arrows and consistent styling for free.
+            child: _optionsOpen
+                ? ActionRibbon(
+                    key: const ValueKey('options'),
+                    color: AppColors.yellow,
+                    actions: [
+                      ActionItem(
+                        label: 'Yard List',
+                        icon: Icons.expand_less,
+                        color: AppColors.yellow,
+                        onPressed: () =>
+                            setState(() => _optionsOpen = false),
+                      ),
+                      ActionItem(
+                        label: 'Inventory Check',
+                        icon: Icons.fact_check_outlined,
+                        color: AppColors.green,
+                        onPressed: widget.onOpenInventoryCheck,
+                      ),
+                    ],
+                  )
+                : LayoutBuilder(
+                    key: const ValueKey('browse'),
+                    builder: (context, constraints) {
+                      // t = 0 at the left edge of this row, 1 at the right edge, so
+                      // true green sits at the row's true horizontal midpoint and
+                      // true red only at the row's right edge, matching how the
+                      // title and banner are actually laid out on screen.
+                      final rowWidth = constraints.maxWidth;
+                      final dotsStartX = titleWidth + chevronWidth;
+                      final dotsWidth =
+                          (rowWidth - titleWidth - chevronWidth - bannerWidth)
+                              .clamp(0.0, rowWidth);
 
-              double cursor = 0;
-              final charColors = <Color>[];
-              for (final w in charWidths) {
-                final centerX = cursor + w / 2;
-                charColors.add(
-                  _gradientColorAt(
-                    rowWidth <= 0 ? 0 : (centerX / rowWidth).clamp(0.0, 1.0),
-                  ),
-                );
-                cursor += w;
-              }
-
-              double bannerCursor = 0;
-              final bannerColors = [
-                for (var k = 0; k < _bannerTypes.length; k++)
-                  _gradientColorAt(() {
-                    if (k > 0) bannerCursor += 8;
-                    final iconCenter =
-                        bannerCursor + _LiftTypeBanner._baseSize / 2;
-                    bannerCursor += _LiftTypeBanner._baseSize;
-                    return rowWidth <= 0
-                        ? 1.0
-                        : ((dotsStartX + dotsWidth + iconCenter) / rowWidth)
-                            .clamp(0.0, 1.0);
-                  }()),
-              ];
-
-              return Row(
-                children: [
-                  GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: () => setState(() => _optionsOpen = !_optionsOpen),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text.rich(
-                          TextSpan(
-                            children: [
-                              for (var i = 0; i < titleChars.length; i++)
-                                TextSpan(
-                                  text: titleChars[i],
-                                  style: titleStyle.copyWith(
-                                      color: charColors[i]),
-                                ),
-                            ],
+                      double cursor = 0;
+                      final charColors = <Color>[];
+                      for (final w in charWidths) {
+                        final centerX = cursor + w / 2;
+                        charColors.add(
+                          _gradientColorAt(
+                            rowWidth <= 0
+                                ? 0
+                                : (centerX / rowWidth).clamp(0.0, 1.0),
                           ),
-                        ),
-                        SizedBox(
-                          width: chevronWidth,
-                          child: AnimatedRotation(
-                            turns: _optionsOpen ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOut,
-                            child: const Icon(
-                              Icons.expand_more,
-                              size: 18,
-                              color: AppColors.yellow,
+                        );
+                        cursor += w;
+                      }
+
+                      double bannerCursor = 0;
+                      final bannerColors = [
+                        for (var k = 0; k < _bannerTypes.length; k++)
+                          _gradientColorAt(() {
+                            if (k > 0) bannerCursor += 8;
+                            final iconCenter =
+                                bannerCursor + _LiftTypeBanner._baseSize / 2;
+                            bannerCursor += _LiftTypeBanner._baseSize;
+                            return rowWidth <= 0
+                                ? 1.0
+                                : ((dotsStartX + dotsWidth + iconCenter) /
+                                        rowWidth)
+                                    .clamp(0.0, 1.0);
+                          }()),
+                      ];
+
+                      return Row(
+                        children: [
+                          GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () =>
+                                setState(() => _optionsOpen = !_optionsOpen),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text.rich(
+                                  TextSpan(
+                                    children: [
+                                      for (var i = 0;
+                                          i < titleChars.length;
+                                          i++)
+                                        TextSpan(
+                                          text: titleChars[i],
+                                          style: titleStyle.copyWith(
+                                              color: charColors[i]),
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                                SizedBox(
+                                  width: chevronWidth,
+                                  child: const Icon(
+                                    Icons.expand_more,
+                                    size: 18,
+                                    color: AppColors.yellow,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 220),
-                      switchInCurve: Curves.easeOut,
-                      switchOutCurve: Curves.easeIn,
-                      transitionBuilder: (child, animation) => FadeTransition(
-                        opacity: animation,
-                        child: SizeTransition(
-                          sizeFactor: animation,
-                          axis: Axis.horizontal,
-                          axisAlignment: -1,
-                          child: child,
-                        ),
-                      ),
-                      child: _optionsOpen
-                          ? _YardListOptionsRow(
-                              key: const ValueKey('options'),
-                              onOpenInventoryCheck:
-                                  widget.onOpenInventoryCheck,
-                            )
-                          : Row(
-                              key: const ValueKey('browse'),
+                          Expanded(
+                            child: Row(
                               children: [
                                 Expanded(
                                   child: _GradientDots(
@@ -372,11 +390,11 @@ class _YardListSheetState extends State<_YardListSheet> {
                                   ),
                               ],
                             ),
-                    ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
-                ],
-              );
-            },
           ),
         ),
         const SizedBox(height: 4),
@@ -607,75 +625,6 @@ class _LiftTypeBanner extends StatelessWidget {
             ],
           );
         },
-      ),
-    );
-  }
-}
-
-// Revealed in place of the dots/banner when the title is tapped open. Each
-// entry is a pill button; add more entries here as new yard-list actions
-// show up instead of growing the title line itself.
-class _YardListOptionsRow extends StatelessWidget {
-  final VoidCallback onOpenInventoryCheck;
-
-  const _YardListOptionsRow({
-    super.key,
-    required this.onOpenInventoryCheck,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 32,
-      child: Align(
-        alignment: Alignment.centerRight,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _pill(
-              icon: Icons.fact_check_outlined,
-              label: 'Inventory Check',
-              onTap: onOpenInventoryCheck,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _pill({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        height: 32,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.green.withOpacity(.30),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.yellow, width: .3),
-        ),
-        child: MediaQuery.withNoTextScaling(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 14, color: AppColors.green),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.green,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

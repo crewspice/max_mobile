@@ -43,6 +43,24 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _driverChatUnlocked = false;
   Timer? _driverChatUnlockTimer;
 
+  // Set by the truck-view lift dialog's maintenance shortcut so the newly
+  // mounted MaintenanceView picks up the right lift on its first build,
+  // then cleared post-frame so revisiting the tab later doesn't keep
+  // re-selecting it.
+  String? _pendingMaintenanceSerial;
+
+  void _openLiftInMaintenance(String serialNumber) {
+    setState(() {
+      _selectedIndex = 1;
+      _pendingMaintenanceSerial = serialNumber;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _pendingMaintenanceSerial = null);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -236,10 +254,12 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             MaintenanceView(
               currentUserId: widget.currentUserId,
+              initialSerialNumber: _pendingMaintenanceSerial,
             ),
             TruckView(
               truckId: widget.truckId,
               driverId: widget.currentUserId,
+              onOpenLiftMaintenance: _openLiftInMaintenance,
             ),
           ];
 

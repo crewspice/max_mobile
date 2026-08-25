@@ -18,10 +18,12 @@ import '../widgets/maintenance/history_timeline_loader.dart';
 
 class MaintenanceView extends StatefulWidget {
   final String currentUserId;
+  final String? initialSerialNumber;
 
   const MaintenanceView({
     super.key,
     required this.currentUserId,
+    this.initialSerialNumber,
   });
 
   @override
@@ -47,6 +49,17 @@ class _MaintenanceViewState extends State<MaintenanceView> {
     super.initState();
     _futureLifts = ApiService().fetchLifts();
     _futureYardWarnings = ApiService().fetchYardShortageWarnings();
+
+    final initialSerial = widget.initialSerialNumber;
+    if (initialSerial != null) {
+      _futureLifts.then((lifts) {
+        if (!mounted) return;
+        final matches = lifts.where((l) => l.serialNumber == initialSerial);
+        if (matches.isNotEmpty) {
+          _selectLift(matches.first);
+        }
+      });
+    }
   }
 
   @override

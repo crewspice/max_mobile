@@ -1032,34 +1032,6 @@ class ApiService {
     }
   }
 
-  /// Attaches a photo to an inventory check item (typically an unexpected
-  /// item). Clones recordTruckIssue's multipart shape.
-  Future<void> attachInventoryCheckItemPhoto(
-    int sessionId,
-    int itemId,
-    File photoFile,
-  ) async {
-    final uri = Uri.parse(
-      '$maintenanceUrl/inventory-check/sessions/$sessionId/items/$itemId/photo',
-    );
-
-    final request = http.MultipartRequest('POST', uri);
-
-    request.files.add(
-      await http.MultipartFile.fromPath(
-        'photoFile',
-        photoFile.path,
-        contentType: MediaType('image', 'jpeg'),
-      ),
-    );
-
-    final response = await request.send();
-
-    if (response.statusCode != 200) {
-      throw Exception('Failed to attach inventory check item photo');
-    }
-  }
-
   /// Ends the walk and returns the summary counts.
   Future<Map<String, dynamic>> finalizeInventoryCheckSession(
     int sessionId,

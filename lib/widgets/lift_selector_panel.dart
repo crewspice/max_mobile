@@ -58,6 +58,10 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
 
   bool get isLiftMode=>widget.lifts!=null;
 
+  // Dispatch stamps this sentinel when the customer had no preference between
+  // interchangeable units; only ever surfaces in read-only panels.
+  bool get _isNoPreference=>widget.readOnly&&_serial.trim()=='noPref';
+
   double _scale = 1.0;
 
   @override
@@ -123,6 +127,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     });
     widget.onChanged(_serial);
     _checkLift();
+    if(_serial.isEmpty)_focusNode.unfocus();
   }
 
   void _checkLift(){
@@ -227,6 +232,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     final selectorHeight = 50 * scale;
     final ballSize = 32 * scale;
     final characterSize = ballSize * 0.93;
+    final characterFontSize = characterSize * 1.05;
 
     return Column(
       children:[
@@ -287,6 +293,43 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                           ),
                         ),
                       )
+                      : _isNoPreference
+                      ? Center(
+                          child: MediaQuery.withNoTextScaling(
+                            child: DeviceConfig.isIphone
+                                ? Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'No',
+                                        style: TextStyle(
+                                          color: widget.colors.border,
+                                          fontSize: widget.emptyTextSize,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Preference',
+                                        style: TextStyle(
+                                          color: widget.colors.border,
+                                          fontSize: widget.emptyTextSize,
+                                          height: 1.1,
+                                        ),
+                                      ),
+                                    ],
+                                  )
+                                : Text(
+                                    'No Preference',
+                                    style: TextStyle(
+                                      color: widget.colors.border,
+                                      fontSize: DeviceConfig.device == "ipad"
+                                          ? 26
+                                          : widget.emptyTextSize,
+                                    ),
+                                  ),
+                          ),
+                        )
                       : Row(
                           mainAxisAlignment:MainAxisAlignment.center,
                           children:[
@@ -332,7 +375,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                           child:Transform.translate(
                                             offset: Offset(
                                               0,
-                                              -ballSize * 0.12,
+                                              -characterFontSize * 0.152,
                                             ),
                                             child: MediaQuery.withNoTextScaling(
                                               child: Text(
@@ -341,7 +384,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                                                 overflow: TextOverflow.visible,
                                                 style: GoogleFonts.knewave(
                                                   color: widget.colors.text,
-                                                  fontSize: characterSize * .85,
+                                                  fontSize: characterFontSize,
                                                 ),
                                               ),
                                             ),
@@ -374,30 +417,36 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
           ),
         ),
         if(!widget.readOnly && _showSuggestions && suggestionList.isNotEmpty)
-          ConstrainedBox(
-            constraints:const BoxConstraints(maxHeight:250),
-            child:Container(
-              margin:const EdgeInsets.only(top:8),
-              decoration:BoxDecoration(
-                color:AppColors.main,
-                borderRadius:BorderRadius.circular(12),
+          Center(
+            child:ConstrainedBox(
+              constraints:BoxConstraints(
+                maxHeight:250,
+                maxWidth:MediaQuery.of(context).size.width * 0.6,
               ),
-              child:ListView.builder(
-                shrinkWrap:true,
-                padding:EdgeInsets.zero,
-                itemCount:suggestionList.length,
-                itemBuilder:(_,i){
-                  final item=suggestionList[i];
-                  return ListTile(
-                    dense:true,
-                    visualDensity:VisualDensity.compact,
-                    title:Text(
-                      item is Lift?item.serialNumber??'':item,
-                      style:TextStyle(color:widget.colors.border),
-                    ),
-                    onTap:()=>item is Lift?_selectLift(item):_setSerial(item),
-                  );
-                },
+              child:Container(
+                margin:const EdgeInsets.only(top:8),
+                decoration:BoxDecoration(
+                  color:AppColors.main,
+                  borderRadius:BorderRadius.circular(12),
+                ),
+                child:ListView.builder(
+                  shrinkWrap:true,
+                  padding:EdgeInsets.zero,
+                  itemCount:suggestionList.length,
+                  itemBuilder:(_,i){
+                    final item=suggestionList[i];
+                    return ListTile(
+                      dense:true,
+                      visualDensity:VisualDensity.compact,
+                      title:Text(
+                        item is Lift?item.serialNumber??'':item,
+                        textAlign:TextAlign.center,
+                        style:TextStyle(color:widget.colors.border),
+                      ),
+                      onTap:()=>item is Lift?_selectLift(item):_setSerial(item),
+                    );
+                  },
+                ),
               ),
             ),
           ),

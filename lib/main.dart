@@ -12,10 +12,10 @@ import 'theme/app_colors.dart';
 // BuildContext (the FCM listeners in _RentalAppState aren't under one).
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
-// Deep-links a "welcome_back" push straight to the Truck tab, skipping the
-// profile picker — the notification already tells us which driver this is,
-// since it only ever arrives on that driver's own registered device.
-Future<void> _handleWelcomeBackTap(Map<String, dynamic> data) async {
+// Deep-links a push straight to a given tab, skipping the profile picker —
+// the notification already tells us which driver this is, since it only
+// ever arrives on that driver's own registered device.
+Future<void> _handleDeepLinkTap(Map<String, dynamic> data, int tabIndex) async {
   final driverId = data['driverId'] as String?;
   if (driverId == null || driverId.isEmpty) return;
 
@@ -40,14 +40,28 @@ Future<void> _handleWelcomeBackTap(Map<String, dynamic> data) async {
           userName: match['nickname'] as String? ?? '',
           truckId: truckId,
           maintenanceOnly: maintenanceOnly,
-          initialTabIndex: 2,
+          initialTabIndex: tabIndex,
         ),
       ),
       (route) => false,
     );
   } catch (e) {
-    debugPrint('Failed to deep-link welcome_back push: $e');
+    debugPrint('Failed to deep-link ${data['type']} push: $e');
   }
+}
+
+// Truck tab for welcome_back (the inventory-ready ping is about the truck's
+// load), Routes tab for route_updated (stop adds/changes and destination
+// changes all land on the driver's route).
+const Map<String, int> _pushDeepLinkTabs = {
+  'welcome_back': 2,
+  'route_updated': 0,
+};
+
+Future<void> _handleNotificationTap(Map<String, dynamic> data) async {
+  final tabIndex = _pushDeepLinkTabs[data['type']];
+  if (tabIndex == null) return;
+  await _handleDeepLinkTap(data, tabIndex);
 }
 
 /// Background message handler
@@ -100,9 +114,7 @@ class _RentalAppState extends State<RentalApp> {
     // Handle notification taps (app was backgrounded, not terminated)
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
       debugPrint('Notification tapped: ${message.notification?.title}');
-      if (message.data['type'] == 'welcome_back') {
-        _handleWelcomeBackTap(message.data);
-      }
+      _handleNotificationTap(message.data);
     });
 
     // Handle app opened from terminated state - the navigator isn't mounted
@@ -110,11 +122,9 @@ class _RentalAppState extends State<RentalApp> {
     FirebaseMessaging.instance.getInitialMessage().then((message) {
       if (message != null) {
         debugPrint('App opened from push: ${message.notification?.title}');
-        if (message.data['type'] == 'welcome_back') {
-          WidgetsBinding.instance.addPostFrameCallback(
-            (_) => _handleWelcomeBackTap(message.data),
-          );
-        }
+        WidgetsBinding.instance.addPostFrameCallback(
+          (_) => _handleNotificationTap(message.data),
+        );
       }
     });
   }

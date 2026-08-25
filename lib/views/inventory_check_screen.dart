@@ -1,7 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:image_picker/image_picker.dart';
+import '../config/device_config.dart';
 import '../models/lift.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -32,12 +31,13 @@ class _ChecklistEntry {
 // A lift found in the yard that wasn't on the predicted list.
 class _UnexpectedEntry {
   final int? liftId;
+  final String? liftType;
   final String serialNumber;
   final int itemId;
-  bool hasPhoto = false;
 
   _UnexpectedEntry({
     this.liftId,
+    this.liftType,
     required this.serialNumber,
     required this.itemId,
   });
@@ -160,19 +160,16 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
         setState(() {
           _unexpected.add(_UnexpectedEntry(
             liftId: lift.liftId,
+            liftType: lift.liftType,
             serialNumber: serial,
             itemId: itemId ?? 0,
           ));
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text(
+          const SnackBar(
+            content: Text(
               'Not on the predicted list — recorded as unexpected',
-            ),
-            action: SnackBarAction(
-              label: 'Add Photo',
-              onPressed: () => _attachPhoto(sessionId, itemId ?? 0),
             ),
           ),
         );
@@ -235,31 +232,20 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
     }
   }
 
-  Future<void> _attachPhoto(int sessionId, int itemId) async {
-    if (itemId == 0) return;
-
-    final picker = ImagePicker();
-    final XFile? picked = await picker.pickImage(source: ImageSource.camera);
-    if (picked == null) return;
+  Future<void> _removeUnexpectedEntry(_UnexpectedEntry entry) async {
+    final sessionId = _sessionId;
+    if (sessionId == null) return;
 
     try {
-      await ApiService().attachInventoryCheckItemPhoto(
-        sessionId,
-        itemId,
-        File(picked.path),
-      );
+      await ApiService().undoInventoryCheckItem(sessionId, entry.itemId);
       if (!mounted) return;
       setState(() {
-        for (final u in _unexpected) {
-          if (u.itemId == itemId) {
-            u.hasPhoto = true;
-          }
-        }
+        _unexpected.remove(entry);
       });
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to attach photo.')),
+          const SnackBar(content: Text('Failed to remove item.')),
         );
       }
     }
@@ -348,14 +334,30 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
     if (checked.isEmpty) {
       rows.add(const _EmptyNote('Nothing checked yet.'));
     } else {
-      rows.addAll(checked);
+      String? lastType;
+      for (final entry in checked) {
+        final type = entry.liftType ?? 'Unknown';
+        if (type != lastType) {
+          rows.add(_TypeHeader(type));
+          lastType = type;
+        }
+        rows.add(entry);
+      }
     }
 
     rows.add(_SectionHeader('Unexpected in Yard (${_unexpected.length})'));
     if (_unexpected.isEmpty) {
       rows.add(const _EmptyNote('No surprises yet.'));
     } else {
-      rows.addAll(_unexpected);
+      String? lastUnexpectedType;
+      for (final entry in _unexpected) {
+        final type = entry.liftType ?? 'Unknown';
+        if (type != lastUnexpectedType) {
+          rows.add(_TypeHeader(type));
+          lastUnexpectedType = type;
+        }
+        rows.add(entry);
+      }
     }
 
     return rows;
@@ -462,27 +464,28 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
     }
 
     final unexpected = row as _UnexpectedEntry;
-    return Card(
-      color: AppColors.main,
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(8),
-        side: BorderSide(color: AppColors.red.withOpacity(0.6), width: 1),
-      ),
-      child: ListTile(
-        dense: true,
-        leading: const Icon(
-          Icons.warning_amber_rounded,
-          color: AppColors.red,
-          size: 18,
+    return HoldToSelectRow(
+      holdDuration: const Duration(milliseconds: 200),
+      onConfirmed: () => _removeUnexpectedEntry(unexpected),
+      child: Card(
+        color: AppColors.main,
+        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide(color: AppColors.red.withOpacity(0.6), width: 1),
         ),
-        title: Text(
-          unexpected.serialNumber,
-          style: const TextStyle(color: AppColors.red),
+        child: ListTile(
+          dense: true,
+          leading: const Icon(
+            Icons.warning_amber_rounded,
+            color: AppColors.red,
+            size: 18,
+          ),
+          title: Text(
+            unexpected.serialNumber,
+            style: const TextStyle(color: AppColors.red),
+          ),
         ),
-        trailing: unexpected.hasPhoto
-            ? const Icon(Icons.camera_alt, color: AppColors.yellow, size: 16)
-            : null,
       ),
     );
   }
@@ -506,7 +509,7 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
             ).createShader(bounds);
           },
           child: Text(
-            "Inventory Check",
+            DeviceConfig.isIphone ? "Inventory" : "Inventory Check",
             style: GoogleFonts.permanentMarker(
               fontSize: 22,
               fontWeight: FontWeight.bold,

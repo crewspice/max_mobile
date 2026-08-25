@@ -6,10 +6,8 @@ import '../models/stop.dart';
 import '../widgets/rental_card.dart';
 import '../widgets/service_card.dart';
 import '../widgets/base_card.dart';
-import '../widgets/ornate_card.dart';
-import '../widgets/hold_to_confirm_button.dart';
+import '../widgets/maintenance/inspection_prompt_card.dart';
 import '../theme/app_colors.dart';
-import '../config/device_config.dart';
 import '../utils/shop_geofence.dart' as shop_geofence;
 import 'package:google_fonts/google_fonts.dart';
 
@@ -346,124 +344,22 @@ class _RentalListViewState extends State<RentalListView> {
   // it (or explicitly Dismiss) before they can get back to the route -
   // dismissal isn't persisted, so it reappears on next cold start / screen
   // re-entry.
-  // On iPhone the two buttons are cramped side by side, so they each get
-  // their own line there; other devices keep the original side-by-side row.
-  Widget _buildInspectionActionButtons(BuildContext context, String truckId) {
-    final recordIssueButton = OutlinedButton.icon(
-      style: OutlinedButton.styleFrom(
-        backgroundColor: AppColors.mainBackground,
-        side: const BorderSide(
-          color: AppColors.red,
-          width: 2,
-        ),
-      ),
-      onPressed: () => _openTruckIssueFlow(context, truckId),
-      icon: const Icon(
-        Icons.report_problem,
-        color: AppColors.red,
-      ),
-      label: const Text(
-        "Record Issue",
-        style: TextStyle(
-          color: AppColors.red,
-        ),
-      ),
-    );
-
-    final noIssuesButton = HoldToConfirmButton(
-      label: "No Issues",
-      baseColor: AppColors.mainBackground,
-      textColor: AppColors.red,
-      progressColor: AppColors.red,
-      icon: const Icon(
-        Icons.check,
-        color: AppColors.red,
-      ),
-      onConfirmed: () => _recordNoIssues(truckId),
-    );
-
-    if (DeviceConfig.isIphone) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          recordIssueButton,
-          const SizedBox(height: 10),
-          noIssuesButton,
-        ],
-      );
-    }
-
-    return Row(
-      children: [
-        Expanded(child: recordIssueButton),
-        const SizedBox(width: 10),
-        Expanded(child: noIssuesButton),
-      ],
-    );
-  }
-
   Widget _buildStaleTruckOverlay(String truckId) {
     return Positioned.fill(
       child: Container(
         color: Colors.black87,
         alignment: Alignment.center,
         padding: const EdgeInsets.all(24),
-        child: OrnateCard(
-          color: AppColors.red,
-          padding: EdgeInsets.zero,
-          child: Container(
-            color: AppColors.mainBackground,
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.warning,
-                      color: AppColors.red,
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        "Truck $truckId needs inspection",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                          color: AppColors.red,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  "No inspection recorded in the last 7 days.",
-                  style: TextStyle(
-                    color: AppColors.red,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                _buildInspectionActionButtons(context, truckId),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton(
-                    onPressed: () {
-                      setState(() {
-                        dismissedTrucks.add(truckId);
-                      });
-                    },
-                    child: const Text(
-                      "Dismiss",
-                      style: TextStyle(color: AppColors.red),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
+        child: InspectionPromptCard(
+          title: "Truck $truckId needs inspection",
+          message: "None recorded in $kInspectionWindowDays days.",
+          onRecordIssue: () => _openTruckIssueFlow(context, truckId),
+          onNoIssues: () => _recordNoIssues(truckId),
+          onDismiss: () {
+            setState(() {
+              dismissedTrucks.add(truckId);
+            });
+          },
         ),
       ),
     );

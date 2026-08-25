@@ -61,36 +61,53 @@ class RentalTile extends StatelessWidget {
                     flex: 1,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text(
-                          "${_formatDate(rental.startDate)}",
-                          style: const TextStyle(
-                            color: AppColors.yellow,
-                          ),
-                        ),
-                        Text(
-                          "to",
-                          style: TextStyle(
-                            color: AppColors.yellow.withOpacity(.7),
-                          ),
-                        ),
-                        Text(
-                          "${_formatDate(rental.endDate)}",
-                          style: const TextStyle(
-                            color: AppColors.yellow,
-                          ),
-                        ),
-                        if (rental.status != null) ...[
-                          const SizedBox(height: 8),
-                          Text(
-                            rental.status!,
-                            style: const TextStyle(
-                              color: AppColors.yellow,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ],
+                      children: rental.endDate == null
+                          ? [
+                              Text(
+                                _formatDate(rental.startDate),
+                                style: const TextStyle(
+                                  color: AppColors.yellow,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                rental.status ?? "Still on Rent",
+                                style: const TextStyle(
+                                  color: AppColors.yellow,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ]
+                          : [
+                              Text(
+                                _formatDate(rental.startDate),
+                                style: const TextStyle(
+                                  color: AppColors.yellow,
+                                ),
+                              ),
+                              Text(
+                                "to",
+                                style: TextStyle(
+                                  color: AppColors.yellow.withOpacity(.7),
+                                ),
+                              ),
+                              Text(
+                                _formatDate(rental.endDate),
+                                style: const TextStyle(
+                                  color: AppColors.yellow,
+                                ),
+                              ),
+                              if (rental.status != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  rental.status!,
+                                  style: const TextStyle(
+                                    color: AppColors.yellow,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ],
                     ),
                   ),
                 ],

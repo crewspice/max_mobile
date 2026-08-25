@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../models/inventory_item.dart';
-import '../widgets/hold_to_confirm_button.dart';
 import '../widgets/user_avatar.dart';
 import '../theme/app_colors.dart';
 import 'package:image/image.dart' as img;
 import 'package:google_fonts/google_fonts.dart';
-import '../widgets/ornate_card.dart';
+import '../widgets/maintenance/inspection_prompt_card.dart';
 import '../config/device_config.dart';
 import '../utils/lift_assets.dart';
 
@@ -40,11 +39,13 @@ GridPos? parseGridPosition(String? pos) {
 class TruckView extends StatefulWidget {
   final String? truckId;
   final String driverId;
+  final ValueChanged<String> onOpenLiftMaintenance;
 
   const TruckView({
     super.key,
     required this.truckId,
     required this.driverId,
+    required this.onOpenLiftMaintenance,
   });
 
   @override
@@ -52,6 +53,10 @@ class TruckView extends StatefulWidget {
 }
 
 class _TruckViewState extends State<TruckView> {
+  // Toggled by the icon on the truck-name line so a driver can log an
+  // inspection even when one isn't currently overdue.
+  bool _manualInspectionOpen = false;
+
   static const _spectrumGradient = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
@@ -274,6 +279,38 @@ class _TruckViewState extends State<TruckView> {
         );
       },
     );
+  }
+
+  Future<void> _recordNoIssues(
+    BuildContext context, {
+    bool closeManual = false,
+  }) async {
+    try {
+      await ApiService().recordTruckInspection(
+        truckId: widget.truckId!,
+        driverId: widget.driverId,
+      );
+
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Inspection recorded successfully.'),
+        ),
+      );
+
+      setState(() {
+        if (closeManual) _manualInspectionOpen = false;
+      });
+    } catch (e) {
+      if (!context.mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to record inspection: $e'),
+        ),
+      );
+    }
   }
 
   Widget _detailRow(
@@ -541,18 +578,34 @@ class _TruckViewState extends State<TruckView> {
                                         (currentItem.pendingRepairs ?? 0)
                                             .toString(),
                                       ),
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton(
-                                          onPressed: () =>
-                                              Navigator.pop(context),
-                                          child: const Text(
-                                            "Close",
-                                            style: TextStyle(
-                                              color: AppColors.yellow,
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.build,
+                                              color: AppColors.green,
+                                            ),
+                                            tooltip: 'Open in Maintenance',
+                                            onPressed: () {
+                                              Navigator.pop(context);
+                                              widget.onOpenLiftMaintenance(
+                                                currentItem.serialNumber,
+                                              );
+                                            },
+                                          ),
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text(
+                                              "Close",
+                                              style: TextStyle(
+                                                color: AppColors.yellow,
+                                              ),
                                             ),
                                           ),
-                                        ),
+                                        ],
                                       ),
                                     ],
                                   ),
@@ -730,10 +783,11 @@ class _TruckViewState extends State<TruckView> {
 
         final inventory = snapshot.data ?? [];
 
-        return FutureBuilder<bool>(
-          future: ApiService().needsInspection(widget.truckId!),
+        return FutureBuilder<List<String>>(
+          future: ApiService().needsInspectionRollingWeek([widget.truckId!]),
           builder: (context, inspectionSnapshot) {
-            final needsInspection = inspectionSnapshot.data ?? false;
+            final needsInspection =
+                inspectionSnapshot.data?.contains(widget.truckId) ?? false;
 
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -743,124 +797,55 @@ class _TruckViewState extends State<TruckView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        "Truck ${widget.truckId}",
-                        style: GoogleFonts.permanentMarker(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.yellow,
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              "Truck ${widget.truckId}",
+                              style: GoogleFonts.permanentMarker(
+                                fontSize: 22,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.yellow,
+                              ),
+                            ),
+                          ),
+                          if (!needsInspection)
+                            IconButton(
+                              onPressed: () {
+                                setState(() {
+                                  _manualInspectionOpen =
+                                      !_manualInspectionOpen;
+                                });
+                              },
+                              tooltip: 'Log an inspection',
+                              icon: Icon(
+                                _manualInspectionOpen
+                                    ? Icons.expand_less
+                                    : Icons.fact_check_outlined,
+                                color: AppColors.yellow,
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 12),
                       if (needsInspection)
-                        OrnateCard(
-                          color: AppColors.red,
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Icon(
-                                    Icons.warning,
-                                    color: AppColors.red,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      "Truck ${widget.truckId} needs inspection",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: AppColors.red,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              const Text(
-                                "No inspection recorded for this month.",
-                                style: TextStyle(
-                                  color: AppColors.red,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        backgroundColor:
-                                            AppColors.mainBackground,
-                                        side: const BorderSide(
-                                          color: AppColors.red,
-                                          width: 2,
-                                        ),
-                                      ),
-                                      onPressed: () => _openIssueFlow(context),
-                                      icon: const Icon(
-                                        Icons.report_problem,
-                                        color: AppColors.red,
-                                      ),
-                                      label: const Text(
-                                        "Record Issue",
-                                        style: TextStyle(
-                                          color: AppColors.red,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: HoldToConfirmButton(
-                                      label: "No Issues",
-                                      baseColor: AppColors.mainBackground,
-                                      textColor: AppColors.red,
-                                      progressColor: AppColors.red,
-                                      icon: const Icon(
-                                        Icons.check,
-                                        color: AppColors.red,
-                                      ),
-                                      onConfirmed: () async {
-                                        try {
-                                          await ApiService()
-                                              .recordTruckInspection(
-                                            truckId: widget.truckId!,
-                                            driverId: widget.driverId,
-                                          );
-
-                                          if (!context.mounted) return;
-
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                'Inspection recorded successfully.',
-                                              ),
-                                            ),
-                                          );
-
-                                          setState(() {});
-                                        } catch (e) {
-                                          if (!context.mounted) return;
-
-                                          ScaffoldMessenger.of(context)
-                                              .showSnackBar(
-                                            SnackBar(
-                                              content: Text(
-                                                'Failed to record inspection: $e',
-                                              ),
-                                            ),
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                        InspectionPromptCard(
+                          title: "Truck ${widget.truckId} needs inspection",
+                          message:
+                              "None recorded in $kInspectionWindowDays days.",
+                          onRecordIssue: () => _openIssueFlow(context),
+                          onNoIssues: () => _recordNoIssues(context),
+                        )
+                      else if (_manualInspectionOpen)
+                        InspectionPromptCard(
+                          title: "Log an inspection",
+                          message:
+                              "Optional - last one was within $kInspectionWindowDays days.",
+                          color: AppColors.yellow,
+                          icon: Icons.fact_check_outlined,
+                          onRecordIssue: () => _openIssueFlow(context),
+                          onNoIssues: () =>
+                              _recordNoIssues(context, closeManual: true),
                         ),
                       const SizedBox(height: 12),
                       Text(

@@ -8,6 +8,7 @@ import '../models/lift_option.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../widgets/hold_to_confirm_button.dart';
+import '../widgets/ornate_card.dart';
 import '../theme/app_colors.dart';
 import 'lift_selector_panel.dart';
 import '../models/lift.dart';
@@ -300,6 +301,9 @@ class _RentalCardState extends State<RentalCard> {
     );
   }
 
+  // Styled to match the truck-inspection prompt card (ornate border, dark
+  // fill, colored icon/title row, thin-outlined actions stacked on iPhone)
+  // instead of the flat AlertDialog this used to be.
   void _showCancelDialog(BuildContext context) {
     final Color elementColor =
         widget.stop.status == "Active"
@@ -315,104 +319,151 @@ class _RentalCardState extends State<RentalCard> {
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: elementColor,
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Center(
-                    child: ToggleButtons(
-                      isSelected: [
-                        selected == 0,
-                        selected == 1,
-                      ],
-                      onPressed: (index) {
-                        setState(() {
-                          selected = index;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      fillColor: AppColors.main,
-                      selectedColor: elementColor,
-                      color: AppColors.main,
-                      constraints: const BoxConstraints(
-                        minWidth: 135,
-                        minHeight: 42,
-                      ),
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            "Before\nArrival",
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            "On\nArrival",
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
+            final closeButton = OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                backgroundColor: AppColors.mainBackground,
+                side: BorderSide(color: elementColor, width: 1.3),
+              ),
+              onPressed: () => Navigator.pop(context),
+              child: Text("Close", style: TextStyle(color: elementColor)),
+            );
+
+            final submitButton = HoldToConfirmButton(
+              icon: const Icon(Icons.cancel),
+              label: "Submit Cancellation",
+              baseColor: elementColor,
+              progressColor: elementColor,
+              textColor: elementColor,
+              outlined: true,
+              holdDuration: const Duration(seconds: 2),
+              onConfirmed: () async {
+                final bool onArrival = selected == 1;
+
+                Navigator.pop(context);
+
+                final api = ApiService();
+
+                final success = await api.recordCancellation(
+                  rentalId: widget.stop.id.toString(),
+                  truck: widget.stop.truck ?? "null",
+                  driver: widget.stop.driverId ?? "null",
+                  type: onArrival ? "Cancelled on Arrival" : "Cancelled",
+                );
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      success
+                          ? (onArrival
+                              ? "Cancelled on arrival"
+                              : "Cancelled before arrival")
+                          : "Cancellation failed",
                     ),
                   ),
-                ],
-              ),
-              actionsAlignment: MainAxisAlignment.center,
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Close",
-                    style: TextStyle(color: AppColors.main),
-                  ),
-                ),
-                SizedBox(
-                  width: 190,
-                  child: HoldToConfirmButton(
-                    icon: const Icon(Icons.cancel),
-                    label: "Submit Cancellation",
-                    baseColor: AppColors.main,
-                    progressColor: AppColors.main,
-                    textColor: elementColor,
-                    holdDuration: const Duration(seconds: 2),
-                    onConfirmed: () async {
-                      final bool onArrival = selected == 1;
+                );
 
-                      Navigator.pop(context);
+                if (success) {
+                  await widget.onRefresh();
+                }
+              },
+            );
 
-                      final api = ApiService();
-
-                      final success = await api.recordCancellation(
-                        rentalId: widget.stop.id.toString(),
-                        truck: widget.stop.truck ?? "null",
-                        driver: widget.stop.driverId ?? "null",
-                        type: onArrival
-                            ? "Cancelled on Arrival"
-                            : "Cancelled",
-                      );
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            success
-                                ? (onArrival
-                                    ? "Cancelled on arrival"
-                                    : "Cancelled before arrival")
-                                : "Cancellation failed",
+            return Dialog(
+              backgroundColor: Colors.transparent,
+              insetPadding: const EdgeInsets.all(24),
+              child: OrnateCard(
+                color: elementColor,
+                padding: EdgeInsets.zero,
+                child: Container(
+                  color: AppColors.mainBackground,
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.block, color: elementColor),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              "Cancel Rental",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: elementColor,
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        "When did the cancellation happen?",
+                        style: TextStyle(color: elementColor),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: ToggleButtons(
+                          isSelected: [
+                            selected == 0,
+                            selected == 1,
+                          ],
+                          onPressed: (index) {
+                            setState(() {
+                              selected = index;
+                            });
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          borderColor: elementColor,
+                          selectedBorderColor: elementColor,
+                          fillColor: elementColor,
+                          selectedColor: AppColors.mainBackground,
+                          color: elementColor,
+                          constraints: const BoxConstraints(
+                            minWidth: 135,
+                            minHeight: 42,
+                          ),
+                          children: const [
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                "Before\nArrival",
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                            Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 12),
+                              child: Text(
+                                "On\nArrival",
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
                         ),
-                      );
-
-                      if (success) {
-                        await widget.onRefresh();
-                      }
-                    },
+                      ),
+                      const SizedBox(height: 16),
+                      if (DeviceConfig.isIphone)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            closeButton,
+                            const SizedBox(height: 10),
+                            submitButton,
+                          ],
+                        )
+                      else
+                        Row(
+                          children: [
+                            Expanded(child: closeButton),
+                            const SizedBox(width: 10),
+                            Expanded(child: submitButton),
+                          ],
+                        ),
+                    ],
                   ),
                 ),
-              ],
+              ),
             );
           },
         );
