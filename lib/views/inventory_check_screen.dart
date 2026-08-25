@@ -411,6 +411,7 @@ class _InventoryCheckScreenState extends State<InventoryCheckScreen> {
         return SizedBox(
           height: 52,
           child: HoldToSelectRow(
+            holdDuration: const Duration(milliseconds: 200),
             onConfirmed: () => _manualCheckOff(row),
             child: MediaQuery.withNoTextScaling(
               child: ListTile(
