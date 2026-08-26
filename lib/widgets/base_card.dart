@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../models/stop.dart';
 import 'package:intl/intl.dart';
@@ -29,7 +31,7 @@ _NotesSplit _splitNotes(String? notes) {
   );
 }
 
-class BaseCard extends StatelessWidget {
+class BaseCard extends StatefulWidget {
   final Stop stop;
   final List<Widget> extraContent;
   final List<Widget> actionButtons;
@@ -46,6 +48,50 @@ class BaseCard extends StatelessWidget {
     this.onNotesUpdated,
     this.completedView = false,
   }) : super(key: key);
+
+  @override
+  State<BaseCard> createState() => _BaseCardState();
+}
+
+class _BaseCardState extends State<BaseCard> {
+  // Two-finger long-press toggles siteName/streetAddress/city to rentalId/siteId (dev-only).
+  static const _devHoldDuration = Duration(milliseconds: 1500);
+
+  final Set<int> _activePointers = {};
+  Timer? _devToggleTimer;
+  bool _showDevFields = false;
+
+  Stop get stop => widget.stop;
+  List<Widget> get extraContent => widget.extraContent;
+  List<Widget> get actionButtons => widget.actionButtons;
+  void Function(Stop updatedStop)? get onNotesUpdated => widget.onNotesUpdated;
+  Future<void> Function() get onRefresh => widget.onRefresh;
+  bool get completedView => widget.completedView;
+
+  void _handlePointerDown(PointerDownEvent event) {
+    _activePointers.add(event.pointer);
+    if (_activePointers.length == 2) {
+      _devToggleTimer?.cancel();
+      _devToggleTimer = Timer(_devHoldDuration, () {
+        if (!mounted || _activePointers.length != 2) return;
+        setState(() => _showDevFields = !_showDevFields);
+        HapticFeedback.mediumImpact();
+      });
+    } else {
+      _devToggleTimer?.cancel();
+    }
+  }
+
+  void _handlePointerUpOrCancel(PointerEvent event) {
+    _activePointers.remove(event.pointer);
+    _devToggleTimer?.cancel();
+  }
+
+  @override
+  void dispose() {
+    _devToggleTimer?.cancel();
+    super.dispose();
+  }
 
   Future<void> _launchDialer(BuildContext context, String phone) async {
     if (phone.trim().isEmpty) return;
@@ -307,6 +353,15 @@ class BaseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return Listener(
+      onPointerDown: _handlePointerDown,
+      onPointerUp: _handlePointerUpOrCancel,
+      onPointerCancel: _handlePointerUpOrCancel,
+      child: _buildCard(context),
+    );
+  }
+
+  Widget _buildCard(BuildContext context) {
 
   final Color elementColor =
       stop.type == "SERVICE"
@@ -530,59 +585,78 @@ class BaseCard extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
-                                if (stop.siteName != null && stop.siteName!.isNotEmpty)
-                                  GestureDetector(
-                                    onTap: () {
-                                      if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
-                                    },
-                                    child: Text(
-                                      stop.siteName!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: elementColor,
-                                        decoration: TextDecoration.none,
-                                      ),
+                                if (_showDevFields) ...[
+                                  Text(
+                                    '${stop.type == "SERVICE" ? "Service ID" : "Rental ID"}: ${stop.id}',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: elementColor,
+                                      decoration: TextDecoration.none,
                                     ),
                                   ),
-                                if (stop.streetAddress != null && stop.streetAddress!.isNotEmpty)
-                                  GestureDetector(
-                                    onTap: () {
-                                      if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
-                                    },
-                                    child: Text(
-                                      stop.streetAddress!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: elementColor,
-                                        decoration: TextDecoration.none,
+                                  Text(
+                                    'Site ID: ${stop.siteId}',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: elementColor,
+                                      decoration: TextDecoration.none,
+                                    ),
+                                  ),
+                                ] else ...[
+                                  if (stop.siteName != null && stop.siteName!.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: () {
+                                        if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
+                                      },
+                                      child: Text(
+                                        stop.siteName!,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: elementColor,
+                                          decoration: TextDecoration.none,
+                                        ),
+                                      ),
+                                    ),
+                                  if (stop.streetAddress != null && stop.streetAddress!.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: () {
+                                        if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
+                                      },
+                                      child: Text(
+                                        stop.streetAddress!,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: elementColor,
+                                          decoration: TextDecoration.none,
 
-                                        // fontSize: 14,
-                                        // fontWeight: FontWeight.w700,
+                                          // fontSize: 14,
+                                          // fontWeight: FontWeight.w700,
 
-                                        shadows: const [
-                                          Shadow(
-                                            color: Colors.black,
-                                            blurRadius: 3,
-                                            offset: Offset(0, 0),
-                                          ),
-                                        ],
+                                          shadows: const [
+                                            Shadow(
+                                              color: Colors.black,
+                                              blurRadius: 3,
+                                              offset: Offset(0, 0),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                if (stop.city != null && stop.city!.isNotEmpty)
-                                  GestureDetector(
-                                    onTap: () {
-                                      if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
-                                    },
-                                    child: Text(
-                                      stop.city!,
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: elementColor,
-                                        decoration: TextDecoration.none,
+                                  if (stop.city != null && stop.city!.isNotEmpty)
+                                    GestureDetector(
+                                      onTap: () {
+                                        if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
+                                      },
+                                      child: Text(
+                                        stop.city!,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: elementColor,
+                                          decoration: TextDecoration.none,
+                                        ),
                                       ),
                                     ),
-                                  ),
+                                ],
                                 if (!DeviceConfig.isIphone)
                                   _buildNotesRow(elementColor, context),
                               ],

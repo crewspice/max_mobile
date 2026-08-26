@@ -293,14 +293,33 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                     characterFontSize * _charVerticalNudge(char),
                   ),
                   child: MediaQuery.withNoTextScaling(
-                    child: Text(
-                      char,
-                      softWrap: false,
-                      overflow: TextOverflow.visible,
-                      style: GoogleFonts.knewave(
-                        color: widget.colors.text,
-                        fontSize: characterFontSize,
-                      ),
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Text(
+                          char,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
+                          style: GoogleFonts.knewave(
+                            fontSize: characterFontSize,
+                          ).copyWith(
+                            foreground: Paint()
+                              ..style = PaintingStyle.stroke
+                              ..strokeWidth = ballSize * 0.16
+                              ..color = widget.colors.ball,
+                          ),
+                        ),
+                        Text(
+                          char,
+                          softWrap: false,
+                          overflow: TextOverflow.visible,
+                          style: GoogleFonts.knewave(
+                            color: widget.colors.text,
+                            fontSize: characterFontSize,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
