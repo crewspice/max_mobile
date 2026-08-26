@@ -12,6 +12,7 @@ import '../models/yard_shortage_warning.dart';
 import '../models/inventory_item.dart';
 import '../models/lift_option.dart';
 import '../models/chat_message.dart';
+import '../models/site_resource_photos.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 
@@ -21,6 +22,7 @@ class ApiService {
   final String routeUrl = "http://5.78.73.173:8080/routes";
   final String maintenanceUrl = "http://5.78.73.173:8080/maintenance";
   final String chatUrl = "http://5.78.73.173:8080/driver-chat";
+  final String photoAnalysisUrl = "http://5.78.73.173:8080/api/photo-analysis";
 
   /// Fetch chat messages. Pass sinceId to get only messages newer than it
   /// (for polling); omit it for the initial page of recent history.
@@ -703,6 +705,23 @@ class ApiService {
     } catch (e) {
       print('Error uploading profile picture: $e');
       return false;
+    }
+  }
+
+  /// Whether the given site has any retained "previous helpful delivery
+  /// photo" resources, and what they are. Returns an empty (not-helpful)
+  /// result on any error so callers can safely gate UI on it.
+  Future<SiteResourcePhotos> fetchSiteResourcePhotos(int siteId) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$photoAnalysisUrl/site-resources/$siteId'));
+      if (response.statusCode != 200) {
+        return SiteResourcePhotos(hasHelpfulPhotos: false, photos: []);
+      }
+      final decoded = json.decode(utf8.decode(response.bodyBytes));
+      return SiteResourcePhotos.fromJson(decoded);
+    } catch (e) {
+      return SiteResourcePhotos(hasHelpfulPhotos: false, photos: []);
     }
   }
 

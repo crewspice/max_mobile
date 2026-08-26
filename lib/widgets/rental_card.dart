@@ -5,6 +5,7 @@ import 'package:image/image.dart' as img;
 import 'package:image_picker/image_picker.dart';
 import '../models/stop.dart';
 import '../models/lift_option.dart';
+import '../models/site_resource_photos.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../widgets/hold_to_confirm_button.dart';
@@ -40,6 +41,13 @@ class RentalCard extends StatefulWidget {
 
 class _RentalCardState extends State<RentalCard> {
   int? _selectedRentalId;
+  SiteResourcePhotos? _siteResourcePhotos;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSiteResourcePhotos();
+  }
 
   @override
   void didUpdateWidget(RentalCard oldWidget) {
@@ -47,6 +55,21 @@ class _RentalCardState extends State<RentalCard> {
 
     if (oldWidget.stop.id != widget.stop.id) {
       setState(() {});
+    }
+    if (oldWidget.stop.siteId != widget.stop.siteId) {
+      _loadSiteResourcePhotos();
+    }
+  }
+
+  // Backend answers "does this site have previous helpful delivery photos" -
+  // the mobile side never does its own address matching, it just consumes
+  // the result to decide whether to show the "Previous Site Photos" button.
+  Future<void> _loadSiteResourcePhotos() async {
+    final result = await ApiService().fetchSiteResourcePhotos(widget.stop.siteId);
+    if (mounted) {
+      setState(() {
+        _siteResourcePhotos = result;
+      });
     }
   }
 
@@ -294,6 +317,118 @@ class _RentalCardState extends State<RentalCard> {
                   ),
                 ),
               ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showFullImage(BuildContext context, Color elementColor, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: elementColor,
+          child: Padding(
+            padding: const EdgeInsets.all(6),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.network(
+                imageUrl,
+                errorBuilder: (context, error, stackTrace) {
+                  return const Padding(
+                    padding: EdgeInsets.all(24),
+                    child: Text('Image not found or failed to load.'),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSiteResourcePhotos(BuildContext context) {
+    final Color elementColor =
+        widget.stop.status == "Active"
+            ? AppColors.green
+            : (widget.stop.status == "Upcoming"
+                ? AppColors.yellow
+                : AppColors.red);
+
+    final photos = _siteResourcePhotos?.photos ?? [];
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: elementColor,
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 500),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'Previous Site Photos',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: photos.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 10),
+                      itemBuilder: (context, index) {
+                        final photo = photos[index];
+                        return GestureDetector(
+                          onTap: () =>
+                              _showFullImage(context, elementColor, photo.imageUrl),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  photo.imageUrl,
+                                  height: 140,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Padding(
+                                    padding: EdgeInsets.all(12),
+                                    child:
+                                        Text('Image not found or failed to load.'),
+                                  ),
+                                ),
+                              ),
+                              if (photo.reason.isNotEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 4),
+                                  child: Text(
+                                    photo.reason,
+                                    style: const TextStyle(
+                                        color: Colors.black87, fontSize: 12),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -609,6 +744,17 @@ class _RentalCardState extends State<RentalCard> {
             onPressed: () => _showCancelDialog(context),
           ),
         );
+
+        if (_siteResourcePhotos?.hasHelpfulPhotos == true) {
+          actions.add(
+            ActionItem(
+              label: "Previous Site Photos",
+              icon: Icons.photo_library,
+              color: elementColor,
+              onPressed: () => _showSiteResourcePhotos(context),
+            ),
+          );
+        }
       }
     }
 
