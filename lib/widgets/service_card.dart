@@ -8,7 +8,7 @@ import '../models/lift_option.dart';
 import '../services/api_service.dart';
 import 'base_card.dart';
 import '../theme/app_colors.dart';
-import 'hold_to_confirm_button.dart';
+import 'cancel_dialog.dart';
 import 'lift_selector_panel.dart';
 import 'action_ribbon.dart';
 import '../config/device_config.dart';
@@ -295,117 +295,17 @@ class _ServiceCardState extends State<ServiceCard> {
 
 
   void _showCancelDialog(BuildContext context) {
-    final Color elementColor = AppColors.green;
-
-    int selected = 0;
-
-    showDialog(
+    showCancelDialog(
       context: context,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: elementColor,
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Center(
-                    child: ToggleButtons(
-                      isSelected: [
-                        selected == 0,
-                        selected == 1,
-                      ],
-                      onPressed: (index) {
-                        setState(() {
-                          selected = index;
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      fillColor: AppColors.main,
-                      selectedColor: elementColor,
-                      color: AppColors.main,
-                      constraints: const BoxConstraints(
-                        minWidth: 135,
-                        minHeight: 42,
-                      ),
-                      children: const [
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            "Before\nArrival",
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: 12),
-                          child: Text(
-                            "On\nArrival",
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              actionsAlignment: MainAxisAlignment.center,
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text(
-                    "Close",
-                    style: TextStyle(color: AppColors.main),
-                  ),
-                ),
-                SizedBox(
-                  width: 190,
-                  child: HoldToConfirmButton(
-                    icon: const Icon(Icons.cancel),
-                    label: "Submit Cancellation",
-                    baseColor: AppColors.main,
-                    progressColor: AppColors.main,
-                    textColor: elementColor,
-                    holdDuration: const Duration(seconds: 2),
-                    onConfirmed: () async {
-                      Navigator.pop(context);
-
-                      final bool onArrival = selected == 1;
-
-                      final api = ApiService();
-
-                      final success = await api.recordCancellation(
-                        rentalId: widget.stop.id.toString(),
-                        truck: widget.stop.truck ?? "null",
-                        driver: widget.stop.driverId ?? "null",
-                        type: onArrival
-                            ? "Cancelled on Arrival"
-                            : "Cancelled",
-                      );
-
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            success
-                                ? (onArrival
-                                    ? "Cancelled on arrival"
-                                    : "Cancelled before arrival")
-                                : "Cancellation failed",
-                          ),
-                        ),
-                      );
-
-                      if (success) {
-                        await widget.onRefresh();
-                      }
-                    },
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+      color: AppColors.green,
+      stopType: "Service",
+      onCancel: (onArrival) => ApiService().recordCancellation(
+        rentalId: widget.stop.id.toString(),
+        truck: widget.stop.truck ?? "null",
+        driver: widget.stop.driverId ?? "null",
+        type: onArrival ? "Cancelled on Arrival" : "Cancelled",
+      ),
+      onSuccess: widget.onRefresh,
     );
   }
 

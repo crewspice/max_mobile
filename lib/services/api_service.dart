@@ -22,7 +22,7 @@ class ApiService {
   final String routeUrl = "http://5.78.73.173:8080/routes";
   final String maintenanceUrl = "http://5.78.73.173:8080/maintenance";
   final String chatUrl = "http://5.78.73.173:8080/driver-chat";
-  final String photoAnalysisUrl = "http://5.78.73.173:8080/api/photo-analysis";
+  final String photoAnalysisUrl = "http://5.78.73.173:8080/images/deliveries";
 
   /// Fetch chat messages. Pass sinceId to get only messages newer than it
   /// (for polling); omit it for the initial page of recent history.

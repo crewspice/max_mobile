@@ -76,6 +76,7 @@ class InspectionPromptCard extends StatelessWidget {
 
     return OrnateCard(
       color: color,
+      backgroundColor: AppColors.mainBackground,
       padding: EdgeInsets.zero,
       child: Container(
         color: AppColors.mainBackground,

@@ -231,10 +231,18 @@ class _BaseCardState extends State<BaseCard> {
                       style: baseStyle,
                       children: [
                         TextSpan(
-                          text: "[Delivery] ",
+                          text: "◆ ",
+                          style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
+                        ),
+                        TextSpan(
+                          text: "Delivery ",
                           style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
                         ),
                         TextSpan(text: split.preDelivery),
+                        TextSpan(
+                          text: " ◆",
+                          style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
+                        ),
                         if (split.postDelivery.isNotEmpty)
                           TextSpan(text: " ${split.postDelivery}"),
                       ],

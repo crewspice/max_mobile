@@ -6,6 +6,7 @@ class OrnateCard extends StatefulWidget {
     super.key,
     required this.child,
     required this.color,
+    this.backgroundColor,
     this.padding = const EdgeInsets.all(6),
     this.borderThickness = 16,
     this.tileSize = 6,
@@ -15,6 +16,12 @@ class OrnateCard extends StatefulWidget {
 
   final Widget child;
   final Color color;
+  // Fill painted under the whole card, including under the border tiles.
+  // The border artwork doesn't fully opaque-fill its tiles, so without this
+  // whatever sits behind the card (e.g. a dialog barrier) shows through the
+  // gap between the border and the inner content. Leave null to keep the
+  // border transparent outside the content, as most non-dialog callers want.
+  final Color? backgroundColor;
   final EdgeInsets padding;
   final double tileSize;
   final double borderThickness;
@@ -77,6 +84,21 @@ class _OrnateCardState extends State<OrnateCard> {
     return Stack(
       clipBehavior: Clip.none,
       children: [
+        // Inset halfway into the border ring rather than filling all the way
+        // to the card's outer edge: the border artwork isn't a solid square,
+        // so a full-bleed fill would show a flat rectangle poking out past
+        // its visible (non-transparent) shape. Splitting the ring covers the
+        // inner half — closing the gap against the content — while leaving
+        // the outer half transparent for the art's own silhouette.
+        if (widget.backgroundColor != null)
+          Positioned(
+            left: border / 2,
+            top: border / 2,
+            right: border / 2,
+            bottom: border / 2,
+            child: Container(color: widget.backgroundColor),
+          ),
+
         Padding(
           padding: EdgeInsets.all(border),
           child: Container(

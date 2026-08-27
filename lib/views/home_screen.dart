@@ -103,17 +103,16 @@ class _HomeScreenState extends State<HomeScreen> {
       phoneLat = position?.latitude;
       phoneLng = position?.longitude;
 
-      if (hasActiveRoute &&
-          !truckNearShop &&
-          truckLat != null &&
-          truckLng != null &&
-          position != null) {
+      if (truckLat != null && truckLng != null && position != null) {
         distance = shop_geofence.distanceBetweenMiles(
           position.latitude,
           position.longitude,
           truckLat,
           truckLng,
         );
+      }
+
+      if (hasActiveRoute && !truckNearShop && distance != null) {
         unlocked = distance <= shop_geofence.kNearTruckThresholdMiles;
       }
     } catch (e) {
