@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
+import '../curved_stack_card.dart';
 import '../hold_to_confirm_button.dart';
-import '../ornate_card.dart';
 
 enum IssueEntryMode { issue, repair }
 
@@ -11,6 +11,7 @@ class IssueEntryCard extends StatefulWidget {
   final String currentUserId;
   final IssueEntryMode mode;
   final VoidCallback onComplete;
+  final StackPosition position;
 
   const IssueEntryCard({
     super.key,
@@ -18,6 +19,7 @@ class IssueEntryCard extends StatefulWidget {
     required this.currentUserId,
     required this.mode,
     required this.onComplete,
+    this.position = StackPosition.only,
   });
 
   @override
@@ -210,22 +212,23 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
 
     final hasNotes = _notesController.text.trim().isNotEmpty;
 
-    return OrnateCard(
+    return CurvedStackCard(
       color: AppColors.red,
+      position: widget.position,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
             title,
             style: const TextStyle(
-              color: AppColors.red,
+              color: AppColors.yellow,
               fontWeight: FontWeight.bold,
             ),
           ),
 
           const SizedBox(height: 12),
 
-          _buildNotesInput(AppColors.red),
+          _buildNotesInput(AppColors.yellow),
 
           const SizedBox(height: 12),
 
@@ -233,8 +236,8 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
             icon: const Icon(Icons.check),
             label: hasNotes ? button : 'Notes required',
             baseColor: AppColors.main,
-            textColor: AppColors.red,
-            progressColor: AppColors.red,
+            textColor: AppColors.yellow,
+            progressColor: AppColors.yellow,
             holdDuration: const Duration(seconds: 2),
             enabled: hasNotes,
             onConfirmed: _submit,

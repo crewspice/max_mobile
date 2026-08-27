@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../config/device_config.dart';
+import 'circle_button_jitter.dart';
 
 class ModeSelectorRow<T> extends StatefulWidget {
   final String? label;
@@ -24,10 +26,13 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
   int _offset = 0;
   bool _movingRight = true;
 
-  static const double arrowWidth = 42;
-  static const double diameter = 76;
-  static const double gap = 24;
-  static const double rowHeight = 84;
+  double get _scale => DeviceConfig.circleScale();
+  double get arrowWidth => 42 * _scale;
+  double get diameter => 76 * _scale;
+  double get gap => 24 * _scale;
+  double get rowHeight => 84 * _scale;
+  double get fontSize =>
+      13 * _scale * DeviceConfig.circleTextScale();
 
   Color _spectrumColor(double x) {
     x = x.clamp(0, 1);
@@ -105,7 +110,7 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
                                 (offset - visibleCount).clamp(0, maxOffset);
                           });
                         })
-                      : const SizedBox(width: arrowWidth),
+                      : SizedBox(width: arrowWidth),
 
                 Expanded(
                   child: ClipRect(
@@ -138,7 +143,7 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
                             for (int i = 0; i < visible.length; i++) ...[
                               _button(visible[i]),
                               if (i < visible.length - 1)
-                                const SizedBox(width: gap),
+                                SizedBox(width: gap),
                             ],
                           ],
                         ),
@@ -156,7 +161,7 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
                                 (offset + visibleCount).clamp(0, maxOffset);
                           });
                         })
-                      : const SizedBox(width: arrowWidth),
+                      : SizedBox(width: arrowWidth),
               ],
             );
           },
@@ -202,11 +207,14 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
         ? 0.0
         : index / (widget.buttons.length - 1);
     final glowColor = _spectrumColor(t);
+    final jitter = circleButtonJitter(button.label, diameter);
 
-    return AnimatedContainer(
+    return Transform.translate(
+      offset: Offset(jitter.dx, jitter.dy),
+      child: AnimatedContainer(
       duration: const Duration(milliseconds: 250),
-      width: diameter,
-      height: diameter,
+      width: jitter.diameter,
+      height: jitter.diameter,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: AppColors.main,
@@ -241,14 +249,15 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
                 softWrap: true,
                 textAlign: TextAlign.center,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   color: AppColors.yellow,
-                  fontSize: 13,
+                  fontSize: fontSize,
                 ),
               ),
             ),
           ),
         ),
+      ),
       ),
     );
   }

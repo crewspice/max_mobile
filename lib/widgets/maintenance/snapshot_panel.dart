@@ -3,17 +3,19 @@ import '../../models/lift.dart';
 import '../../models/lift_maintenance_snapshot.dart';
 import '../../theme/app_colors.dart';
 import '../../views/pm_checklist_screen.dart';
-import '../ornate_card.dart';
+import '../curved_stack_card.dart';
 import '../user_avatar.dart';
 
 class SnapshotPanel extends StatelessWidget {
   final Lift lift;
   final LiftMaintenanceSnapshot snapshot;
+  final StackPosition position;
 
   const SnapshotPanel({
     super.key,
     required this.lift,
     required this.snapshot,
+    this.position = StackPosition.only,
   });
 
   String _formatDate(DateTime date) =>
@@ -33,8 +35,9 @@ class SnapshotPanel extends StatelessWidget {
             ? 'Needs PM'
             : 'Up to date';
 
-    return OrnateCard(
+    return CurvedStackCard(
       color: color,
+      position: position,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -42,13 +45,13 @@ class SnapshotPanel extends StatelessWidget {
                 children: [
                     Icon(
                     good ? Icons.check_circle : Icons.warning,
-                    color: color,
+                    color: AppColors.yellow,
                     ),
                     const SizedBox(width: 6),
                     Text(
                     title,
-                    style: TextStyle(
-                        color: color,
+                    style: const TextStyle(
+                        color: AppColors.yellow,
                         fontWeight: FontWeight.bold,
                     ),
                     ),
@@ -62,9 +65,9 @@ class SnapshotPanel extends StatelessWidget {
                           ),
                         );
                       },
-                      child: Icon(
+                      child: const Icon(
                         Icons.checklist,
-                        color: color,
+                        color: AppColors.yellow,
                         size: 22,
                       ),
                     ),
@@ -78,7 +81,7 @@ class SnapshotPanel extends StatelessWidget {
                     UserAvatar(
                         initials: snapshot.pmCompletedByInitials,
                         radius: 10,
-                        color: color,
+                        color: AppColors.yellow,
                         textColor: AppColors.main,
                     ),
                     const SizedBox(width: 6),
@@ -87,7 +90,7 @@ class SnapshotPanel extends StatelessWidget {
                             '${needsAnnual ? 'Last PM:' : 'Last:'} '
                             '${snapshot.pmCompletedByNickname ?? 'Unknown'} on '
                             '${snapshot.pmCompletedAt != null ? _formatDate(snapshot.pmCompletedAt!) : 'Unknown'}',
-                            style: TextStyle(color: color),
+                            style: const TextStyle(color: AppColors.yellow),
                         ),
                     ),
                 ],

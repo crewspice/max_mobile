@@ -4,8 +4,11 @@ import '../../models/lift_maintenance_snapshot.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../../views/maintenance_ui_state.dart';
+import '../curved_stack_card.dart';
 import '../hold_to_confirm_button.dart';
+import 'circle_button_jitter.dart';
 import 'mode_selector_row.dart';
+import 'repair_card.dart';
 import 'snapshot_panel.dart';
 import 'issue_entry_card.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -17,7 +20,6 @@ class SelectedLiftWorkspace extends StatefulWidget {
   final LiftMaintenanceSnapshot snapshot;
   final MaintenanceUiState ui;
 
-  final Widget? unresolvedActions;
   final Widget? history;
 
   final String currentUserId;
@@ -30,7 +32,6 @@ class SelectedLiftWorkspace extends StatefulWidget {
     required this.ui,
     required this.currentUserId,
     required this.onRefresh,
-    this.unresolvedActions,
     this.history,
   });
 
@@ -47,51 +48,140 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
     required Color glowColor,
     required VoidCallback onPressed,
   }) {
-    const diameter = 76.0;
+    final baseDiameter = 76.0 * DeviceConfig.circleScale();
+    final fontSize =
+        13.0 * DeviceConfig.circleScale() * DeviceConfig.circleTextScale();
+    final jitter = circleButtonJitter(label, baseDiameter);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      width: diameter,
-      height: diameter,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: AppColors.main,
-        border: Border.all(
-          color: active ? glowColor : AppColors.yellow.withOpacity(.35),
-          width: active ? 2 : 1,
+    return Transform.translate(
+      offset: Offset(jitter.dx, jitter.dy),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        width: jitter.diameter,
+        height: jitter.diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: AppColors.main,
+          border: Border.all(
+            color: active ? glowColor : AppColors.yellow.withOpacity(.35),
+            width: active ? 2 : 1,
+          ),
+          boxShadow: active
+              ? [
+                  BoxShadow(
+                    color: glowColor.withOpacity(.55),
+                    blurRadius: 10,
+                    spreadRadius: 2,
+                  ),
+                ]
+              : null,
         ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: glowColor.withOpacity(.55),
-                  blurRadius: 10,
-                  spreadRadius: 2,
+        child: Material(
+          shape: const CircleBorder(),
+          color: Colors.transparent,
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: onPressed,
+            child: Center(
+              child: Text(
+                label,
+                maxLines: 2,
+                softWrap: true,
+                textAlign: TextAlign.center,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AppColors.yellow,
+                  fontSize: fontSize,
                 ),
-              ]
-            : null,
-      ),
-      child: Material(
-        shape: const CircleBorder(),
-        color: Colors.transparent,
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onPressed,
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 2,
-              softWrap: true,
-              textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AppColors.yellow,
-                fontSize: DeviceConfig.isIphone ? 11 : 13,
               ),
             ),
           ),
         ),
       ),
     );
+  }
+
+  Widget _pmButton() {
+    final label = widget.snapshot.needsAnnual == true ? 'Annual' : 'PM';
+    final baseDiameter = 76.0 * DeviceConfig.circleScale();
+    final jitter = circleButtonJitter(label, baseDiameter);
+
+    return Transform.translate(
+      offset: Offset(jitter.dx, jitter.dy),
+      child: HoldToConfirmButton(
+        label: label,
+        textSize:
+            13 * DeviceConfig.circleScale() * DeviceConfig.circleTextScale(),
+        baseColor: AppColors.main,
+        textColor: AppColors.yellow,
+        progressColor: AppColors.yellow,
+        holdDuration: const Duration(seconds: 2),
+        circular: true,
+        diameter: jitter.diameter,
+        onConfirmed: _submitPm,
+      ),
+    );
+  }
+
+  // The annual/PM status card, any open issue/repair cards, and the record
+  // entry card (when open) read as a single stack: shape only depends on
+  // each card's position within it, so this builds them together with the
+  // right StackPosition rather than each card guessing its own place.
+  List<Widget> _buildStatusStack() {
+    final entryMode = widget.ui.selectedRecord == RecordMode.issue
+        ? IssueEntryMode.issue
+        : widget.ui.selectedRecord == RecordMode.repair
+            ? IssueEntryMode.repair
+            : null;
+
+    final total = (entryMode != null ? 1 : 0) +
+        1 +
+        widget.snapshot.maintenanceActions.length;
+
+    StackPosition positionFor(int index) {
+      if (total <= 1) return StackPosition.only;
+      if (index == 0) return StackPosition.top;
+      if (index == total - 1) return StackPosition.bottom;
+      return StackPosition.medial;
+    }
+
+    var index = 0;
+    final cards = <Widget>[];
+
+    if (entryMode != null) {
+      cards.add(IssueEntryCard(
+        liftId: widget.lift.liftId,
+        currentUserId: widget.currentUserId,
+        mode: entryMode,
+        position: positionFor(index++),
+        onComplete: () {
+          widget.ui.selectRecord(null);
+          widget.onRefresh();
+        },
+      ));
+    }
+
+    cards.add(SnapshotPanel(
+      lift: widget.lift,
+      snapshot: widget.snapshot,
+      position: positionFor(index++),
+    ));
+
+    for (final action in widget.snapshot.maintenanceActions) {
+      cards.add(RepairCard(
+        action: action,
+        currentUserId: widget.currentUserId,
+        position: positionFor(index++),
+        onResolved: widget.onRefresh,
+      ));
+    }
+
+    return [
+      for (var i = 0; i < cards.length; i++) ...[
+        if (i > 0) const SizedBox(height: 3),
+        cards[i],
+      ],
+    ];
   }
 
   String _formatDate(DateTime? date) {
@@ -166,20 +256,7 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
 
-                HoldToConfirmButton(
-                  icon: !DeviceConfig.isIpad ? null : const Icon(Icons.check),
-                  label: widget.snapshot.needsAnnual == true
-                      ? 'Annual'
-                      : 'PM',
-                  textSize: DeviceConfig.isIphone ? 11 : 13,
-                  baseColor: AppColors.main,
-                  textColor: AppColors.yellow,
-                  progressColor: AppColors.yellow,
-                  holdDuration: const Duration(seconds: 2),
-                  circular: true,
-                  diameter: 76,
-                  onConfirmed: _submitPm,
-                ),
+                _pmButton(),
 
                 _recordButton(
                   label: 'Repair',
@@ -201,39 +278,9 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
               ],
             ),
 
-            if (widget.ui.selectedRecord == RecordMode.issue)
-              IssueEntryCard(
-                liftId: widget.lift.liftId,
-                currentUserId: widget.currentUserId,
-                mode: IssueEntryMode.issue,
-                onComplete: () {
-                  widget.ui.selectRecord(null);
-                  widget.onRefresh();
-                },
-              ),
-
-            if (widget.ui.selectedRecord == RecordMode.repair)
-              IssueEntryCard(
-                liftId: widget.lift.liftId,
-                currentUserId: widget.currentUserId,
-                mode: IssueEntryMode.repair,
-                onComplete: () {
-                  widget.ui.selectRecord(null);
-                  widget.onRefresh();
-                },
-              ),
-
             const SizedBox(height: 16),
 
-            SnapshotPanel(
-                lift: widget.lift,
-                snapshot: widget.snapshot,
-            ),
-
-            if (widget.unresolvedActions != null) ...[
-                const SizedBox(height: 16),
-                widget.unresolvedActions!,
-            ],
+            ..._buildStatusStack(),
 
             const SizedBox(height: 16),
 

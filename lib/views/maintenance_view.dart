@@ -10,7 +10,6 @@ import '../theme/app_colors.dart';
 import '../widgets/lift_selector_panel.dart';
 import '../widgets/maintenance/selected_lift_workspace.dart';
 import '../widgets/maintenance/yard_list_button.dart';
-import '../widgets/maintenance/unresolved_actions_panel.dart';
 import 'maintenance_ui_state.dart';
 import '../widgets/maintenance/timeline/timeline_builder.dart';
 import '../widgets/maintenance/maintenance_timeline.dart';
@@ -274,18 +273,6 @@ class _MaintenanceViewState extends State<MaintenanceView> {
                                               _selectedLift!.liftId);
                                     });
                                   },
-                                  unresolvedActions: UnresolvedActionsPanel(
-                                    snapshot: data,
-                                    currentUserId: widget.currentUserId,
-                                    onChanged: () {
-                                      setState(() {
-                                        _snapshotFuture = ApiService()
-                                            .fetchLiftMaintenanceSnapshot(
-                                          _selectedLift!.liftId,
-                                        );
-                                      });
-                                    },
-                                  ),
                                   history: HistoryTimelineLoader(
                                     liftId: _selectedLift!.liftId,
                                     ui: ui,

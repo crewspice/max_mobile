@@ -71,4 +71,27 @@ class DeviceConfig {
         return 1.0;
     }
   }
+
+  // Growth factor for circular option buttons (record/history rows in the
+  // maintenance workspace) — iPad has room to make them noticeably bigger.
+  static double circleScale() {
+    switch (device) {
+      case "ipad":
+        return 1.7;
+      default:
+        return 1.0;
+    }
+  }
+
+  // Extra text-only growth for those same circular buttons, layered on top
+  // of circleScale(). moto_g keeps the circle itself at its normal size but
+  // wants the label to read bigger, spanning more of the circle.
+  static double circleTextScale() {
+    switch (device) {
+      case "moto_g":
+        return 1.5;
+      default:
+        return 1.0;
+    }
+  }
 }

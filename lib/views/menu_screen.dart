@@ -4,6 +4,7 @@ import 'completed_stops_screen.dart';
 import 'user_statistics_screen.dart';
 import 'edit_profile_screen.dart';
 import 'driver_chat_screen.dart';
+import 'developer_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -175,6 +176,24 @@ class MenuScreen extends StatelessWidget {
                       );
                     },
             ),
+
+          const Divider(color: AppColors.yellow),
+
+          ListTile(
+            leading: const Icon(Icons.developer_mode, color: AppColors.yellow),
+            title: const Text(
+              'Developer',
+              style: TextStyle(color: AppColors.yellow),
+            ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const DeveloperScreen(),
+                ),
+              );
+            },
+          ),
         ],
       ),
     );

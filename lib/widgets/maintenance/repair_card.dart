@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import '../../models/lift_maintenance_history_item.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
+import '../curved_stack_card.dart';
 import '../hold_to_confirm_button.dart';
-import '../ornate_card.dart';
 import '../user_avatar.dart';
 import 'maintenance_dialogs.dart';
 import '../../config/device_config.dart';
@@ -12,12 +12,14 @@ class RepairCard extends StatefulWidget {
   final LiftMaintenanceHistoryItem action;
   final String currentUserId;
   final VoidCallback onResolved;
+  final StackPosition position;
 
   const RepairCard({
     super.key,
     required this.action,
     required this.currentUserId,
     required this.onResolved,
+    this.position = StackPosition.only,
   });
 
   @override
@@ -42,10 +44,9 @@ class _RepairCardState extends State<RepairCard> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: OrnateCard(
+    return CurvedStackCard(
         color: AppColors.red,
+        position: widget.position,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -54,7 +55,7 @@ class _RepairCardState extends State<RepairCard> {
               children: [
                 const Icon(
                   Icons.warning,
-                  color: AppColors.red,
+                  color: AppColors.yellow,
                 ),
 
                 const SizedBox(width: 6),
@@ -62,7 +63,7 @@ class _RepairCardState extends State<RepairCard> {
                 Text(
                   widget.action.actionTypeName ?? 'Needs Repair',
                   style: const TextStyle(
-                    color: AppColors.red,
+                    color: AppColors.yellow,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -72,7 +73,7 @@ class _RepairCardState extends State<RepairCard> {
                 Text(
                   _formatDate(widget.action.createdAt),
                   style: const TextStyle(
-                    color: AppColors.red,
+                    color: AppColors.yellow,
                   ),
                 ),
               ],
@@ -86,7 +87,7 @@ class _RepairCardState extends State<RepairCard> {
                   '"${widget.action.notes}"',
                   textAlign: TextAlign.center,
                   style: const TextStyle(
-                    color: AppColors.red,
+                    color: AppColors.yellow,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -101,7 +102,7 @@ class _RepairCardState extends State<RepairCard> {
                       UserAvatar(
                         initials: widget.action.reportedByInitials,
                         radius: 10,
-                        color: AppColors.red,
+                        color: AppColors.yellow,
                         textColor: AppColors.main,
                       ),
                       const SizedBox(width: 6),
@@ -113,7 +114,7 @@ class _RepairCardState extends State<RepairCard> {
                           : 'Reported by: ${widget.action.reportedBy}',
                       textAlign: TextAlign.center,
                       style: const TextStyle(
-                        color: AppColors.red,
+                        color: AppColors.yellow,
                       ),
                     ),
                   ],
@@ -135,7 +136,7 @@ class _RepairCardState extends State<RepairCard> {
                               : 'No repair notes',
                             textAlign: TextAlign.center,
                             style: const TextStyle(
-                            color: AppColors.red,
+                            color: AppColors.yellow,
                             fontStyle: FontStyle.italic,
                             ),
                         ),
@@ -167,7 +168,7 @@ class _RepairCardState extends State<RepairCard> {
                             'assets/notes.png',
                             width: 20,
                             height: 20,
-                            color: AppColors.red,
+                            color: AppColors.yellow,
                         ),
                         ),
                     ),
@@ -182,13 +183,13 @@ class _RepairCardState extends State<RepairCard> {
                         const Text(
                           'No Repair Needed',
                           style: TextStyle(
-                            color: AppColors.red,
+                            color: AppColors.yellow,
                             fontSize: 13,
                           ),
                         ),
                         Checkbox(
                           value: _noRepairNeeded,
-                          activeColor: AppColors.red,
+                          activeColor: AppColors.yellow,
                           checkColor: AppColors.mainBackground,
                           onChanged: (value) {
                             setState(() {
@@ -205,8 +206,8 @@ class _RepairCardState extends State<RepairCard> {
                         icon: const Icon(Icons.check),
                         label: 'Resolve',
                         baseColor: AppColors.main,
-                        textColor: AppColors.red,
-                        progressColor: AppColors.red,
+                        textColor: AppColors.yellow,
+                        progressColor: AppColors.yellow,
                         holdDuration: const Duration(seconds: 2),
                         onConfirmed: () async {
                           await ApiService().resolveMaintenanceAction(
@@ -227,13 +228,13 @@ class _RepairCardState extends State<RepairCard> {
                       const Text(
                         'No Repair Needed',
                         style: TextStyle(
-                          color: AppColors.red,
+                          color: AppColors.yellow,
                           fontSize: 13,
                         ),
                       ),
                       Checkbox(
                         value: _noRepairNeeded,
-                        activeColor: AppColors.red,
+                        activeColor: AppColors.yellow,
                         checkColor: AppColors.mainBackground,
                         onChanged: (value) {
                           setState(() {
@@ -247,8 +248,8 @@ class _RepairCardState extends State<RepairCard> {
                           icon: const Icon(Icons.check),
                           label: 'Resolve',
                           baseColor: AppColors.main,
-                          textColor: AppColors.red,
-                          progressColor: AppColors.red,
+                          textColor: AppColors.yellow,
+                          progressColor: AppColors.yellow,
                           holdDuration: const Duration(seconds: 2),
                           onConfirmed: () async {
                             await ApiService().resolveMaintenanceAction(
@@ -266,7 +267,6 @@ class _RepairCardState extends State<RepairCard> {
                   ),
           ],
         ),
-      ),
     );
   }
 }
