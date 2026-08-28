@@ -3,6 +3,7 @@ import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../curved_stack_card.dart';
 import '../hold_to_confirm_button.dart';
+import '../watermark_title.dart';
 
 enum IssueEntryMode { issue, repair }
 
@@ -88,25 +89,27 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
   Widget _buildNotesInput(Color color) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Center(
+        child: FractionallySizedBox(
+          widthFactor: 0.75,
+          child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Expanded(
-            child: Center(
-              child: Text(
-                _notesController.text.isNotEmpty
-                    ? _notesController.text
-                    : 'No notes yet',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: color,
-                  fontStyle: FontStyle.italic,
-                ),
+            child: Text(
+              _notesController.text.isNotEmpty
+                  ? _notesController.text
+                  : 'No notes yet',
+              style: TextStyle(
+                color: color,
+                fontStyle: FontStyle.italic,
               ),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 10),
+          const SizedBox(width: 8),
+          SizedBox(
+            width: 22,
+            height: 22,
             child: GestureDetector(
               onTap: () async {
                 final controller = TextEditingController(
@@ -196,6 +199,8 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
             ),
           ),
         ],
+          ),
+        ),
       ),
     );
   }
@@ -203,27 +208,24 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
   @override
   Widget build(BuildContext context) {
     final title = isRepair
-        ? 'Record Repair'
-        : 'Record Issue';
-
-    final button = isRepair
-        ? 'Save Repair'
-        : 'Submit Issue';
+        ? 'New Repair'
+        : 'New Issue';
 
     final hasNotes = _notesController.text.trim().isNotEmpty;
 
     return CurvedStackCard(
-      color: AppColors.red,
+      color: isRepair ? AppColors.green : AppColors.red,
       position: widget.position,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(
-            title,
-            style: const TextStyle(
-              color: AppColors.yellow,
-              fontWeight: FontWeight.bold,
-            ),
+          WatermarkTitle(
+            text: title,
+            glyph: isRepair
+                ? Icons.build_outlined
+                : Icons.report_problem_outlined,
+            glyphSize: 130,
+            glyphAlignment: const Alignment(0, -0.6),
           ),
 
           const SizedBox(height: 12),
@@ -232,15 +234,18 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
 
           const SizedBox(height: 12),
 
-          HoldToConfirmButton(
-            icon: const Icon(Icons.check),
-            label: hasNotes ? button : 'Notes required',
-            baseColor: AppColors.main,
-            textColor: AppColors.yellow,
-            progressColor: AppColors.yellow,
-            holdDuration: const Duration(seconds: 2),
-            enabled: hasNotes,
-            onConfirmed: _submit,
+          FractionallySizedBox(
+            widthFactor: 0.8,
+            child: HoldToConfirmButton(
+              icon: hasNotes ? const Icon(Icons.check) : null,
+              label: hasNotes ? 'Record' : 'Notes required',
+              baseColor: AppColors.main,
+              textColor: AppColors.yellow,
+              progressColor: AppColors.yellow,
+              holdDuration: const Duration(seconds: 2),
+              enabled: hasNotes,
+              onConfirmed: _submit,
+            ),
           ),
         ],
       ),

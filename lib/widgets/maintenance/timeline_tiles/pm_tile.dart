@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/lift_pm_history_item.dart';
 import '../../../theme/app_colors.dart';
+import '../../date_label.dart';
 import '../../ornate_card.dart';
 import '../../user_avatar.dart';
 
@@ -11,11 +12,6 @@ class PmTile extends StatelessWidget {
     this.pm, {
     super.key,
   });
-
-  String _date(DateTime? d) {
-    if (d == null) return '';
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -56,12 +52,10 @@ class PmTile extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                _date(pm.completedAt),
-                style: const TextStyle(
-                  color: AppColors.green,
-                  fontSize: 14,
-                ),
+              DateLabel(
+                date: pm.completedAt,
+                color: AppColors.green,
+                unknownLabel: '',
               ),
             ],
           ),

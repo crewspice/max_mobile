@@ -34,6 +34,15 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
   double get fontSize =>
       13 * _scale * DeviceConfig.circleTextScale();
 
+  // "Rentals" is one of the longer labels and only just fits at the
+  // regular size on the devices whose circles/text run bigger — shrink it
+  // there specifically rather than shrinking every label.
+  double _fontSizeFor(String label) {
+    final needsShrink =
+        label == 'Rentals' && (DeviceConfig.isIpad || DeviceConfig.device == 'moto_g');
+    return needsShrink ? fontSize * 0.8 : fontSize;
+  }
+
   Color _spectrumColor(double x) {
     x = x.clamp(0, 1);
 
@@ -251,7 +260,7 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: AppColors.yellow,
-                  fontSize: fontSize,
+                  fontSize: _fontSizeFor(button.label),
                 ),
               ),
             ),

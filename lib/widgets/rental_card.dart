@@ -40,6 +40,7 @@ class RentalCard extends StatefulWidget {
 
 class _RentalCardState extends State<RentalCard> {
   int? _selectedRentalId;
+  String? _selectedSerial;
   SiteResourcePhotos? _siteResourcePhotos;
 
   @override
@@ -278,6 +279,7 @@ class _RentalCardState extends State<RentalCard> {
     if (selected != null) {
       setState(() {
         _selectedRentalId = selected.rentalId;
+        _selectedSerial = selected.serialNumber;
       });
     }
   }
@@ -526,8 +528,35 @@ class _RentalCardState extends State<RentalCard> {
         ),
       );
     } else if (_isNoPreference) {
-      // Selecting which lift was picked up now lives in the action ribbon.
-      serialInput = const SizedBox.shrink();
+      // Selecting which lift was picked up now lives in the action ribbon;
+      // once picked, show it here read-only so the driver can confirm which
+      // serial they chose (and see it update if they reselect).
+      serialInput = _selectedSerial == null
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.symmetric(vertical: 6.0),
+              child: Center(
+                child: SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.8,
+                  child: Transform.scale(
+                    scale: DeviceConfig.liftSelectorScale(),
+                    child: LiftSelectorPanel(
+                      emptyTextSize: 18,
+                      initialText: _selectedSerial!,
+                      readOnly: true,
+                      colors: LiftSelectorColorScheme(
+                        ball: elementColor,
+                        border: elementColor,
+                        selectedBorder: elementColor,
+                        shadow: AppColors.main,
+                        text: AppColors.mainBackground,
+                      ),
+                      onChanged: (_) {},
+                    ),
+                  ),
+                ),
+              ),
+            );
     } else if (!requiresSerial && widget.stop.status != "Upcoming") {
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0),

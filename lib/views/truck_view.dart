@@ -412,6 +412,10 @@ class _TruckViewState extends State<TruckView> {
                 currentItem.customerName!.isNotEmpty;
             final pmColor =
                 currentItem.upToDate ? AppColors.green : AppColors.red;
+            // A serial number of "0" means this row is a placeholder for an
+            // unspecified/not-yet-assigned lift, not a real unit — PM status,
+            // repair history, and maintenance actions don't apply to it.
+            final isUnspecified = currentItem.serialNumber == "0";
 
             Future<void> handleRefresh() async {
               try {
@@ -473,7 +477,9 @@ class _TruckViewState extends State<TruckView> {
                                           const SizedBox(width: 10),
                                           Expanded(
                                             child: Text(
-                                              "${currentItem.liftType} • ${currentItem.serialNumber}",
+                                              isUnspecified
+                                                  ? currentItem.liftType
+                                                  : "${currentItem.liftType} • ${currentItem.serialNumber}",
                                               style: const TextStyle(
                                                 color: AppColors.yellow,
                                                 fontWeight: FontWeight.bold,
@@ -483,28 +489,30 @@ class _TruckViewState extends State<TruckView> {
                                           ),
                                         ],
                                       ),
-                                      const SizedBox(height: 8),
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            currentItem.upToDate
-                                                ? Icons.check_circle
-                                                : Icons.warning,
-                                            color: pmColor,
-                                            size: 18,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            currentItem.upToDate
-                                                ? "Up to date"
-                                                : "Needs PM",
-                                            style: TextStyle(
+                                      if (!isUnspecified) ...[
+                                        const SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              currentItem.upToDate
+                                                  ? Icons.check_circle
+                                                  : Icons.warning,
                                               color: pmColor,
-                                              fontWeight: FontWeight.bold,
+                                              size: 18,
                                             ),
-                                          ),
-                                        ],
-                                      ),
+                                            const SizedBox(width: 6),
+                                            Text(
+                                              currentItem.upToDate
+                                                  ? "Up to date"
+                                                  : "Needs PM",
+                                              style: TextStyle(
+                                                color: pmColor,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
                                       _gradientDivider(),
                                       Text(
                                         currentItem.isPickup
@@ -546,55 +554,59 @@ class _TruckViewState extends State<TruckView> {
                                           style:
                                               TextStyle(color: Colors.white70),
                                         ),
-                                      _gradientDivider(),
-                                      _detailRowWidget(
-                                        "Last PM",
-                                        Row(
-                                          children: [
-                                            Text(
-                                              currentItem.lastPmDate != null
-                                                  ? _formatDate(
-                                                      currentItem.lastPmDate!)
-                                                  : "None recorded",
-                                              style: const TextStyle(
-                                                  color: Colors.white),
-                                            ),
-                                            if (currentItem
-                                                    .lastPmPerformerInitials !=
-                                                null) ...[
-                                              const SizedBox(width: 8),
-                                              UserAvatar(
-                                                initials: currentItem
-                                                    .lastPmPerformerInitials,
-                                                radius: 12,
-                                                color: AppColors.yellow,
+                                      if (!isUnspecified) ...[
+                                        _gradientDivider(),
+                                        _detailRowWidget(
+                                          "Last PM",
+                                          Row(
+                                            children: [
+                                              Text(
+                                                currentItem.lastPmDate != null
+                                                    ? _formatDate(currentItem
+                                                        .lastPmDate!)
+                                                    : "None recorded",
+                                                style: const TextStyle(
+                                                    color: Colors.white),
                                               ),
+                                              if (currentItem
+                                                      .lastPmPerformerInitials !=
+                                                  null) ...[
+                                                const SizedBox(width: 8),
+                                                UserAvatar(
+                                                  initials: currentItem
+                                                      .lastPmPerformerInitials,
+                                                  radius: 12,
+                                                  color: AppColors.yellow,
+                                                ),
+                                              ],
                                             ],
-                                          ],
-                                        ),
-                                      ),
-                                      _detailRow(
-                                        "Pending Repairs",
-                                        (currentItem.pendingRepairs ?? 0)
-                                            .toString(),
-                                      ),
-                                      Row(
-                                        mainAxisAlignment:
-                                            MainAxisAlignment.spaceBetween,
-                                        children: [
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.build,
-                                              color: AppColors.green,
-                                            ),
-                                            tooltip: 'Open in Maintenance',
-                                            onPressed: () {
-                                              Navigator.pop(context);
-                                              widget.onOpenLiftMaintenance(
-                                                currentItem.serialNumber,
-                                              );
-                                            },
                                           ),
+                                        ),
+                                        _detailRow(
+                                          "Pending Repairs",
+                                          (currentItem.pendingRepairs ?? 0)
+                                              .toString(),
+                                        ),
+                                      ],
+                                      Row(
+                                        mainAxisAlignment: isUnspecified
+                                            ? MainAxisAlignment.end
+                                            : MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          if (!isUnspecified)
+                                            IconButton(
+                                              icon: const Icon(
+                                                Icons.build,
+                                                color: AppColors.green,
+                                              ),
+                                              tooltip: 'Open in Maintenance',
+                                              onPressed: () {
+                                                Navigator.pop(context);
+                                                widget.onOpenLiftMaintenance(
+                                                  currentItem.serialNumber,
+                                                );
+                                              },
+                                            ),
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(context),

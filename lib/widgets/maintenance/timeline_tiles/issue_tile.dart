@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../models/lift_maintenance_history_item.dart';
 import '../../../theme/app_colors.dart';
+import '../../date_label.dart';
 import '../../ornate_card.dart';
 import '../../user_avatar.dart';
 
@@ -11,11 +12,6 @@ class IssueTile extends StatelessWidget {
     this.issue, {
     super.key,
   });
-
-  String _date(DateTime? d) {
-    if (d == null) return '';
-    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
-  }
 
   String _pastParticiple(String action) {
     switch (action.trim().toLowerCase()) {
@@ -174,7 +170,11 @@ class IssueTile extends StatelessWidget {
             Positioned(
               top: -6,
               right: 2,
-              child: _line(_date(issue.performedAt)),
+              child: DateLabel(
+                date: issue.performedAt,
+                color: AppColors.green,
+                unknownLabel: '',
+              ),
             ),
           ],
         ),

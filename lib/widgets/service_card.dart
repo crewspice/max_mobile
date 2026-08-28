@@ -35,6 +35,7 @@ class _ServiceCardState extends State<ServiceCard> {
   late Stop _stop;
   String _serial = '';
   int? _selectedRentalId;
+  String? _selectedSerial;
 
   // Dispatch stamps a stop's serialNumber as this literal sentinel when the
   // customer had no preference between several interchangeable units at the
@@ -196,6 +197,7 @@ class _ServiceCardState extends State<ServiceCard> {
     if (selected != null) {
       setState(() {
         _selectedRentalId = selected.rentalId;
+        _selectedSerial = selected.serialNumber;
       });
     }
   }
@@ -448,6 +450,36 @@ class _ServiceCardState extends State<ServiceCard> {
       ),
     );
 
+    // Selecting which lift was serviced now lives in the action ribbon; once
+    // picked, show it here read-only so the driver can confirm which serial
+    // they chose (and see it update if they reselect).
+    final Widget selectedSerialPanel = _selectedSerial == null
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6.0),
+            child: Center(
+              child: SizedBox(
+                width: MediaQuery.of(context).size.width * 0.8,
+                child: Transform.scale(
+                  scale: DeviceConfig.liftSelectorScale(),
+                  child: LiftSelectorPanel(
+                    emptyTextSize: 18,
+                    initialText: _selectedSerial!,
+                    readOnly: true,
+                    colors: const LiftSelectorColorScheme(
+                      ball: AppColors.green,
+                      border: AppColors.green,
+                      selectedBorder: AppColors.green,
+                      shadow: AppColors.main,
+                      text: AppColors.mainBackground,
+                    ),
+                    onChanged: (_) {},
+                  ),
+                ),
+              ),
+            ),
+          );
+
     // Completed Change Out / Service Change Out stops carry the old and new
     // serials joined by a colon (stamped server-side at completion time, e.g.
     // "6742:6749"). Once completed, split that pair into two read-only panels
@@ -528,7 +560,7 @@ class _ServiceCardState extends State<ServiceCard> {
               label: "to ${_stop.newLiftType}: ",
             )
           else ...[
-            _isNoPreference ? const SizedBox.shrink() : serialSelector,
+            _isNoPreference ? selectedSerialPanel : serialSelector,
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -573,7 +605,7 @@ class _ServiceCardState extends State<ServiceCard> {
               label: "to: ",
             )
           else
-            _isNoPreference ? const SizedBox.shrink() : serialSelector,
+            _isNoPreference ? selectedSerialPanel : serialSelector,
           if (_stop.reason != null && _stop.reason != "")
             SizedBox(
               width: double.infinity,
@@ -592,7 +624,7 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _isNoPreference ? const SizedBox.shrink() : serialSelector,
+            _isNoPreference ? selectedSerialPanel : serialSelector,
             if (_stop.newStreetAddress?.isNotEmpty == true)
               Text(
                 "New Site:",
@@ -631,7 +663,7 @@ class _ServiceCardState extends State<ServiceCard> {
         content = Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            _isNoPreference ? const SizedBox.shrink() : serialSelector,
+            _isNoPreference ? selectedSerialPanel : serialSelector,
             if (_stop.reason != null && _stop.reason != "")
               Text(
                 "\"${_stop.reason!}\"",

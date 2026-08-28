@@ -3,10 +3,11 @@ import '../../models/lift_maintenance_history_item.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../curved_stack_card.dart';
+import '../date_label.dart';
 import '../hold_to_confirm_button.dart';
 import '../user_avatar.dart';
+import '../watermark_title.dart';
 import 'maintenance_dialogs.dart';
-import '../../config/device_config.dart';
 
 class RepairCard extends StatefulWidget {
   final LiftMaintenanceHistoryItem action;
@@ -36,12 +37,6 @@ class _RepairCardState extends State<RepairCard> {
     _repairNotes = widget.action.repairNotes;
   }
 
-  String _formatDate(DateTime? date) {
-    if (date == null) return 'Unknown';
-
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
-
   @override
   Widget build(BuildContext context) {
     return CurvedStackCard(
@@ -51,29 +46,43 @@ class _RepairCardState extends State<RepairCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
 
-            Row(
+            Stack(
+              clipBehavior: Clip.none,
               children: [
-                const Icon(
-                  Icons.warning,
-                  color: AppColors.yellow,
+                // Reserves the date's own layout space (so the title below
+                // sits exactly where it always has) without painting it —
+                // the visible date is the Positioned copy below, painted
+                // after the title so it reads on top of the watermark glyph
+                // wherever the two overlap.
+                Column(
+                  children: [
+                    Opacity(
+                      opacity: 0,
+                      child: DateLabel(
+                        date: widget.action.createdAt,
+                        color: AppColors.red,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Center(
+                      child: WatermarkTitle(
+                        text: widget.action.actionTypeName ?? 'Needs Repair',
+                        glyph: Icons.warning_amber_outlined,
+                        glyphSize: 220,
+                        glyphAlignment: const Alignment(0, -0.35),
+                      ),
+                    ),
+                  ],
                 ),
-
-                const SizedBox(width: 6),
-
-                Text(
-                  widget.action.actionTypeName ?? 'Needs Repair',
-                  style: const TextStyle(
-                    color: AppColors.yellow,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-
-                const Spacer(),
-
-                Text(
-                  _formatDate(widget.action.createdAt),
-                  style: const TextStyle(
-                    color: AppColors.yellow,
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: DateLabel(
+                      date: widget.action.createdAt,
+                      color: AppColors.red,
+                    ),
                   ),
                 ),
               ],
@@ -123,148 +132,121 @@ class _RepairCardState extends State<RepairCard> {
 
             const SizedBox(height: 6),
 
-            Padding(
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                    Expanded(
-                        child: Center(
-                        child: Text(
-                          (_repairNotes ?? '').isNotEmpty
-                              ? _repairNotes!
-                              : 'No repair notes',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                            color: AppColors.yellow,
-                            fontStyle: FontStyle.italic,
+            Center(
+              child: FractionallySizedBox(
+              widthFactor: 0.75,
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: [
+                        Expanded(
+                            child: Text(
+                              (_repairNotes ?? '').isNotEmpty
+                                  ? _repairNotes!
+                                  : 'No repair notes',
+                                style: const TextStyle(
+                                color: AppColors.yellow,
+                                fontStyle: FontStyle.italic,
+                                ),
                             ),
                         ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: GestureDetector(
+                            onTap: () async {
+                                final notes = await showRepairNotesDialog(
+                                context,
+                                initialValue: widget.action.repairNotes ?? '',
+                                );
+
+                                if (notes == null) return;
+
+                                await ApiService().updateMaintenanceRepairNotes(
+                                  widget.action.actionId!,
+                                  notes,
+                                );
+
+                                if (!mounted) return;
+
+                                setState(() {
+                                  _repairNotes = notes;
+                                });
+                            },
+                            child: Image.asset(
+                                'assets/notes.png',
+                                width: 20,
+                                height: 20,
+                                color: AppColors.yellow,
+                            ),
+                            ),
                         ),
+                        ],
                     ),
-                    Padding(
-                        padding: const EdgeInsets.only(right: 10),
-                        child: GestureDetector(
-                        onTap: () async {
-                            final notes = await showRepairNotesDialog(
-                            context,
-                            initialValue: widget.action.repairNotes ?? '',
-                            );
-
-                            if (notes == null) return;
-
-                            await ApiService().updateMaintenanceRepairNotes(
-                              widget.action.actionId!,
-                              notes,
-                            );
-
-                            if (!mounted) return;
-
-                            setState(() {
-                              _repairNotes = notes;
-                            });
-                        },
-                        child: Image.asset(
-                            'assets/notes.png',
-                            width: 20,
-                            height: 20,
-                            color: AppColors.yellow,
-                        ),
-                        ),
-                    ),
-                    ],
-                ),
-            ),
-            DeviceConfig.isIphone
-                ? Column(children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
+                  ),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      const Expanded(
+                        child: Text(
                           'No Repair Needed',
                           style: TextStyle(
                             color: AppColors.yellow,
                             fontSize: 13,
                           ),
                         ),
-                        Checkbox(
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: Checkbox(
                           value: _noRepairNeeded,
                           activeColor: AppColors.yellow,
                           checkColor: AppColors.mainBackground,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
                           onChanged: (value) {
                             setState(() {
                               _noRepairNeeded = value ?? false;
                             });
                           },
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      width: double.infinity,
-                      child: HoldToConfirmButton(
-                        icon: const Icon(Icons.check),
-                        label: 'Resolve',
-                        baseColor: AppColors.main,
-                        textColor: AppColors.yellow,
-                        progressColor: AppColors.yellow,
-                        holdDuration: const Duration(seconds: 2),
-                        onConfirmed: () async {
-                          await ApiService().resolveMaintenanceAction(
-                            actionId: widget.action.actionId!,
-                            resolvedByInitial: widget.currentUserId,
-                            noRepairNeeded: _noRepairNeeded,
-                            repairNotes: _repairNotes ?? '',
-                          );
-
-                          widget.onResolved();
-                        },
-                      ),
-                    ),
-                  ],
-                  )
-                : Row(
-                    children: [
-                      const Text(
-                        'No Repair Needed',
-                        style: TextStyle(
-                          color: AppColors.yellow,
-                          fontSize: 13,
-                        ),
-                      ),
-                      Checkbox(
-                        value: _noRepairNeeded,
-                        activeColor: AppColors.yellow,
-                        checkColor: AppColors.mainBackground,
-                        onChanged: (value) {
-                          setState(() {
-                            _noRepairNeeded = value ?? false;
-                          });
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: HoldToConfirmButton(
-                          icon: const Icon(Icons.check),
-                          label: 'Resolve',
-                          baseColor: AppColors.main,
-                          textColor: AppColors.yellow,
-                          progressColor: AppColors.yellow,
-                          holdDuration: const Duration(seconds: 2),
-                          onConfirmed: () async {
-                            await ApiService().resolveMaintenanceAction(
-                              actionId: widget.action.actionId!,
-                              resolvedByInitial: widget.currentUserId,
-                              noRepairNeeded: _noRepairNeeded,
-                              repairNotes: _repairNotes ?? '',
-                            );
-
-                            widget.onResolved();
-                          },
-                        ),
                       ),
                     ],
                   ),
+                ],
+              ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Center(
+              child: FractionallySizedBox(
+                widthFactor: 0.8,
+                child: HoldToConfirmButton(
+                  icon: const Icon(Icons.check),
+                  label: 'Resolve',
+                  baseColor: AppColors.main,
+                  textColor: AppColors.yellow,
+                  progressColor: AppColors.yellow,
+                  holdDuration: const Duration(seconds: 2),
+                  onConfirmed: () async {
+                    await ApiService().resolveMaintenanceAction(
+                      actionId: widget.action.actionId!,
+                      resolvedByInitial: widget.currentUserId,
+                      noRepairNeeded: _noRepairNeeded,
+                      repairNotes: _repairNotes ?? '',
+                    );
+
+                    widget.onResolved();
+                  },
+                ),
+              ),
+            ),
           ],
         ),
     );

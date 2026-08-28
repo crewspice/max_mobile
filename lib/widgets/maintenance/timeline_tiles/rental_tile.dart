@@ -1,18 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../models/lift_rental_history_item.dart';
 import '../../../theme/app_colors.dart';
+import '../../date_label.dart';
 import '../../ornate_card.dart';
 
 class RentalTile extends StatelessWidget {
   final LiftRentalHistoryItem rental;
 
   const RentalTile(this.rental, {super.key});
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return "Unknown";
-
-    return '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -63,11 +58,9 @@ class RentalTile extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: rental.endDate == null
                           ? [
-                              Text(
-                                _formatDate(rental.startDate),
-                                style: const TextStyle(
-                                  color: AppColors.yellow,
-                                ),
+                              DateLabel(
+                                date: rental.startDate,
+                                color: AppColors.yellow,
                               ),
                               const SizedBox(height: 4),
                               Text(
@@ -79,11 +72,9 @@ class RentalTile extends StatelessWidget {
                               ),
                             ]
                           : [
-                              Text(
-                                _formatDate(rental.startDate),
-                                style: const TextStyle(
-                                  color: AppColors.yellow,
-                                ),
+                              DateLabel(
+                                date: rental.startDate,
+                                color: AppColors.yellow,
                               ),
                               Text(
                                 "to",
@@ -91,11 +82,9 @@ class RentalTile extends StatelessWidget {
                                   color: AppColors.yellow.withOpacity(.7),
                                 ),
                               ),
-                              Text(
-                                _formatDate(rental.endDate),
-                                style: const TextStyle(
-                                  color: AppColors.yellow,
-                                ),
+                              DateLabel(
+                                date: rental.endDate,
+                                color: AppColors.yellow,
                               ),
                               if (rental.status != null) ...[
                                 const SizedBox(height: 8),
