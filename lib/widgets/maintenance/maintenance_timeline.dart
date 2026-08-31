@@ -2,20 +2,115 @@ import 'package:flutter/material.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'timeline/timeline_event.dart';
 import '../../theme/app_colors.dart';
+import '../date_label.dart';
 
 class MaintenanceTimeline extends StatelessWidget {
   final List<TimelineEvent> events;
+
+  // Fixed so every row's date(s) - and everything to their right - line up
+  // on the same x coordinate regardless of card type or date text width.
+  // Sized with headroom for the widest case at _dateFontSize (double-digit
+  // month/day/year, e.g. "12·31·26") - a tighter width let that text
+  // overflow into the card next to it on roughly half of all dates,
+  // whichever happened to land on double digits.
+  static const double _dateColumnWidth = 108;
+
+  static const double _dateFontSize = 18;
 
   const MaintenanceTimeline({
     super.key,
     required this.events,
   });
 
+  Widget _dateColumn(TimelineEvent event) {
+    final dates = event.displayDates;
+
+    return SizedBox(
+      width: _dateColumnWidth,
+      // Safety net: a Row/Column of Text doesn't self-limit to the width
+      // it's given, so if a date's actual rendered width ever exceeds
+      // _dateColumnWidth despite the headroom above, clip rather than let
+      // it paint into the card sitting to its right.
+      child: ClipRect(
+      child: Padding(
+        padding: const EdgeInsets.only(left: 8),
+        // Shrink-wraps to the widest date line, so the "to" row below -
+        // stretched to fill that same width - centers itself over the
+        // actual date text rather than the fixed date column.
+        child: IntrinsicWidth(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var i = 0; i < dates.length; i++) ...[
+                if (i > 0) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: Text(
+                      'to',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.yellow.withOpacity(.7),
+                        fontSize: _dateFontSize,
+                      ),
+                    ),
+                  ),
+                ],
+                DateLabel(
+                  date: dates[i],
+                  color: AppColors.yellow,
+                  fontSize: _dateFontSize,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      ),
+    );
+  }
+
+  Widget _indicatorIcon(TimelineEventType type) {
+    const style = TextStyle(
+      fontSize: 14,
+      fontWeight: FontWeight.bold,
+      color: AppColors.main,
+    );
+
+    switch (type) {
+      case TimelineEventType.pm:
+        return const Text('PM', style: TextStyle(
+          fontSize: 15,
+          fontWeight: FontWeight.bold,
+          color: AppColors.main,
+        ));
+      case TimelineEventType.annual:
+        return const Text('AN', style: style);
+      case TimelineEventType.rental:
+        return const Text('\$', style: TextStyle(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: AppColors.main,
+        ));
+      case TimelineEventType.issue:
+        return const Icon(Icons.build, size: 17, color: AppColors.main);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       height: 400,
       child: Timeline.tileBuilder(
+        // nodePosition: 0 sits the indicator flush against the scroll
+        // viewport's left edge, and its glow shadow bleeds a few px past
+        // that. The fix is this left padding, which is inside the clip
+        // boundary (it's the scrollable's own `padding`, not an outer
+        // wrapper) so the shadow has room without needing to touch
+        // clipBehavior - the default Clip.hardEdge stays on, which is what
+        // keeps scrolled-past tiles from bleeding above/below this fixed-
+        // height box into whatever sits next to it on the page.
+        padding: const EdgeInsets.only(left: 8),
         theme: TimelineThemeData(
             nodePosition: 0,
             color: AppColors.yellow,
@@ -26,8 +121,8 @@ class MaintenanceTimeline extends StatelessWidget {
 
             indicatorBuilder: (context, index) {
                 return Container(
-                width: 14,
-                height: 14,
+                width: 30,
+                height: 30,
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
 
@@ -48,21 +143,9 @@ class MaintenanceTimeline extends StatelessWidget {
                     ],
                 ),
 
-                // child: Center(
-                //     child: Container(
-                //     width: 27,
-                //     height: 27,
-                //     decoration: BoxDecoration(
-                //         shape: BoxShape.circle,
-                //         color: AppColors.mainBackground,
-                //         border: Border.all(
-                //         color: AppColors.yellow.withOpacity(.8),
-                //         width: 1.5,
-                //         ),
-                //     ),
-
-                //     ),
-                // ),
+                child: Center(
+                    child: _indicatorIcon(events[index].type),
+                ),
                 );
             },
 
@@ -75,20 +158,31 @@ class MaintenanceTimeline extends StatelessWidget {
             contentsBuilder: (context,index) {
                 final event = events[index];
 
-                return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children:[
-                    if(event.isSpan)
-                    Text(
-                        '${event.start} → ${event.end}',
-                    ),
-
-                    event.build(context),
-                ],
-              );
+                return Row(
+                    mainAxisSize: MainAxisSize.min,
+                    // The timeline node sits vertically centered within this
+                    // whole row's height (set by whichever sibling here is
+                    // tallest - normally the card), so centering the date
+                    // column against the card here lines it up with the node
+                    // too.
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                        _dateColumn(event),
+                        const SizedBox(width: 6),
+                        // A plain (non-flex) Row child gets an unbounded max
+                        // width to measure its natural size, which breaks
+                        // cards - like RentalTile - that use Expanded
+                        // internally and need a bounded width to resolve.
+                        // Flexible (loose) gives it a real bound while still
+                        // letting narrower cards (pm/issue) report their own
+                        // smaller natural width instead of being stretched.
+                        Flexible(child: event.build(context)),
+                    ],
+                );
             },
-          )
+          ),
         ),
     );
   }
 }
+

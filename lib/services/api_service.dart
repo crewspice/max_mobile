@@ -164,48 +164,6 @@ class ApiService {
     return inventoryJson.map((json) => InventoryItem.fromJson(json)).toList();
   }
 
-  /// Dev-only: logs the inputs and outcome of a single Driver Chat reveal
-  /// check to a debug table on the private DB, so a human can see why the
-  /// menu item did/didn't unlock for a real driver after the fact. Fire-
-  /// and-forget - never let a logging failure affect the reveal check itself.
-  Future<void> logDriverChatRevealDebug({
-    required String driverId,
-    bool? hasActiveRoute,
-    bool? truckNearShop,
-    double? truckLat,
-    double? truckLng,
-    double? phoneLat,
-    double? phoneLng,
-    required bool gpsAvailable,
-    double? distanceMiles,
-    double? thresholdMiles,
-    required bool unlocked,
-    String? error,
-  }) async {
-    try {
-      await http.post(
-        Uri.parse('$chatUrl/reveal-debug'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'driverId': driverId,
-          'hasActiveRoute': hasActiveRoute,
-          'truckNearShop': truckNearShop,
-          'truckLat': truckLat,
-          'truckLng': truckLng,
-          'phoneLat': phoneLat,
-          'phoneLng': phoneLng,
-          'gpsAvailable': gpsAvailable,
-          'distanceMiles': distanceMiles,
-          'thresholdMiles': thresholdMiles,
-          'unlocked': unlocked,
-          'error': error,
-        }),
-      );
-    } catch (_) {
-      // Best-effort diagnostic logging only - swallow failures.
-    }
-  }
-
   /// Whether the signed-in driver has an active route, and whether their
   /// assigned truck is near the shop (with the truck's own lat/lng so the
   /// caller can compare it against the phone's current location).

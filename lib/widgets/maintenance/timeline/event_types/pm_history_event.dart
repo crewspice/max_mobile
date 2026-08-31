@@ -16,6 +16,12 @@ class PmHistoryEvent extends TimelineEvent {
   DateTime get end => start;
 
   @override
+  TimelineEventType get type => TimelineEventType.pm;
+
+  @override
+  List<DateTime?> get displayDates => [pm.completedAt];
+
+  @override
   Widget build(BuildContext context) {
     return PmTile(pm);
   }

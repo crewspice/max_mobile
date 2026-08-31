@@ -1,11 +1,8 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../models/inventory_item.dart';
 import '../widgets/user_avatar.dart';
 import '../theme/app_colors.dart';
-import 'package:image/image.dart' as img;
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/maintenance/inspection_prompt_card.dart';
 import '../config/device_config.dart';
@@ -70,214 +67,6 @@ class _TruckViewState extends State<TruckView> {
         decoration: BoxDecoration(gradient: _spectrumGradient),
         child: SizedBox(height: 1, width: double.infinity),
       ),
-    );
-  }
-
-  // 📸 Image picker
-  Future<XFile?> _pickImage({bool camera = true}) async {
-    final picker = ImagePicker();
-    return await picker.pickImage(
-      source: camera ? ImageSource.camera : ImageSource.gallery,
-    );
-  }
-
-  // 🚨 ISSUE FLOW
-  void _openIssueFlow(BuildContext context) {
-    final descriptionController = TextEditingController();
-    XFile? selectedImage;
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return Container(
-              color: AppColors.main,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                  left: 16,
-                  right: 16,
-                  top: 16,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Report Issue",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.red,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // 📸 PHOTO BUTTONS
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.red,
-                              foregroundColor: AppColors.mainBackground,
-                            ),
-                            onPressed: () async {
-                              final file = await _pickImage();
-
-                              if (file != null) {
-                                final bytes = await file.readAsBytes();
-                                final decoded = img.decodeImage(bytes);
-
-                                debugPrint("Path: ${file.path}");
-
-                                if (decoded != null) {
-                                  debugPrint(
-                                    "Decoded pixels: ${decoded.width} x ${decoded.height}",
-                                  );
-                                }
-
-                                setState(() => selectedImage = file);
-                              }
-                            },
-                            child: const Text("Take Photo"),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.red,
-                              foregroundColor: AppColors.mainBackground,
-                            ),
-                            onPressed: () async {
-                              final file = await _pickImage(camera: false);
-                              if (file != null) {
-                                setState(() => selectedImage = file);
-                              }
-                            },
-                            icon: const Icon(Icons.upload),
-                            label: const Text("Upload"),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    if (selectedImage != null)
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: AppColors.yellow,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Image.file(
-                          File(selectedImage!.path),
-                          height: 120,
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-
-                    // 📝 DESCRIPTION
-                    TextField(
-                      controller: descriptionController,
-                      maxLines: 3,
-                      style: const TextStyle(
-                        color: AppColors.red,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Describe the issue",
-                        labelStyle: const TextStyle(
-                          color: AppColors.red,
-                        ),
-                        filled: true,
-                        fillColor: Colors.black26,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.red,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.red,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.red,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    // 🚀 SUBMIT
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: AppColors.mainBackground,
-                        ),
-                        onPressed: isSubmitting
-                            ? null
-                            : () async {
-                                if (selectedImage == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text("Photo required")),
-                                  );
-                                  return;
-                                }
-
-                                setState(() => isSubmitting = true);
-
-                                final api = ApiService();
-
-                                final success = await api.recordTruckIssue(
-                                  image: File(selectedImage!.path),
-                                  truckId: widget.truckId!,
-                                  driverId: widget.driverId,
-                                  description:
-                                      descriptionController.text.trim(),
-                                );
-
-                                Navigator.pop(context);
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(success
-                                        ? 'Issue submitted'
-                                        : 'Submission failed'),
-                                  ),
-                                );
-                              },
-                        child: isSubmitting
-                            ? const CircularProgressIndicator()
-                            : const Text("Submit Issue"),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
     );
   }
 
@@ -845,7 +634,14 @@ class _TruckViewState extends State<TruckView> {
                           title: "Truck ${widget.truckId} needs inspection",
                           message:
                               "None recorded in $kInspectionWindowDays days.",
-                          onRecordIssue: () => _openIssueFlow(context),
+                          glyphSize: 165,
+                          onSubmitIssue: (image, description) =>
+                              ApiService().recordTruckIssue(
+                            image: image,
+                            truckId: widget.truckId!,
+                            driverId: widget.driverId,
+                            description: description,
+                          ),
                           onNoIssues: () => _recordNoIssues(context),
                         )
                       else if (_manualInspectionOpen)
@@ -855,7 +651,14 @@ class _TruckViewState extends State<TruckView> {
                               "Optional - last one was within $kInspectionWindowDays days.",
                           color: AppColors.yellow,
                           icon: Icons.fact_check_outlined,
-                          onRecordIssue: () => _openIssueFlow(context),
+                          glyphSize: 165,
+                          onSubmitIssue: (image, description) =>
+                              ApiService().recordTruckIssue(
+                            image: image,
+                            truckId: widget.truckId!,
+                            driverId: widget.driverId,
+                            description: description,
+                          ),
                           onNoIssues: () =>
                               _recordNoIssues(context, closeManual: true),
                         ),

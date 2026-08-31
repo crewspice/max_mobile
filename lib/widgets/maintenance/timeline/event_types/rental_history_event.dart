@@ -18,6 +18,14 @@ class RentalHistoryEvent extends TimelineEvent {
       rental.endDate ?? start;
 
   @override
+  TimelineEventType get type => TimelineEventType.rental;
+
+  @override
+  List<DateTime?> get displayDates => rental.endDate == null
+      ? [rental.startDate]
+      : [rental.startDate, rental.endDate];
+
+  @override
   Widget build(BuildContext context) {
     return RentalTile(rental);
   }

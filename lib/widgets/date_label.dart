@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
-import 'curved_stack_card.dart';
 
 // Renders a date as m/d/yy with the "/" separators swapped for small
 // gradient dots — center-out from the card's background to the element
-// color, the same radial treatment as the border layer's beads, just
-// smaller — so the separators read as part of the card's beaded-circle
-// visual language instead of plain punctuation. The digits themselves are
-// also styled in the element color rather than a generic text color.
+// color, the same radial treatment as the border layer's beads — so the
+// separators read as part of the card's beaded-circle visual language
+// instead of plain punctuation. The digits themselves are also styled in
+// the element color rather than a generic text color.
 class DateLabel extends StatelessWidget {
   final DateTime? date;
   final Color color;
@@ -26,9 +25,11 @@ class DateLabel extends StatelessWidget {
     this.unknownLabel = 'Unknown',
   });
 
-  // Half the border layer's largest dot — a separator accent, not another
-  // border bead.
-  static const double _dotDiameter = CurvedStackCard.maxBorderDotRadius;
+  // Scales with fontSize (6.0 at the default 14) so a larger date label
+  // grows its separator dots to match instead of leaving them undersized.
+  static const double _dotDiameterRatio = 6.0 / 14.0;
+
+  double get _dotDiameter => fontSize * _dotDiameterRatio;
 
   @override
   Widget build(BuildContext context) {
@@ -71,8 +72,9 @@ class DateLabel extends StatelessWidget {
         height: _dotDiameter,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: RadialGradient(
-            colors: [AppColors.mainBackground, color],
+          gradient: const RadialGradient(
+            colors: [AppColors.mainBackground, Colors.white],
+            stops: [0.0, 0.5],
           ),
         ),
       ),

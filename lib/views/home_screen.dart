@@ -77,98 +77,43 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-  // Runs the unlock heuristic and returns everything it computed along the
-  // way, without doing anything else - callers decide whether to persist
-  // it or just apply the outcome.
-  Future<_DriverChatCheck> _computeDriverChatUnlock() async {
-    bool unlocked = false;
-
-    bool? hasActiveRoute;
-    bool? truckNearShop;
-    double? truckLat;
-    double? truckLng;
-    double? phoneLat;
-    double? phoneLng;
-    double? distance;
-    String? error;
-
+  // Unlocked only by real production conditions - active route, truck away
+  // from shop, phone GPS within range of the truck.
+  Future<bool> _computeDriverChatUnlock() async {
     try {
       final status = await ApiService().fetchShopStatus(widget.currentUserId);
       final position = await shop_geofence.getCurrentPosition();
 
-      hasActiveRoute = status['hasActiveRoute'] == true;
-      truckNearShop = status['truckNearShop'] == true;
-      truckLat = (status['truckLat'] as num?)?.toDouble();
-      truckLng = (status['truckLng'] as num?)?.toDouble();
-      phoneLat = position?.latitude;
-      phoneLng = position?.longitude;
+      final hasActiveRoute = status['hasActiveRoute'] == true;
+      final truckNearShop = status['truckNearShop'] == true;
+      final truckLat = (status['truckLat'] as num?)?.toDouble();
+      final truckLng = (status['truckLng'] as num?)?.toDouble();
 
-      if (truckLat != null && truckLng != null && position != null) {
-        distance = shop_geofence.distanceBetweenMiles(
-          position.latitude,
-          position.longitude,
-          truckLat,
-          truckLng,
-        );
+      if (!hasActiveRoute || truckNearShop || position == null ||
+          truckLat == null || truckLng == null) {
+        return false;
       }
 
-      if (hasActiveRoute && !truckNearShop && distance != null) {
-        unlocked = distance <= shop_geofence.kNearTruckThresholdMiles;
-      }
-    } catch (e) {
-      unlocked = false;
-      error = e.toString();
+      final distance = shop_geofence.distanceBetweenMiles(
+        position.latitude,
+        position.longitude,
+        truckLat,
+        truckLng,
+      );
+
+      return distance <= shop_geofence.kNearTruckThresholdMiles;
+    } catch (_) {
+      return false;
     }
-
-    return _DriverChatCheck(
-      unlocked: unlocked,
-      hasActiveRoute: hasActiveRoute,
-      truckNearShop: truckNearShop,
-      truckLat: truckLat,
-      truckLng: truckLng,
-      phoneLat: phoneLat,
-      phoneLng: phoneLng,
-      distanceMiles: distance,
-      error: error,
-    );
   }
 
   // Periodic background refresh - just keeps _driverChatUnlocked current so
-  // the menu item shows/hides correctly. Not logged: logging only happens
-  // when the driver explicitly asks to be assessed (see
-  // _assessDriverStatusAndLog), so the debug table stays one row per
-  // deliberate check instead of one every 45s.
+  // the menu item shows/hides correctly.
   Future<void> _refreshDriverChatUnlockStatus() async {
-    final result = await _computeDriverChatUnlock();
+    final unlocked = await _computeDriverChatUnlock();
 
-    if (mounted && result.unlocked != _driverChatUnlocked) {
-      setState(() => _driverChatUnlocked = result.unlocked);
-    }
-  }
-
-  // Triggered by tapping "assess if I'm a driver" in the menu. Runs the same
-  // check as the background refresh, but also records the inputs/outcome to
-  // the dev-only debug table.
-  Future<void> _assessDriverStatusAndLog() async {
-    final result = await _computeDriverChatUnlock();
-
-    ApiService().logDriverChatRevealDebug(
-      driverId: widget.currentUserId,
-      hasActiveRoute: result.hasActiveRoute,
-      truckNearShop: result.truckNearShop,
-      truckLat: result.truckLat,
-      truckLng: result.truckLng,
-      phoneLat: result.phoneLat,
-      phoneLng: result.phoneLng,
-      gpsAvailable: result.phoneLat != null && result.phoneLng != null,
-      distanceMiles: result.distanceMiles,
-      thresholdMiles: shop_geofence.kNearTruckThresholdMiles,
-      unlocked: result.unlocked,
-      error: result.error,
-    );
-
-    if (mounted && result.unlocked != _driverChatUnlocked) {
-      setState(() => _driverChatUnlocked = result.unlocked);
+    if (mounted && unlocked != _driverChatUnlocked) {
+      setState(() => _driverChatUnlocked = unlocked);
     }
   }
 
@@ -181,7 +126,6 @@ class _HomeScreenState extends State<HomeScreen> {
           userName: widget.userName,
           maintenanceOnly: widget.maintenanceOnly,
           driverChatUnlocked: _driverChatUnlocked,
-          onAssessDriverStatus: _assessDriverStatusAndLog,
         ),
       ),
     );
@@ -347,28 +291,4 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-}
-
-class _DriverChatCheck {
-  final bool unlocked;
-  final bool? hasActiveRoute;
-  final bool? truckNearShop;
-  final double? truckLat;
-  final double? truckLng;
-  final double? phoneLat;
-  final double? phoneLng;
-  final double? distanceMiles;
-  final String? error;
-
-  _DriverChatCheck({
-    required this.unlocked,
-    this.hasActiveRoute,
-    this.truckNearShop,
-    this.truckLat,
-    this.truckLng,
-    this.phoneLat,
-    this.phoneLng,
-    this.distanceMiles,
-    this.error,
-  });
 }

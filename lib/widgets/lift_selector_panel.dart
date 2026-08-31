@@ -123,6 +123,20 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     return (screenWidth / 390).clamp(0.85, 1.8);
   }
 
+  // iOS "Bold Text" accessibility setting makes Flutter's Text widget
+  // silently merge FontWeight.bold onto every style, which fights the
+  // hand-tuned stroke/fill look of the character balls. Force it off here,
+  // the same way MediaQuery.withNoTextScaling neutralizes larger-text.
+  Widget _noAccessibilityTextStyling({required Widget child}) {
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: TextScaler.noScaling,
+        boldText: false,
+      ),
+      child: child,
+    );
+  }
+
   void _onInput(){
     if(widget.readOnly)return;
     if(_inputController.text==_serial)return;
@@ -182,11 +196,31 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     }
   }
 
-  Iterable<dynamic> get suggestions{
+  String _serialOf(dynamic item)=>item is Lift?(item.serialNumber??''):item as String;
+
+  // Prefix matches ("begins with") come before mid/end matches; within each
+  // group, numeric serials sort smallest-to-largest.
+  List<dynamic> get suggestions{
     final q=_serial.toLowerCase();
     if(q.isEmpty)return const [];
-    if(isLiftMode)return widget.lifts!.where((l)=>(l.serialNumber??'').toLowerCase().contains(q));
-    return (widget.serials??[]).where((s)=>s.toLowerCase().contains(q));
+    final source=isLiftMode?widget.lifts!:(widget.serials??[]);
+    final matches=source.where((item)=>_serialOf(item).toLowerCase().contains(q)).toList();
+
+    int compareWithinGroup(dynamic a,dynamic b){
+      final ai=int.tryParse(_serialOf(a));
+      final bi=int.tryParse(_serialOf(b));
+      if(ai!=null&&bi!=null)return ai.compareTo(bi);
+      if(ai!=null)return -1;
+      if(bi!=null)return 1;
+      return _serialOf(a).compareTo(_serialOf(b));
+    }
+
+    final starts=matches.where((item)=>_serialOf(item).toLowerCase().startsWith(q)).toList()
+      ..sort(compareWithinGroup);
+    final rest=matches.where((item)=>!_serialOf(item).toLowerCase().startsWith(q)).toList()
+      ..sort(compareWithinGroup);
+
+    return [...starts,...rest];
   }
 
   double selectorWidth(BuildContext context) {
@@ -292,7 +326,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                     0,
                     characterFontSize * _charVerticalNudge(char),
                   ),
-                  child: MediaQuery.withNoTextScaling(
+                  child: _noAccessibilityTextStyling(
                     child: Stack(
                       alignment: Alignment.center,
                       clipBehavior: Clip.none,
@@ -356,6 +390,32 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
     );
   }
 
+  Widget _buildSuggestionPill(dynamic item){
+    final label=_serialOf(item);
+    return Material(
+      color:Colors.transparent,
+      child:InkWell(
+        borderRadius:BorderRadius.circular(20),
+        onTap:()=>item is Lift?_selectLift(item):_setSerial(item),
+        child:Container(
+          padding:const EdgeInsets.symmetric(horizontal:10,vertical:4),
+          decoration:BoxDecoration(
+            color:AppColors.mainBackground.withOpacity(.12),
+            borderRadius:BorderRadius.circular(20),
+            border:Border.all(color:widget.colors.border,width:1),
+          ),
+          alignment:Alignment.center,
+          child:Text(
+            label,
+            textAlign:TextAlign.center,
+            overflow:TextOverflow.ellipsis,
+            style:TextStyle(color:widget.colors.border,fontSize:18,fontWeight:FontWeight.w600),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context){
     final suggestionList=suggestions.toList();
@@ -413,7 +473,7 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                   ),
                   child:_serial.isEmpty
                     ? Center(
-                        child: MediaQuery.withNoTextScaling(
+                        child: _noAccessibilityTextStyling(
                           child: Text(
                             'Enter Serial',
                             style: TextStyle(
@@ -493,27 +553,29 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
               ),
               child:Container(
                 margin:const EdgeInsets.only(top:8),
-                decoration:BoxDecoration(
-                  color:AppColors.main,
-                  borderRadius:BorderRadius.circular(12),
-                ),
-                child:ListView.builder(
-                  shrinkWrap:true,
-                  padding:EdgeInsets.zero,
-                  itemCount:suggestionList.length,
-                  itemBuilder:(_,i){
-                    final item=suggestionList[i];
-                    return ListTile(
-                      dense:true,
-                      visualDensity:VisualDensity.compact,
-                      title:Text(
-                        item is Lift?item.serialNumber??'':item,
-                        textAlign:TextAlign.center,
-                        style:TextStyle(color:widget.colors.border),
-                      ),
-                      onTap:()=>item is Lift?_selectLift(item):_setSerial(item),
-                    );
-                  },
+                padding:const EdgeInsets.all(8),
+                child:SingleChildScrollView(
+                  child:Column(
+                    mainAxisSize:MainAxisSize.min,
+                    children:[
+                      for(int i=0;i<suggestionList.length;i+=2)
+                        Padding(
+                          padding:const EdgeInsets.symmetric(vertical:4),
+                          child:Row(
+                            crossAxisAlignment:CrossAxisAlignment.start,
+                            children:[
+                              Expanded(child:_buildSuggestionPill(suggestionList[i])),
+                              const SizedBox(width:8),
+                              Expanded(
+                                child:i+1<suggestionList.length
+                                    ?_buildSuggestionPill(suggestionList[i+1])
+                                    :const SizedBox(),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),

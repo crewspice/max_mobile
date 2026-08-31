@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
@@ -12,10 +13,9 @@ class UserAvatar extends StatelessWidget {
   final Color color;
   final Color textColor;
 
-  // Bump this (e.g. after an upload/reset) to force a fresh network fetch
-  // instead of whatever image this same widget instance already resolved —
-  // a changed URL is what actually busts Flutter's image cache, clearing
-  // imageCache alone doesn't affect an already-mounted Image.network.
+  // Bump this (e.g. after an upload/reset) to force a fresh fetch instead of
+  // the disk/memory-cached image this URL already resolved to — CachedNetworkImage
+  // keys its cache on the URL, so a changed URL is what actually busts it.
   final Object? cacheBust;
 
   const UserAvatar({
@@ -28,13 +28,19 @@ class UserAvatar extends StatelessWidget {
   });
 
   Widget _fallback() {
+    final text = (initials == null || initials!.isEmpty) ? "?" : initials!;
+    final fontSize = switch (text.length) {
+      1 => radius * 1.4,
+      2 => radius * 0.95,
+      _ => radius * 0.8,
+    };
     return CircleAvatar(
       radius: radius,
       backgroundColor: color,
       child: Text(
-        (initials == null || initials!.isEmpty) ? "?" : initials!,
+        text,
         style: TextStyle(
-          fontSize: radius * 0.8,
+          fontSize: fontSize,
           fontWeight: FontWeight.bold,
           color: textColor,
         ),
@@ -57,14 +63,11 @@ class UserAvatar extends StatelessWidget {
       child: SizedBox(
         width: radius * 2,
         height: radius * 2,
-        child: Image.network(
-          url,
+        child: CachedNetworkImage(
+          imageUrl: url,
           fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => _fallback(),
-          loadingBuilder: (context, child, progress) {
-            if (progress == null) return child;
-            return _fallback();
-          },
+          errorWidget: (context, url, error) => _fallback(),
+          placeholder: (context, url) => _fallback(),
         ),
       ),
     );

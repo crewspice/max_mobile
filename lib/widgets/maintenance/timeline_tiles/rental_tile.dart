@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../../models/lift_rental_history_item.dart';
 import '../../../theme/app_colors.dart';
-import '../../date_label.dart';
 import '../../ornate_card.dart';
 
 class RentalTile extends StatelessWidget {
@@ -12,96 +11,52 @@ class RentalTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: OrnateCard(
-        color: AppColors.mainLight,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          rental.customerName ?? "Rental",
-                          style: const TextStyle(
-                            color: AppColors.yellow,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 17,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          [
-                            rental.siteName,
-                            rental.streetAddress,
-                            rental.city,
-                          ].where((e) => e != null && e!.isNotEmpty).join("\n"),
-                          softWrap: true,
-                          style: const TextStyle(
-                            color: AppColors.yellow,
-                          ),
-                        ),
-                      ],
-                    ),
+      padding: const EdgeInsets.symmetric(vertical: 10),
+      // Without this, the card stretches to fill whatever width the
+      // timeline's flexible content slot hands it instead of hugging its
+      // own text.
+      child: IntrinsicWidth(
+        child: OrnateCard(
+          color: AppColors.mainLight,
+          child: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  rental.customerName ?? "Rental",
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 17,
                   ),
-                  const SizedBox(width: 24),
-                  Expanded(
-                    flex: 1,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: rental.endDate == null
-                          ? [
-                              DateLabel(
-                                date: rental.startDate,
-                                color: AppColors.yellow,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                rental.status ?? "Still on Rent",
-                                style: const TextStyle(
-                                  color: AppColors.yellow,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ]
-                          : [
-                              DateLabel(
-                                date: rental.startDate,
-                                color: AppColors.yellow,
-                              ),
-                              Text(
-                                "to",
-                                style: TextStyle(
-                                  color: AppColors.yellow.withOpacity(.7),
-                                ),
-                              ),
-                              DateLabel(
-                                date: rental.endDate,
-                                color: AppColors.yellow,
-                              ),
-                              if (rental.status != null) ...[
-                                const SizedBox(height: 8),
-                                Text(
-                                  rental.status!,
-                                  style: const TextStyle(
-                                    color: AppColors.yellow,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ],
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  [
+                    rental.siteName,
+                    rental.streetAddress,
+                    rental.city,
+                  ].where((e) => e != null && e!.isNotEmpty).join("\n"),
+                  softWrap: true,
+                  style: const TextStyle(
+                    color: AppColors.yellow,
+                  ),
+                ),
+                if (rental.endDate == null || rental.status != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    rental.status ??
+                        (rental.endDate == null ? "Still on Rent" : ""),
+                    style: const TextStyle(
+                      color: AppColors.yellow,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

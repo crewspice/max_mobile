@@ -18,6 +18,12 @@ class WatermarkTitle extends StatelessWidget {
   // flush with the text's top, so all the extra size grows downward only —
   // useful when there's another line sitting close above the title.
   final Alignment glyphAlignment;
+  // Defaults match the original maintenance-card look (yellow text over a
+  // dark glyph); callers on a different background - or that want the title
+  // text itself in their own element color - override one or both.
+  final Color textColor;
+  final Color glyphColor;
+  final double? fontSize;
 
   const WatermarkTitle({
     super.key,
@@ -25,6 +31,9 @@ class WatermarkTitle extends StatelessWidget {
     required this.glyph,
     this.glyphSize = 96,
     this.glyphAlignment = Alignment.center,
+    this.textColor = AppColors.yellow,
+    this.glyphColor = AppColors.main,
+    this.fontSize,
   });
 
   @override
@@ -44,7 +53,7 @@ class WatermarkTitle extends StatelessWidget {
               child: Icon(
                 glyph,
                 size: glyphSize,
-                color: AppColors.main,
+                color: glyphColor,
               ),
             ),
           ),
@@ -52,9 +61,10 @@ class WatermarkTitle extends StatelessWidget {
         Text(
           text,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: AppColors.yellow,
+          style: TextStyle(
+            color: textColor,
             fontWeight: FontWeight.bold,
+            fontSize: fontSize,
           ),
         ),
       ],

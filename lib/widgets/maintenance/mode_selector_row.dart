@@ -3,6 +3,7 @@ import '../../theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../config/device_config.dart';
 import 'circle_button_jitter.dart';
+import 'beaded_circle_border.dart';
 
 class ModeSelectorRow<T> extends StatefulWidget {
   final String? label;
@@ -41,24 +42,6 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
     final needsShrink =
         label == 'Rentals' && (DeviceConfig.isIpad || DeviceConfig.device == 'moto_g');
     return needsShrink ? fontSize * 0.8 : fontSize;
-  }
-
-  Color _spectrumColor(double x) {
-    x = x.clamp(0, 1);
-
-    if (x <= .5) {
-      return Color.lerp(
-        AppColors.yellow,
-        AppColors.green,
-        x * 2,
-      )!;
-    }
-
-    return Color.lerp(
-      AppColors.green,
-      AppColors.red,
-      (x - .5) * 2,
-    )!;
   }
 
   @override
@@ -191,9 +174,11 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
             height: 44,
             decoration: BoxDecoration(
               color: AppColors.mainBackground,
+              // Muted to match the row's own circle buttons' border stroke
+              // rather than standing out as a stronger, separate style.
               border: Border.all(
-                color: AppColors.yellow,
-                width: 1.2,
+                color: AppColors.yellow.withOpacity(.35),
+                width: 1,
               ),
               borderRadius: BorderRadius.circular(14),
             ),
@@ -211,37 +196,25 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
   Widget _button(ModeButton<T> button) {
     final active = widget.selected.contains(button.value);
 
-    final index = widget.buttons.indexOf(button);
-    final t = widget.buttons.length <= 1
-        ? 0.0
-        : index / (widget.buttons.length - 1);
-    final glowColor = _spectrumColor(t);
+    const glowColor = AppColors.yellow;
     final jitter = circleButtonJitter(button.label, diameter);
 
-    return Transform.translate(
-      offset: Offset(jitter.dx, jitter.dy),
-      child: AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
+    // The circle's own look never changes with selection — only the
+    // beaded animated border wrapped around it below does. The plain
+    // border only shows when not active, since the beaded border already
+    // frames the circle on its own.
+    final circle = Container(
       width: jitter.diameter,
       height: jitter.diameter,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: AppColors.main,
-        border: Border.all(
-          color: active
-              ? AppColors.yellow
-              : AppColors.yellow.withOpacity(.35),
-          width: active ? 2 : 1,
-        ),
-        boxShadow: active
-            ? [
-                BoxShadow(
-                  color: glowColor.withOpacity(.55),
-                  blurRadius: 10,
-                  spreadRadius: 2,
-                ),
-              ]
-            : null,
+        color: AppColors.mainBackground,
+        border: active
+            ? null
+            : Border.all(
+                color: AppColors.yellow.withOpacity(.35),
+                width: 1,
+              ),
       ),
       child: Material(
         shape: const CircleBorder(),
@@ -267,7 +240,16 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
           ),
         ),
       ),
-      ),
+    );
+
+    // dy is dropped here (unlike the record row) so these filter buttons
+    // stay level with each other in a straight line - only x and diameter
+    // still jitter.
+    return Transform.translate(
+      offset: Offset(jitter.dx, 0),
+      child: active
+          ? BeadedCircleBorder(color: glowColor, child: circle)
+          : circle,
     );
   }
 }

@@ -87,6 +87,20 @@ class _BaseCardState extends State<BaseCard> {
     _devToggleTimer?.cancel();
   }
 
+  // iOS "Bold Text" accessibility setting makes Flutter's Text widget
+  // silently merge FontWeight.bold onto every style, which fights the
+  // hand-tuned Knewave look of the lift type characters. Force it off here,
+  // same as lift_selector_panel.dart's _noAccessibilityTextStyling.
+  Widget _noAccessibilityTextStyling({required Widget child}) {
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(
+        textScaler: TextScaler.noScaling,
+        boldText: false,
+      ),
+      child: child,
+    );
+  }
+
   @override
   void dispose() {
     _devToggleTimer?.cancel();
@@ -118,7 +132,8 @@ class _BaseCardState extends State<BaseCard> {
     if (query.trim().isEmpty) return;
 
     final geoUrl = 'geo:0,0?q=${Uri.encodeComponent(query)}';
-    final webUrl = 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
+    final webUrl =
+        'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(query)}';
 
     // Try geo: first (direct Maps app)
     if (await canLaunchUrlString(geoUrl)) {
@@ -232,16 +247,19 @@ class _BaseCardState extends State<BaseCard> {
                       children: [
                         TextSpan(
                           text: "◆ ",
-                          style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
+                          style: TextStyle(
+                              color: elementColor.withValues(alpha: 0.55)),
                         ),
                         TextSpan(
                           text: "Delivery ",
-                          style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
+                          style: TextStyle(
+                              color: elementColor.withValues(alpha: 0.55)),
                         ),
                         TextSpan(text: split.preDelivery),
                         TextSpan(
                           text: " ◆",
-                          style: TextStyle(color: elementColor.withValues(alpha: 0.55)),
+                          style: TextStyle(
+                              color: elementColor.withValues(alpha: 0.55)),
                         ),
                         if (split.postDelivery.isNotEmpty)
                           TextSpan(text: " ${split.postDelivery}"),
@@ -277,7 +295,6 @@ class _BaseCardState extends State<BaseCard> {
                       decoration: const InputDecoration(
                         hintText: 'Enter notes here...',
                         hintStyle: TextStyle(color: AppColors.main),
-
                         enabledBorder: UnderlineInputBorder(
                           borderSide: BorderSide(color: AppColors.main),
                         ),
@@ -358,7 +375,6 @@ class _BaseCardState extends State<BaseCard> {
     );
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Listener(
@@ -370,29 +386,23 @@ class _BaseCardState extends State<BaseCard> {
   }
 
   Widget _buildCard(BuildContext context) {
+    final Color elementColor = stop.type == "SERVICE"
+        ? AppColors.green
+        : (stop.status == "Active"
+            ? AppColors.green
+            : (stop.status == "Upcoming" ? AppColors.yellow : AppColors.red));
 
-  final Color elementColor =
-      stop.type == "SERVICE"
-          ? AppColors.green
-          : (stop.status == "Active"
-              ? AppColors.green
-              : (stop.status == "Upcoming"
-                  ? AppColors.yellow
-                  : AppColors.red));
+    final Color textColor =
+        completedView ? Colors.purple.shade50 : Colors.black87;
 
-  final Color textColor =
-      completedView ? Colors.purple.shade50 : Colors.black87;
+    final Color iconColor =
+        completedView ? Colors.purple.shade50 : Colors.black87;
 
-  final Color iconColor =
-      completedView ? Colors.purple.shade50 : Colors.black87;
-
-  final List<Widget> normalExtraContent =
-    extraContent.isEmpty
+    final List<Widget> normalExtraContent = extraContent.isEmpty
         ? const []
         : extraContent.sublist(0, extraContent.length - 1);
 
-  final Widget? tray =
-    extraContent.isNotEmpty ? extraContent.last : null;
+    final Widget? tray = extraContent.isNotEmpty ? extraContent.last : null;
 
     if (stop.liftType == "HQ") {
       return Card(
@@ -418,56 +428,57 @@ class _BaseCardState extends State<BaseCard> {
               ),
               const SizedBox(height: 16),
               if (!completedView) ...[
-              Center(
-                child: SizedBox(
-                  width: MediaQuery.of(context).size.width * 0.5,
-                  child: HoldToConfirmButton(
-                    outlined: true,
-                    icon: const Icon(Icons.check_circle_outline),
-                    label: "I'm back",
-                    baseColor: AppColors.green,
-                    textColor: AppColors.green,
-                    progressColor: AppColors.yellow,
-                    holdDuration: const Duration(seconds: 2),
-                    onConfirmed: () async {
-                      final api = ApiService();
+                Center(
+                  child: SizedBox(
+                    width: MediaQuery.of(context).size.width * 0.5,
+                    child: HoldToConfirmButton(
+                      outlined: true,
+                      icon: const Icon(Icons.check_circle_outline),
+                      label: "I'm back",
+                      baseColor: AppColors.green,
+                      textColor: AppColors.green,
+                      progressColor: AppColors.yellow,
+                      holdDuration: const Duration(seconds: 2),
+                      onConfirmed: () async {
+                        final api = ApiService();
 
-                      showDialog(
-                        context: context,
-                        barrierDismissible: false,
-                        builder: (_) =>
-                            const Center(child: CircularProgressIndicator()),
-                      );
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (_) =>
+                              const Center(child: CircularProgressIndicator()),
+                        );
 
-                      final success = await api.recordHQReturn(
-                        stop.id,
-                        stop.truck ?? "null",
-                        stop.driverId ?? "null",
-                      );
+                        final success = await api.recordHQReturn(
+                          stop.id,
+                          stop.truck ?? "null",
+                          stop.driverId ?? "null",
+                        );
 
-                      Navigator.of(context).pop();
+                        Navigator.of(context).pop();
 
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: AppColors.mainBackground,
-                          content: Text(
-                            success
-                                ? 'HQ stop deleted successfully.'
-                                : 'Failed to delete HQ stop.',
-                            style: TextStyle(
-                              color: success ? AppColors.green : AppColors.red,
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            backgroundColor: AppColors.mainBackground,
+                            content: Text(
+                              success
+                                  ? 'HQ stop deleted successfully.'
+                                  : 'Failed to delete HQ stop.',
+                              style: TextStyle(
+                                color:
+                                    success ? AppColors.green : AppColors.red,
+                              ),
                             ),
                           ),
-                        ),
-                      );
+                        );
 
-                      if (success) {
-                        await onRefresh();
-                      }
-                    },
+                        if (success) {
+                          await onRefresh();
+                        }
+                      },
+                    ),
                   ),
-                ),
-              )
+                )
               ],
             ],
           ),
@@ -475,345 +486,388 @@ class _BaseCardState extends State<BaseCard> {
       );
     }
 
-
     // 🔹 Normal Stop Card
     return Card(
       color: AppColors.mainBackground,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
       margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (stop.name != null && stop.name!.isNotEmpty)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    stop.name!,
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: elementColor,
-                    )
+      clipBehavior: Clip.antiAlias,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Align(
+                alignment: Alignment.center,
+                child: Opacity(
+                  opacity: 0.08,
+                  child: Image.asset(
+                    _getServiceIcon(),
+                    width: 260,
+                    height: 260,
+                    fit: BoxFit.contain,
+                    color: elementColor,
+                    colorBlendMode: BlendMode.srcIn,
                   ),
-                  if (stop.time != null && stop.time!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8.0),
-                      child: Text(
-                        () {
-                          final formattedDate = stop.type == "RENTAL"
-                              ? _formatDate(stop.deliveryDate)
-                              : _formatDate(stop.serviceDate);
-                          final t = stop.time ?? "";
-                          if (t.toLowerCase() == "any") return "Any for $formattedDate";
-                          if (t == "8-10") return "$formattedDate, 8am-10am";
-                          if (t.toLowerCase() == "asap") return "Asap on $formattedDate";
-
-                          final startHour = int.tryParse(t);
-                          if (startHour != null) {
-                            const windows = {
-                              7: "7am - 9am",
-                              8: "8am - 10am",
-                              9: "9am - 11am",
-                              10: "10am - 12pm",
-                              11: "11am - 1pm",
-                              12: "12pm - 2pm",
-                              1: "1pm - 3pm",
-                              2: "2pm - 4pm",
-                              3: "3pm - 5pm",
-                              4: "4pm - 6pm",
-                            };
-                            final window = windows[startHour];
-                            if (window != null) return "$formattedDate, $window";
-                          }
-
-                          return "$formattedDate at $t";
-                        }(),
-                        style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                            color: elementColor),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            const SizedBox(height: 8),
-
-            // Main Row: lift + addresses/contacts
-            Row(
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (stop.liftType != null && stop.liftType!.isNotEmpty)
-                      Text(
-                        stop.liftType!,
-                        style: GoogleFonts.knewave(
-                          fontSize: 24,
-                          // fontWeight: FontWeight.bold,
-                          color: elementColor,
-                          letterSpacing: 2.0,
+                if (stop.name != null && stop.name!.isNotEmpty)
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(stop.name!,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: elementColor,
+                          )),
+                      if (stop.time != null && stop.time!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Text(
+                            () {
+                              final formattedDate = stop.type == "RENTAL"
+                                  ? _formatDate(stop.deliveryDate)
+                                  : _formatDate(stop.serviceDate);
+                              final t = stop.time ?? "";
+                              if (t.toLowerCase() == "any")
+                                return "Any for $formattedDate";
+                              if (t == "8-10")
+                                return "$formattedDate, 8am-10am";
+                              if (t.toLowerCase() == "asap")
+                                return "Asap on $formattedDate";
+
+                              final startHour = int.tryParse(t);
+                              if (startHour != null) {
+                                const windows = {
+                                  7: "7am - 9am",
+                                  8: "8am - 10am",
+                                  9: "9am - 11am",
+                                  10: "10am - 12pm",
+                                  11: "11am - 1pm",
+                                  12: "12pm - 2pm",
+                                  1: "1pm - 3pm",
+                                  2: "2pm - 4pm",
+                                  3: "3pm - 5pm",
+                                  4: "4pm - 6pm",
+                                };
+                                final window = windows[startHour];
+                                if (window != null)
+                                  return "$formattedDate, $window";
+                              }
+
+                              return "$formattedDate at $t";
+                            }(),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: elementColor),
+                          ),
                         ),
+                    ],
+                  ),
+                const SizedBox(height: 8),
+
+                // Main Row: lift + addresses/contacts
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (stop.liftType != null && stop.liftType!.isNotEmpty)
+                          _noAccessibilityTextStyling(
+                            child: Text(
+                              stop.liftType!,
+                              style: GoogleFonts.knewave(
+                                fontSize: 24,
+                                // fontWeight: FontWeight.bold,
+                                color: elementColor,
+                                letterSpacing: 2.0,
+                              ),
+                            ),
+                          ),
+                        const SizedBox(height: 6),
+                        Image.asset(_getServiceIcon(),
+                            width: 60, height: 60, color: elementColor),
+                        const SizedBox(height: 6),
+                        Text(
+                          stop.serviceType != null &&
+                                  stop.serviceType!.isNotEmpty
+                              ? (stop.serviceType == "Service Change Out"
+                                  ? "Service\nChange Out"
+                                  : stop.serviceType!)
+                              : (stop.status == "Upcoming"
+                                  ? "Drop Off"
+                                  : stop.status == "Called Off"
+                                      ? "Pick Up"
+                                      : ""),
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: elementColor),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Addresses
+                          Expanded(
+                            flex: 7,
+                            child: Align(
+                              alignment: Alignment.center,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  if (_showDevFields) ...[
+                                    Text(
+                                      '${stop.type == "SERVICE" ? "Service ID" : "Rental ID"}: ${stop.id}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: elementColor,
+                                        decoration: TextDecoration.none,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Site ID: ${stop.siteId}',
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        color: elementColor,
+                                        decoration: TextDecoration.none,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    if (stop.siteName != null &&
+                                        stop.siteName!.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          if (stopAddress.isNotEmpty)
+                                            _launchMaps(stopAddress);
+                                        },
+                                        child: Text(
+                                          stop.siteName!,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: elementColor,
+                                            decoration: TextDecoration.none,
+                                          ),
+                                        ),
+                                      ),
+                                    if (stop.streetAddress != null &&
+                                        stop.streetAddress!.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          if (stopAddress.isNotEmpty)
+                                            _launchMaps(stopAddress);
+                                        },
+                                        child: Text(
+                                          stop.streetAddress!,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: elementColor,
+                                            decoration: TextDecoration.none,
+
+                                            // fontSize: 14,
+                                            // fontWeight: FontWeight.w700,
+
+                                            shadows: const [
+                                              Shadow(
+                                                color: Colors.black,
+                                                blurRadius: 3,
+                                                offset: Offset(0, 0),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ),
+                                    if (stop.city != null &&
+                                        stop.city!.isNotEmpty)
+                                      GestureDetector(
+                                        onTap: () {
+                                          if (stopAddress.isNotEmpty)
+                                            _launchMaps(stopAddress);
+                                        },
+                                        child: Text(
+                                          stop.city!,
+                                          textAlign: TextAlign.center,
+                                          style: TextStyle(
+                                            color: elementColor,
+                                            decoration: TextDecoration.none,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                  if (!DeviceConfig.isIphone)
+                                    _buildNotesRow(elementColor, context),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+
+                          // Contacts
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (stop.orderedByContactName != null ||
+                                    stop.orderedByContactPhone != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 2.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text("Ask:",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: elementColor)),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Expanded(
+                                                child: Text(
+                                              stop.orderedByContactName ?? '',
+                                              style: TextStyle(
+                                                color: elementColor,
+                                              ),
+                                            )),
+                                            if (stop.orderedByContactPhone !=
+                                                null)
+                                              DeviceConfig.isIpad
+                                                  ? Text(
+                                                      stop.orderedByContactPhone!,
+                                                      style: TextStyle(
+                                                        color: elementColor,
+                                                      ),
+                                                    )
+                                                  : Transform.translate(
+                                                      offset:
+                                                          const Offset(-6, -10),
+                                                      child: GestureDetector(
+                                                        onTap: () =>
+                                                            _launchDialer(
+                                                          context,
+                                                          stop.orderedByContactPhone!,
+                                                        ),
+                                                        child: Image.asset(
+                                                          'assets/calling-off.png',
+                                                          width: 28,
+                                                          height: 28,
+                                                          color: elementColor,
+                                                        ),
+                                                      ),
+                                                    ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                if (stop.siteContactName != null ||
+                                    stop.siteContactPhone != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(bottom: 2.0),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text("Site:",
+                                            style: TextStyle(
+                                                fontWeight: FontWeight.bold,
+                                                color: elementColor)),
+                                        Row(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.center,
+                                          children: [
+                                            Expanded(
+                                                child: Text(
+                                              stop.siteContactName ?? '',
+                                              style: TextStyle(
+                                                color: elementColor,
+                                              ),
+                                            )),
+                                            if (stop.siteContactPhone != null)
+                                              DeviceConfig.isIpad
+                                                  ? Text(
+                                                      stop.siteContactPhone!,
+                                                      style: TextStyle(
+                                                        color: elementColor,
+                                                      ),
+                                                    )
+                                                  : Transform.translate(
+                                                      offset:
+                                                          const Offset(-6, -10),
+                                                      child: GestureDetector(
+                                                        onTap: () =>
+                                                            _launchDialer(
+                                                          context,
+                                                          stop.siteContactPhone!,
+                                                        ),
+                                                        child: Image.asset(
+                                                          'assets/calling-off.png',
+                                                          width: 28,
+                                                          height: 28,
+                                                          color: elementColor,
+                                                        ),
+                                                      ),
+                                                    ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    const SizedBox(height: 6),
-                    Image.asset(_getServiceIcon(), width: 60, height: 60, color: elementColor),
-                    const SizedBox(height: 6),
-                    Text(
-                      stop.serviceType != null && stop.serviceType!.isNotEmpty
-                          ? (stop.serviceType == "Service Change Out"
-                              ? "Service\nChange Out"
-                              : stop.serviceType!)
-                          : (stop.status == "Upcoming"
-                              ? "Drop Off"
-                              : stop.status == "Called Off"
-                                  ? "Pick Up"
-                                  : ""),
-                      style: TextStyle(
-                          fontSize: 12, fontWeight: FontWeight.w500, color: elementColor),
-                      textAlign: TextAlign.center,
                     ),
                   ],
                 ),
-                const SizedBox(width: 16),
 
-                Expanded(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Addresses
-                      Expanded(
-                        flex: 7,
-                        child: Align(
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                if (_showDevFields) ...[
-                                  Text(
-                                    '${stop.type == "SERVICE" ? "Service ID" : "Rental ID"}: ${stop.id}',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: elementColor,
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                  Text(
-                                    'Site ID: ${stop.siteId}',
-                                    textAlign: TextAlign.center,
-                                    style: TextStyle(
-                                      color: elementColor,
-                                      decoration: TextDecoration.none,
-                                    ),
-                                  ),
-                                ] else ...[
-                                  if (stop.siteName != null && stop.siteName!.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
-                                      },
-                                      child: Text(
-                                        stop.siteName!,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: elementColor,
-                                          decoration: TextDecoration.none,
-                                        ),
-                                      ),
-                                    ),
-                                  if (stop.streetAddress != null && stop.streetAddress!.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
-                                      },
-                                      child: Text(
-                                        stop.streetAddress!,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: elementColor,
-                                          decoration: TextDecoration.none,
+                if (DeviceConfig.isIphone)
+                  _buildNotesRow(elementColor, context),
 
-                                          // fontSize: 14,
-                                          // fontWeight: FontWeight.w700,
+                const SizedBox(height: 10),
 
-                                          shadows: const [
-                                            Shadow(
-                                              color: Colors.black,
-                                              blurRadius: 3,
-                                              offset: Offset(0, 0),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                  if (stop.city != null && stop.city!.isNotEmpty)
-                                    GestureDetector(
-                                      onTap: () {
-                                        if (stopAddress.isNotEmpty) _launchMaps(stopAddress);
-                                      },
-                                      child: Text(
-                                        stop.city!,
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: elementColor,
-                                          decoration: TextDecoration.none,
-                                        ),
-                                      ),
-                                    ),
-                                ],
-                                if (!DeviceConfig.isIphone)
-                                  _buildNotesRow(elementColor, context),
-                              ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
+                // Extra content
 
-
-                      // Contacts
-                      Expanded(
-                        flex: 5,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (stop.orderedByContactName != null ||
-                                stop.orderedByContactPhone != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 2.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text("Ask:",
-                                        style: TextStyle(fontWeight: FontWeight.bold, color: elementColor)),
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Expanded(
-                                            child:
-                                              Text(
-                                                stop.orderedByContactName ?? '',
-                                                style: TextStyle(
-                                                  color: elementColor,
-                                                ),
-                                              )), 
-                                              if (stop.orderedByContactPhone != null)
-                                                DeviceConfig.isIpad
-                                                    ? Text(
-                                                        stop.orderedByContactPhone!,
-                                                        style: TextStyle(
-                                                          color: elementColor,
-                                                        ),
-                                                      )
-                                                    : Transform.translate(
-                                                        offset: const Offset(-6, -10),
-                                                        child: GestureDetector(
-                                                          onTap: () => _launchDialer(
-                                                            context,
-                                                            stop.orderedByContactPhone!,
-                                                          ),
-                                                          child: Image.asset(
-                                                            'assets/calling-off.png',
-                                                            width: 28,
-                                                            height: 28,
-                                                            color: elementColor,
-                                                          ),
-                                                        ),
-                                                      ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            if (stop.siteContactName != null ||
-                                stop.siteContactPhone != null)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 2.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text("Site:",
-                                        style: TextStyle(fontWeight: FontWeight.bold, color: elementColor)),
-                                    Row(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.center,
-                                      children: [
-                                        Expanded(
-                                            child:
-                                              Text(
-                                                stop.siteContactName ?? '',
-                                                style: TextStyle(
-                                                  color: elementColor,
-                                                ),
-                                              )), 
-                                        if (stop.siteContactPhone != null)
-                                          DeviceConfig.isIpad
-                                              ? Text(
-                                                  stop.siteContactPhone!,
-                                                  style: TextStyle(
-                                                    color: elementColor,
-                                                  ),
-                                                )
-                                              : Transform.translate(
-                                                  offset: const Offset(-6, -10),
-                                                  child: GestureDetector(
-                                                    onTap: () => _launchDialer(
-                                                      context,
-                                                      stop.siteContactPhone!,
-                                                    ),
-                                                    child: Image.asset(
-                                                      'assets/calling-off.png',
-                                                      width: 28,
-                                                      height: 28,
-                                                      color: elementColor,
-                                                    ),
-                                                  ),
-                                                ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ],
+                if (actionButtons.isNotEmpty)
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: actionButtons
+                        .map((btn) => Padding(
+                              padding: const EdgeInsets.only(bottom: 8.0),
+                              child: btn,
+                            ))
+                        .toList(),
                   ),
-                ),
+                const SizedBox(height: 10),
+
+                ...normalExtraContent,
+
+                if (tray != null) ...[
+                  const SizedBox(height: 0),
+                  tray,
+                ],
               ],
             ),
-
-            if (DeviceConfig.isIphone) _buildNotesRow(elementColor, context),
-
-            const SizedBox(height: 10),
-
-            // Extra content
-
-            if (actionButtons.isNotEmpty)
-              Column(
-                mainAxisSize: MainAxisSize.min,
-                children: actionButtons
-                    .map((btn) => Padding(
-                          padding: const EdgeInsets.only(bottom: 8.0),
-                          child: btn,
-                        ))
-                    .toList(),
-              ),
-            const SizedBox(height: 10),
-
-            ...normalExtraContent,
-
-
-              if (tray != null) ...[
-              const SizedBox(height: 0),
-              tray,
-            ],
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

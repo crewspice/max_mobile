@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 import 'hold_to_confirm_button.dart';
 import 'ornate_card.dart';
+import 'watermark_title.dart';
 
 // The stop-cancellation prompt: an ornate-bordered card styled to match
 // InspectionPromptCard, shared by RentalCard and ServiceCard. The title's
@@ -77,21 +78,15 @@ Future<void> showCancelDialog({
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
-                      children: [
-                        Icon(Icons.block, color: color),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            "Cancel $stopType",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: color,
-                            ),
-                          ),
-                        ),
-                      ],
+                    Center(
+                      child: WatermarkTitle(
+                        text: "Cancel $stopType",
+                        glyph: Icons.block,
+                        glyphSize: 220,
+                        glyphAlignment: const Alignment(0, -0.8),
+                        textColor: color,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(

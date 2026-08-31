@@ -17,6 +17,12 @@ class IssueHistoryEvent extends TimelineEvent {
   DateTime get end => start;
 
   @override
+  TimelineEventType get type => TimelineEventType.issue;
+
+  @override
+  List<DateTime?> get displayDates => [issue.performedAt ?? issue.createdAt];
+
+  @override
   Widget build(BuildContext context) {
     return IssueTile(issue);
   }

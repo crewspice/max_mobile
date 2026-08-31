@@ -14,6 +14,9 @@ import 'lift_selector_panel.dart';
 import '../models/lift.dart';
 import 'action_ribbon.dart';
 import '../config/device_config.dart';
+import '../utils/lift_assets.dart';
+import 'ornate_card.dart';
+import 'watermark_title.dart';
 
 class RentalCard extends StatefulWidget {
   final Stop stop;
@@ -224,53 +227,80 @@ class _RentalCardState extends State<RentalCard> {
       return;
     }
 
-    final selected = await showModalBottomSheet<LiftOption>(
+    final Color elementColor = widget.stop.status == "Active"
+        ? AppColors.green
+        : (widget.stop.status == "Upcoming" ? AppColors.yellow : AppColors.red);
+
+    // Same ornate-card dialog shape as the inspection prompt / cancel
+    // dialog, rather than a bottom sheet, so all three popups on this
+    // screen read as one family.
+    final selected = await showDialog<LiftOption>(
       context: context,
-      backgroundColor: AppColors.main,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.yellow.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: OrnateCard(
+            color: elementColor,
+            backgroundColor: AppColors.mainBackground,
+            padding: EdgeInsets.zero,
+            child: Container(
+              color: AppColors.mainBackground,
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // The watermark scales with how many tile rows the grid
+                  // actually wraps to, so it still reads as sized-to-fit on
+                  // a two-lift rental as well as a six-lift one, instead of
+                  // one fixed size that's oversized for a single row or
+                  // cramped against three.
+                  const tileWidth = 92.0;
+                  const tileSpacing = 10.0;
+                  final columns = ((constraints.maxWidth + tileSpacing) /
+                          (tileWidth + tileSpacing))
+                      .floor()
+                      .clamp(1, options.length);
+                  final rows = (options.length / columns).ceil();
+                  final glyphSize = (190 + (rows - 1) * 50)
+                      .toDouble()
+                      .clamp(190.0, 300.0);
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: WatermarkTitle(
+                          text: 'Which lift did you pick up?',
+                          glyph: Icons.search,
+                          glyphSize: glyphSize,
+                          glyphAlignment: const Alignment(0, -0.65),
+                          textColor: elementColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: tileSpacing,
+                          runSpacing: tileSpacing,
+                          children: [
+                            for (final option in options)
+                              _buildLiftOptionTile(
+                                dialogContext,
+                                option,
+                                elementColor,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
-              const SizedBox(height: 12),
-              const Text(
-                'Which lift did you pick up?',
-                style: TextStyle(
-                  color: AppColors.yellow,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 4),
-              for (final option in options)
-                ListTile(
-                  title: Text(
-                    option.liftType,
-                    style: const TextStyle(
-                      color: AppColors.yellow,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    option.serialNumber,
-                    style: const TextStyle(color: AppColors.yellow),
-                  ),
-                  onTap: () => Navigator.pop(context, option),
-                ),
-              const SizedBox(height: 10),
-            ],
+            ),
           ),
         );
       },
@@ -282,6 +312,56 @@ class _RentalCardState extends State<RentalCard> {
         _selectedSerial = selected.serialNumber;
       });
     }
+  }
+
+  // Matches the inventory markers on the truck view: the lift-type asset
+  // image standing in for the plain type string, tiled instead of listed
+  // one per row. Horizontal padding is tight against the border - the
+  // reclaimed width goes to a bigger image instead - so the tile's overall
+  // footprint stays the same while the image reads as the dominant thing in
+  // it; the type code isn't repeated as text since the image already says
+  // it.
+  Widget _buildLiftOptionTile(
+    BuildContext context,
+    LiftOption option,
+    Color color,
+  ) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.pop(context, option),
+      child: Container(
+        width: 92,
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+        decoration: BoxDecoration(
+          color: AppColors.mainBackground.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.6)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              liftAssetPath(option.liftType),
+              height: 56,
+              fit: BoxFit.contain,
+              color: color,
+              colorBlendMode: BlendMode.srcIn,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              option.serialNumber,
+              style: TextStyle(
+                color: color,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showRentalPhoto(BuildContext context) {

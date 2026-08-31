@@ -6,6 +6,7 @@ import '../../theme/app_colors.dart';
 import '../../views/maintenance_ui_state.dart';
 import '../curved_stack_card.dart';
 import '../hold_to_confirm_button.dart';
+import 'beaded_circle_border.dart';
 import 'circle_button_jitter.dart';
 import 'mode_selector_row.dart';
 import 'repair_card.dart';
@@ -53,51 +54,51 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
         13.0 * DeviceConfig.circleScale() * DeviceConfig.circleTextScale();
     final jitter = circleButtonJitter(label, baseDiameter);
 
-    return Transform.translate(
-      offset: Offset(jitter.dx, jitter.dy),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        width: jitter.diameter,
-        height: jitter.diameter,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: AppColors.main,
-          border: Border.all(
-            color: active ? glowColor : AppColors.yellow.withOpacity(.35),
-            width: active ? 2 : 1,
-          ),
-          boxShadow: active
-              ? [
-                  BoxShadow(
-                    color: glowColor.withOpacity(.55),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                  ),
-                ]
-              : null,
-        ),
-        child: Material(
-          shape: const CircleBorder(),
-          color: Colors.transparent,
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onPressed,
-            child: Center(
-              child: Text(
-                label,
-                maxLines: 2,
-                softWrap: true,
-                textAlign: TextAlign.center,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: AppColors.yellow,
-                  fontSize: fontSize,
-                ),
+    // The circle's own look never changes with selection - only the beaded
+    // animated border wrapped around it below does, matching the mode
+    // selector rows' selected style. The plain border only shows when not
+    // active, since the beaded border already frames the circle on its own.
+    final circle = Container(
+      width: jitter.diameter,
+      height: jitter.diameter,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: AppColors.mainBackground,
+        border: active
+            ? null
+            : Border.all(
+                color: AppColors.yellow.withOpacity(.35),
+                width: 1,
+              ),
+      ),
+      child: Material(
+        shape: const CircleBorder(),
+        color: Colors.transparent,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onPressed,
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 2,
+              softWrap: true,
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AppColors.yellow,
+                fontSize: fontSize,
               ),
             ),
           ),
         ),
       ),
+    );
+
+    return Transform.translate(
+      offset: Offset(jitter.dx, jitter.dy),
+      child: active
+          ? BeadedCircleBorder(color: glowColor, child: circle)
+          : circle,
     );
   }
 
@@ -108,17 +109,29 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
 
     return Transform.translate(
       offset: Offset(jitter.dx, jitter.dy),
-      child: HoldToConfirmButton(
-        label: label,
-        textSize:
-            13 * DeviceConfig.circleScale() * DeviceConfig.circleTextScale(),
-        baseColor: AppColors.main,
-        textColor: AppColors.yellow,
-        progressColor: AppColors.yellow,
-        holdDuration: const Duration(seconds: 2),
-        circular: true,
-        diameter: jitter.diameter,
-        onConfirmed: _submitPm,
+      child: Container(
+        width: jitter.diameter,
+        height: jitter.diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: AppColors.yellow.withOpacity(.35),
+            width: 1,
+          ),
+        ),
+        child: HoldToConfirmButton(
+          label: label,
+          textSize: 13 *
+              DeviceConfig.circleScale() *
+              DeviceConfig.circleTextScale(),
+          baseColor: AppColors.mainBackground,
+          textColor: AppColors.yellow,
+          progressColor: AppColors.yellow,
+          holdDuration: const Duration(seconds: 2),
+          circular: true,
+          diameter: jitter.diameter,
+          onConfirmed: _submitPm,
+        ),
       ),
     );
   }
@@ -127,6 +140,10 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
   // entry card (when open) read as a single stack: shape only depends on
   // each card's position within it, so this builds them together with the
   // right StackPosition rather than each card guessing its own place.
+  //
+  // While actively recording a repair/issue, the entry card stands alone -
+  // the PM status card and any unresolved-action cards step aside so the
+  // entry form has the stack's full attention.
   List<Widget> _buildStatusStack() {
     final entryMode = widget.ui.selectedRecord == RecordMode.issue
         ? IssueEntryMode.issue
@@ -134,9 +151,22 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
             ? IssueEntryMode.repair
             : null;
 
-    final total = (entryMode != null ? 1 : 0) +
-        1 +
-        widget.snapshot.maintenanceActions.length;
+    if (entryMode != null) {
+      return [
+        IssueEntryCard(
+          liftId: widget.lift.liftId,
+          currentUserId: widget.currentUserId,
+          mode: entryMode,
+          position: StackPosition.only,
+          onComplete: () {
+            widget.ui.selectRecord(null);
+            widget.onRefresh();
+          },
+        ),
+      ];
+    }
+
+    final total = 1 + widget.snapshot.maintenanceActions.length;
 
     StackPosition positionFor(int index) {
       if (total <= 1) return StackPosition.only;
@@ -146,26 +176,13 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
     }
 
     var index = 0;
-    final cards = <Widget>[];
-
-    if (entryMode != null) {
-      cards.add(IssueEntryCard(
-        liftId: widget.lift.liftId,
-        currentUserId: widget.currentUserId,
-        mode: entryMode,
+    final cards = <Widget>[
+      SnapshotPanel(
+        lift: widget.lift,
+        snapshot: widget.snapshot,
         position: positionFor(index++),
-        onComplete: () {
-          widget.ui.selectRecord(null);
-          widget.onRefresh();
-        },
-      ));
-    }
-
-    cards.add(SnapshotPanel(
-      lift: widget.lift,
-      snapshot: widget.snapshot,
-      position: positionFor(index++),
-    ));
+      ),
+    ];
 
     for (final action in widget.snapshot.maintenanceActions) {
       cards.add(RepairCard(
@@ -178,7 +195,7 @@ class _SelectedLiftWorkspaceState extends State<SelectedLiftWorkspace> {
 
     return [
       for (var i = 0; i < cards.length; i++) ...[
-        if (i > 0) const SizedBox(height: 3),
+        if (i > 0) const SizedBox(height: 18),
         cards[i],
       ],
     ];

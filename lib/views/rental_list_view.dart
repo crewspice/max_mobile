@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 import '../models/stop.dart';
 import '../widgets/rental_card.dart';
@@ -345,21 +343,44 @@ class _RentalListViewState extends State<RentalListView> {
   // dismissal isn't persisted, so it reappears on next cold start / screen
   // re-entry.
   Widget _buildStaleTruckOverlay(String truckId) {
+    void dismiss() {
+      setState(() {
+        dismissedTrucks.add(truckId);
+      });
+    }
+
     return Positioned.fill(
-      child: Container(
-        color: Colors.black87,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.all(24),
-        child: InspectionPromptCard(
-          title: "Truck $truckId needs inspection",
-          message: "None recorded in $kInspectionWindowDays days.",
-          onRecordIssue: () => _openTruckIssueFlow(context, truckId),
-          onNoIssues: () => _recordNoIssues(truckId),
-          onDismiss: () {
-            setState(() {
-              dismissedTrucks.add(truckId);
-            });
-          },
+      child: GestureDetector(
+        // Tapping the barrier dismisses like the card's own Dismiss button;
+        // the inner GestureDetector around the card absorbs taps on the
+        // card itself so they don't fall through to this one.
+        onTap: dismiss,
+        child: Container(
+          color: Colors.black87,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.all(24),
+          child: GestureDetector(
+            onTap: () {},
+            child: InspectionPromptCard(
+              title: "Truck $truckId needs inspection",
+              message: "None recorded in $kInspectionWindowDays days.",
+              glyphAlignment: const Alignment(0, -0.65),
+              onSubmitIssue: (image, description) =>
+                  ApiService().recordTruckIssue(
+                image: image,
+                truckId: truckId,
+                driverId: widget.driverId,
+                description: description,
+              ),
+              onIssueSubmitted: () {
+                setState(() {
+                  staleTrucks.remove(truckId);
+                });
+              },
+              onNoIssues: () => _recordNoIssues(truckId),
+              onDismiss: dismiss,
+            ),
+          ),
         ),
       ),
     );
@@ -394,201 +415,4 @@ class _RentalListViewState extends State<RentalListView> {
     }
   }
 
-  Future<XFile?> _pickImage({bool camera = true}) async {
-    final picker = ImagePicker();
-    return await picker.pickImage(
-      source: camera ? ImageSource.camera : ImageSource.gallery,
-    );
-  }
-
-  void _openTruckIssueFlow(BuildContext context, String truckId) {
-    final descriptionController = TextEditingController();
-    XFile? selectedImage;
-    bool isSubmitting = false;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Container(
-              color: AppColors.main,
-              child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.of(context).viewInsets.bottom,
-                  left: 16,
-                  right: 16,
-                  top: 16,
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Text(
-                      "Report Issue",
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.red,
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.red,
-                              foregroundColor: AppColors.mainBackground,
-                            ),
-                            onPressed: () async {
-                              final file = await _pickImage();
-                              if (file != null) {
-                                setModalState(() => selectedImage = file);
-                              }
-                            },
-                            child: const Text("Take Photo"),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: ElevatedButton.icon(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.red,
-                              foregroundColor: AppColors.mainBackground,
-                            ),
-                            onPressed: () async {
-                              final file = await _pickImage(camera: false);
-                              if (file != null) {
-                                setModalState(() => selectedImage = file);
-                              }
-                            },
-                            icon: const Icon(Icons.upload),
-                            label: const Text("Upload"),
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    if (selectedImage != null)
-                      Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(
-                            color: AppColors.yellow,
-                            width: 2,
-                          ),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        clipBehavior: Clip.antiAlias,
-                        child: Image.file(
-                          File(selectedImage!.path),
-                          height: 120,
-                        ),
-                      ),
-                    const SizedBox(height: 12),
-
-                    TextField(
-                      controller: descriptionController,
-                      maxLines: 3,
-                      style: const TextStyle(
-                        color: AppColors.red,
-                      ),
-                      decoration: InputDecoration(
-                        labelText: "Describe the issue",
-                        labelStyle: const TextStyle(
-                          color: AppColors.red,
-                        ),
-                        filled: true,
-                        fillColor: Colors.black26,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.red,
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.red,
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(
-                            color: AppColors.red,
-                            width: 2,
-                          ),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 16),
-
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.red,
-                          foregroundColor: AppColors.mainBackground,
-                        ),
-                        onPressed: isSubmitting
-                            ? null
-                            : () async {
-                                if (selectedImage == null) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                        content: Text("Photo required")),
-                                  );
-                                  return;
-                                }
-
-                                setModalState(() => isSubmitting = true);
-
-                                final success =
-                                    await ApiService().recordTruckIssue(
-                                  image: File(selectedImage!.path),
-                                  truckId: truckId,
-                                  driverId: widget.driverId,
-                                  description:
-                                      descriptionController.text.trim(),
-                                );
-
-                                Navigator.pop(context);
-
-                                if (success && mounted) {
-                                  setState(() {
-                                    staleTrucks.remove(truckId);
-                                  });
-                                }
-
-                                if (!mounted) return;
-
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(success
-                                        ? 'Issue submitted'
-                                        : 'Submission failed'),
-                                  ),
-                                );
-                              },
-                        child: isSubmitting
-                            ? const CircularProgressIndicator()
-                            : const Text("Submit Issue"),
-                      ),
-                    ),
-
-                    const SizedBox(height: 12),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
 }

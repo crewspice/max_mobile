@@ -7,7 +7,7 @@ class OrnateCard extends StatefulWidget {
     required this.child,
     required this.color,
     this.backgroundColor,
-    this.padding = const EdgeInsets.all(6),
+    this.padding = const EdgeInsets.all(2),
     this.borderThickness = 16,
     this.tileSize = 6,
     this.useExperimentalCorner = true,

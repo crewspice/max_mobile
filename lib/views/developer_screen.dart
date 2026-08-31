@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import '../theme/app_colors.dart';
+import '../widgets/ornate_card.dart';
 import 'developer_playground.dart';
 
 // Control panel for the Phase 2 AI-edit pipeline. This widget is NOT a
@@ -129,11 +130,13 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
           ),
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: Stack(
+        children: [
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
             Text(
               'The goal is to include everyone at Max High Reach in our digital '
               'development. Here you will be able to make your edits to the '
@@ -210,7 +213,77 @@ class _DeveloperScreenState extends State<DeveloperScreen> {
                 style: TextStyle(color: AppColors.yellow.withOpacity(0.8), fontSize: 12),
               ),
             ),
-          ],
+              ],
+            ),
+          ),
+          _buildWorkInProgressOverlay(),
+        ],
+      ),
+    );
+  }
+
+  // Styled to match the truck-inspection warning overlay (rental_list_view.dart /
+  // InspectionPromptCard): an ornate-bordered card centered on a full-screen dark
+  // barrier. Unlike that one, this has no dismiss action - the AI code-edit
+  // pipeline is paused, so the whole page stays inert until this is removed.
+  Widget _buildWorkInProgressOverlay() {
+    return Positioned.fill(
+      child: Container(
+        color: Colors.black87,
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: OrnateCard(
+          color: AppColors.yellow,
+          backgroundColor: AppColors.mainBackground,
+          padding: EdgeInsets.zero,
+          child: Container(
+            color: AppColors.mainBackground,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.construction, color: AppColors.yellow),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Developer page: work in progress',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                          color: AppColors.yellow,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  "This page isn't ready yet - the AI code-edit pipeline "
+                  "behind it is paused while we keep building it out.",
+                  style: TextStyle(color: AppColors.yellow.withOpacity(0.85)),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'The goal is to include everyone at Max High Reach in our '
+                  'digital development - eventually you\'ll be able to make '
+                  'your own edits to the apps, server, and data we use, '
+                  'right from here.',
+                  style: TextStyle(color: AppColors.yellow.withOpacity(0.85)),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  'Check back soon.',
+                  style: TextStyle(
+                    color: AppColors.yellow.withOpacity(0.6),
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
