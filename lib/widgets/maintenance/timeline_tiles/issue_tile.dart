@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../config/device_config.dart';
 import '../../../models/lift_maintenance_history_item.dart';
 import '../../../theme/app_colors.dart';
 import '../../ornate_card.dart';
@@ -43,7 +44,7 @@ class IssueTile extends StatelessWidget {
       child: initials != null
           ? UserAvatar(
               initials: initials,
-              radius: 10,
+              radius: 10 * DeviceConfig.timelineNodeScale,
               color: AppColors.yellow,
               textColor: AppColors.main,
             )

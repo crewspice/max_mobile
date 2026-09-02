@@ -34,7 +34,10 @@ class MaintenanceTimeline extends StatelessWidget {
       // it paint into the card sitting to its right.
       child: ClipRect(
       child: Padding(
-        padding: const EdgeInsets.only(left: 8),
+        // iPad gets more breathing room off the timeline's circle node too
+        // - the default 8px reads as cramped once the node itself grows
+        // via DeviceConfig.timelineNodeScale.
+        padding: EdgeInsets.only(left: DeviceConfig.isIpad ? 16 : 8),
         // Shrink-wraps to the widest date line, so the "to" row below -
         // stretched to fill that same width - centers itself over the
         // actual date text rather than the fixed date column.
@@ -80,7 +83,7 @@ class MaintenanceTimeline extends StatelessWidget {
     final dates = event.displayDates;
 
     return Padding(
-      padding: const EdgeInsets.only(left: 8, bottom: 4),
+      padding: const EdgeInsets.only(left: 8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -108,28 +111,28 @@ class MaintenanceTimeline extends StatelessWidget {
     );
   }
 
-  Widget _indicatorIcon(TimelineEventType type) {
-    const style = TextStyle(
-      fontSize: 14,
+  Widget _indicatorIcon(TimelineEventType type, double nodeScale) {
+    final style = TextStyle(
+      fontSize: 14 * nodeScale,
       fontWeight: FontWeight.bold,
       color: AppColors.main,
     );
 
     switch (type) {
       case TimelineEventType.pm:
-        return const Text('PM', style: TextStyle(
-          fontSize: 15,
+        return Text('PM', style: TextStyle(
+          fontSize: 15 * nodeScale,
           fontWeight: FontWeight.bold,
           color: AppColors.main,
         ));
       case TimelineEventType.annual:
-        return const Text('AN', style: style);
+        return Text('AN', style: style);
       case TimelineEventType.rental:
         // The glyph sits visibly low in the fixed 30px circle on iPad
         // specifically - nudge it back up rather than touching the shared
         // vertical centering every other node relies on.
-        final dollarSign = const Text('\$', style: TextStyle(
-          fontSize: 20,
+        final dollarSign = Text('\$', style: TextStyle(
+          fontSize: 20 * nodeScale,
           fontWeight: FontWeight.bold,
           color: AppColors.main,
         ));
@@ -141,7 +144,7 @@ class MaintenanceTimeline extends StatelessWidget {
               )
             : dollarSign;
       case TimelineEventType.issue:
-        return const Icon(Icons.build, size: 17, color: AppColors.main);
+        return Icon(Icons.build, size: 17 * nodeScale, color: AppColors.main);
     }
   }
 
@@ -168,9 +171,11 @@ class MaintenanceTimeline extends StatelessWidget {
             contentsAlign: ContentsAlign.basic,
 
             indicatorBuilder: (context, index) {
+                final nodeScale = DeviceConfig.timelineNodeScale;
+
                 return Container(
-                width: 30,
-                height: 30,
+                width: 30 * nodeScale,
+                height: 30 * nodeScale,
                 decoration: BoxDecoration(
                     shape: BoxShape.circle,
 
@@ -204,7 +209,7 @@ class MaintenanceTimeline extends StatelessWidget {
                     boldText: false,
                   ),
                   child: Center(
-                      child: _indicatorIcon(events[index].type),
+                      child: _indicatorIcon(events[index].type, nodeScale),
                   ),
                 ),
                 );
@@ -219,14 +224,26 @@ class MaintenanceTimeline extends StatelessWidget {
             contentsBuilder: (context,index) {
                 final event = events[index];
 
-                if (DeviceConfig.isIphone) {
-                  return Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                          _dateHeader(event),
-                          event.build(context),
-                      ],
+                // PM events keep the side-by-side layout on iPhone too -
+                // only non-PM cards get the stacked treatment.
+                if (DeviceConfig.isIphone && event.type != TimelineEventType.pm) {
+                  // The header had no visual anchor to either neighbor, so
+                  // it read as ambiguous - equally close to the card above
+                  // as the one below. Dropping its own bottom padding (it
+                  // now hugs the card via that card's own top inset, which
+                  // is smaller than this top gap) and adding clear space
+                  // above it makes it unambiguously belong to the card
+                  // beneath.
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 16),
+                    child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                            _dateHeader(event),
+                            event.build(context),
+                        ],
+                    ),
                   );
                 }
 
@@ -244,7 +261,7 @@ class MaintenanceTimeline extends StatelessWidget {
                         // leaves room for, so the card content starts too
                         // soon and crowds the date node's right edge -
                         // give iPad specifically more breathing room here.
-                        SizedBox(width: DeviceConfig.isIpad ? 18 : 6),
+                        SizedBox(width: DeviceConfig.isIpad ? 32 : 6),
                         // A plain (non-flex) Row child gets an unbounded max
                         // width to measure its natural size, which breaks
                         // cards - like RentalTile - that use Expanded

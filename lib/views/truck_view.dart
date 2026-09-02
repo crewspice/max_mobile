@@ -104,20 +104,22 @@ class _TruckViewState extends State<TruckView> {
 
   Widget _detailRow(
     String label,
-    String value,
-  ) {
+    String value, {
+    double scale = 1.0,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _detailLabel(label),
+          _detailLabel(label, scale: scale),
           SizedBox(width: DeviceConfig.isIphone ? 8 : 0),
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Colors.white,
+                fontSize: 14 * scale,
               ),
             ),
           ),
@@ -128,14 +130,15 @@ class _TruckViewState extends State<TruckView> {
 
   Widget _detailRowWidget(
     String label,
-    Widget value,
-  ) {
+    Widget value, {
+    double scale = 1.0,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _detailLabel(label),
+          _detailLabel(label, scale: scale),
           SizedBox(width: DeviceConfig.isIphone ? 8 : 0),
           Expanded(child: value),
         ],
@@ -145,15 +148,18 @@ class _TruckViewState extends State<TruckView> {
 
   // On iPhone the label sizes to its text so the value sits close behind it;
   // other devices keep the fixed column so unrelated rows stay aligned.
-  Widget _detailLabel(String label) {
+  Widget _detailLabel(String label, {double scale = 1.0}) {
     final text = Text(
       label,
-      style: const TextStyle(
+      style: TextStyle(
         color: AppColors.yellow,
         fontWeight: FontWeight.bold,
+        fontSize: 14 * scale,
       ),
     );
-    return DeviceConfig.isIphone ? text : SizedBox(width: 120, child: text);
+    return DeviceConfig.isIphone
+        ? text
+        : SizedBox(width: 120 * scale, child: text);
   }
 
   String _formatDate(DateTime date) =>
@@ -194,6 +200,7 @@ class _TruckViewState extends State<TruckView> {
 
         return StatefulBuilder(
           builder: (context, setDialogState) {
+            final scale = DeviceConfig.isIpad ? 1.5 : 1.0;
             final address = [currentItem.streetAddress, currentItem.city]
                 .where((s) => s != null && s.isNotEmpty)
                 .join(', ');
@@ -225,7 +232,17 @@ class _TruckViewState extends State<TruckView> {
             return Dialog(
               backgroundColor: Colors.transparent,
               insetPadding: const EdgeInsets.symmetric(horizontal: 20),
-              child: ClipRRect(
+              // The Expanded content column otherwise stretches to whatever
+              // width Dialog's insetPadding leaves it, i.e. nearly the full
+              // screen - iPad has no need for that, so cap it to a width
+              // sized for this popup's own content instead.
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxWidth: DeviceConfig.isIpad
+                      ? MediaQuery.of(context).size.width * 0.6
+                      : double.infinity,
+                ),
+                child: ClipRRect(
                 borderRadius: BorderRadius.circular(18),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -259,20 +276,21 @@ class _TruckViewState extends State<TruckView> {
                                     children: [
                                       Row(
                                         children: [
-                                          const Icon(
+                                          Icon(
                                             Icons.precision_manufacturing,
                                             color: AppColors.yellow,
+                                            size: 24 * scale,
                                           ),
-                                          const SizedBox(width: 10),
+                                          SizedBox(width: 10 * scale),
                                           Expanded(
                                             child: Text(
                                               isUnspecified
                                                   ? currentItem.liftType
                                                   : "${currentItem.liftType} • ${currentItem.serialNumber}",
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 color: AppColors.yellow,
                                                 fontWeight: FontWeight.bold,
-                                                fontSize: 16,
+                                                fontSize: 16 * scale,
                                               ),
                                             ),
                                           ),
@@ -287,9 +305,9 @@ class _TruckViewState extends State<TruckView> {
                                                   ? Icons.check_circle
                                                   : Icons.warning,
                                               color: pmColor,
-                                              size: 18,
+                                              size: 18 * scale,
                                             ),
-                                            const SizedBox(width: 6),
+                                            SizedBox(width: 6 * scale),
                                             Text(
                                               currentItem.upToDate
                                                   ? "Up to date"
@@ -297,6 +315,7 @@ class _TruckViewState extends State<TruckView> {
                                               style: TextStyle(
                                                 color: pmColor,
                                                 fontWeight: FontWeight.bold,
+                                                fontSize: 14 * scale,
                                               ),
                                             ),
                                           ],
@@ -307,41 +326,45 @@ class _TruckViewState extends State<TruckView> {
                                         currentItem.isPickup
                                             ? "Coming from:"
                                             : "Delivering to:",
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           color: AppColors.yellow,
                                           fontWeight: FontWeight.bold,
+                                          fontSize: 14 * scale,
                                         ),
                                       ),
                                       const SizedBox(height: 4),
                                       if (hasJobSite) ...[
                                         Text(
                                           currentItem.customerName!,
-                                          style: const TextStyle(
-                                              color: Colors.white),
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 14 * scale),
                                         ),
                                         if (address.isNotEmpty)
                                           Text(
                                             address,
-                                            style: const TextStyle(
-                                                color: Colors.white70),
+                                            style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14 * scale),
                                           ),
                                         if (currentItem.isPickup &&
                                             currentItem.daysOnRent != null) ...[
                                           const SizedBox(height: 4),
                                           Text(
                                             "${_formatDaysOnRent(currentItem.daysOnRent!)} on rent",
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               color: AppColors.yellow,
                                               fontStyle: FontStyle.italic,
-                                              fontSize: 13,
+                                              fontSize: 13 * scale,
                                             ),
                                           ),
                                         ],
                                       ] else
-                                        const Text(
+                                        Text(
                                           "No job site recorded",
-                                          style:
-                                              TextStyle(color: Colors.white70),
+                                          style: TextStyle(
+                                              color: Colors.white70,
+                                              fontSize: 14 * scale),
                                         ),
                                       if (!isUnspecified) ...[
                                         _gradientDivider(),
@@ -354,27 +377,30 @@ class _TruckViewState extends State<TruckView> {
                                                     ? _formatDate(currentItem
                                                         .lastPmDate!)
                                                     : "None recorded",
-                                                style: const TextStyle(
-                                                    color: Colors.white),
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 14 * scale),
                                               ),
                                               if (currentItem
                                                       .lastPmPerformerInitials !=
                                                   null) ...[
-                                                const SizedBox(width: 8),
+                                                SizedBox(width: 8 * scale),
                                                 UserAvatar(
                                                   initials: currentItem
                                                       .lastPmPerformerInitials,
-                                                  radius: 12,
+                                                  radius: 12 * scale,
                                                   color: AppColors.yellow,
                                                 ),
                                               ],
                                             ],
                                           ),
+                                          scale: scale,
                                         ),
                                         _detailRow(
                                           "Pending Repairs",
                                           (currentItem.pendingRepairs ?? 0)
                                               .toString(),
+                                          scale: scale,
                                         ),
                                       ],
                                       Row(
@@ -384,9 +410,10 @@ class _TruckViewState extends State<TruckView> {
                                         children: [
                                           if (!isUnspecified)
                                             IconButton(
-                                              icon: const Icon(
+                                              icon: Icon(
                                                 Icons.build,
                                                 color: AppColors.green,
+                                                size: 24 * scale,
                                               ),
                                               tooltip: 'Open in Maintenance',
                                               onPressed: () {
@@ -399,10 +426,11 @@ class _TruckViewState extends State<TruckView> {
                                           TextButton(
                                             onPressed: () =>
                                                 Navigator.pop(context),
-                                            child: const Text(
+                                            child: Text(
                                               "Close",
                                               style: TextStyle(
                                                 color: AppColors.yellow,
+                                                fontSize: 14 * scale,
                                               ),
                                             ),
                                           ),
@@ -425,6 +453,7 @@ class _TruckViewState extends State<TruckView> {
                     ),
                   ],
                 ),
+              ),
               ),
             );
           },

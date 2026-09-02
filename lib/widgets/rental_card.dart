@@ -569,6 +569,7 @@ class _RentalCardState extends State<RentalCard> {
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
                 emptyTextSize: 18,
+                ipadEmptyTextSize: 30,
                 serials: null,
                 initialText: widget.serialController.text,
                 onChanged: (serial) {
@@ -592,6 +593,7 @@ class _RentalCardState extends State<RentalCard> {
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
                 emptyTextSize: 18,
+                ipadEmptyTextSize: 30,
                 initialText: widget.stop.serialNumber ?? '',
                 readOnly: true,
                 colors: LiftSelectorColorScheme(
@@ -622,6 +624,7 @@ class _RentalCardState extends State<RentalCard> {
                     scale: DeviceConfig.liftSelectorScale(),
                     child: LiftSelectorPanel(
                       emptyTextSize: 18,
+                      ipadEmptyTextSize: 30,
                       initialText: _selectedSerial!,
                       readOnly: true,
                       colors: LiftSelectorColorScheme(
@@ -647,6 +650,7 @@ class _RentalCardState extends State<RentalCard> {
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
                 emptyTextSize: 18,
+                ipadEmptyTextSize: 30,
                 initialText: widget.stop.serialNumber ?? '',
                 readOnly: true,
                 colors: LiftSelectorColorScheme(

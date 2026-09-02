@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../config/device_config.dart';
 import '../theme/app_colors.dart';
 import 'hold_to_confirm_button.dart';
 import 'ornate_card.dart';
@@ -67,7 +68,17 @@ Future<void> showCancelDialog({
           return Dialog(
             backgroundColor: Colors.transparent,
             insetPadding: const EdgeInsets.all(24),
-            child: OrnateCard(
+            // submitButton (HoldToConfirmButton) stretches to whatever
+            // width its parent allows, which otherwise drags this whole
+            // dialog out to the full inset width - fine on phone, but
+            // there's no need for it to span iPad's much wider screen.
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: DeviceConfig.isIpad
+                    ? MediaQuery.of(dialogContext).size.width * 0.6
+                    : double.infinity,
+              ),
+              child: OrnateCard(
               color: color,
               backgroundColor: AppColors.mainBackground,
               padding: EdgeInsets.zero,
@@ -136,6 +147,7 @@ Future<void> showCancelDialog({
                     ),
                   ],
                 ),
+              ),
               ),
             ),
           );

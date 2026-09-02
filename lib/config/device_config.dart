@@ -104,4 +104,9 @@ class DeviceConfig {
     if (isIpad) return 1.8;
     return 1.0;
   }
+
+  // Growth factor for the maintenance timeline's circular nodes and the
+  // user-avatar circles inside its event cards - iPad only, since that's
+  // the only device with enough spare width for bigger nodes.
+  static double get timelineNodeScale => isIpad ? 1.5 : 1.0;
 }

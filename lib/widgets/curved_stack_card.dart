@@ -96,6 +96,21 @@ class _RoundedRectShape extends CustomClipper<Path> {
   // start to look barely-rounded next to how tall the card's become.
   static const double _flatAspectRatio = 0.5;
 
+  // Once the card is taller than it is square, a full pill/circle stops
+  // reading as "rounded" and starts reading as a stadium shape - ease the
+  // radius back down toward this fraction of maxRadius rather than staying
+  // pinned at a full pill for every taller-than-square card.
+  static const double _postSquareFloor = 0.8;
+
+  // >1 gives the falloff a soft start right at aspectRatio 1 (matching the
+  // full-pill peak it's easing away from) before it picks up, instead of a
+  // hard kink straight from "still growing" to "already easing off".
+  static const double _postSquareCurve = 2.0;
+
+  // How many aspect-ratio units past square (1.0) it takes to fully settle
+  // at _postSquareFloor - beyond that the radius just holds at the floor.
+  static const double _postSquareSpan = 1.0;
+
   double _effectiveRadius(Size size) {
     if (size.width <= 0) return radius;
 
@@ -104,13 +119,22 @@ class _RoundedRectShape extends CustomClipper<Path> {
 
     if (aspectRatio <= _flatAspectRatio) return math.min(radius, maxRadius);
 
-    // Grows from `radius` up to a full pill/circle (maxRadius) as the
-    // ratio climbs from _flatAspectRatio to 1 (a square card); clamped
-    // beyond that since maxRadius is already as round as the shape gets.
-    final growth = ((aspectRatio - _flatAspectRatio) / (1 - _flatAspectRatio))
-        .clamp(0.0, 1.0);
+    // Restored to a plain linear ramp up to a full pill/circle exactly at
+    // aspectRatio 1 (a square card) - the approach-and-hit-square feel this
+    // originally had.
+    if (aspectRatio <= 1.0) {
+      final growth = (aspectRatio - _flatAspectRatio) / (1 - _flatAspectRatio);
+      return (radius + (maxRadius - radius) * growth).clamp(0.0, maxRadius);
+    }
 
-    return (radius + (maxRadius - radius) * growth).clamp(0.0, maxRadius);
+    // Past square, attenuate instead of staying pinned at a full pill for
+    // every taller card: ease back down toward _postSquareFloor as the
+    // ratio keeps climbing.
+    final over = ((aspectRatio - 1.0) / _postSquareSpan).clamp(0.0, 1.0);
+    final falloff = math.pow(over, _postSquareCurve).toDouble();
+    final fraction = 1.0 - (1.0 - _postSquareFloor) * falloff;
+
+    return maxRadius * fraction;
   }
 
   Path buildPath(Size size) {

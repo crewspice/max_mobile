@@ -24,6 +24,11 @@ class LiftSelectorPanel extends StatefulWidget {
   final LiftSelectorColorScheme colors;
   final bool readOnly;
   final double emptyTextSize;
+  // Overrides the iPad-only "Enter Serial" size below (null keeps the
+  // shared default of 26) - callers whose own emptyTextSize already runs
+  // bigger than the norm (rental/service cards) can ask for a bit more on
+  // iPad specifically, without changing every other caller's iPad size too.
+  final double? ipadEmptyTextSize;
 
   const LiftSelectorPanel({
     super.key,
@@ -34,6 +39,7 @@ class LiftSelectorPanel extends StatefulWidget {
     this.onLiftSelected,
     this.readOnly=false,
     this.emptyTextSize = 14,
+    this.ipadEmptyTextSize,
     this.colors=const LiftSelectorColorScheme(
       ball:AppColors.yellow,
       border:AppColors.yellow,
@@ -478,8 +484,8 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
                             'Enter Serial',
                             style: TextStyle(
                               color: widget.colors.border,
-                              fontSize: DeviceConfig.device == "ipad"
-                                  ? 26
+                              fontSize: DeviceConfig.isIpad
+                                  ? (widget.ipadEmptyTextSize ?? 26)
                                   : widget.emptyTextSize,
                             ),
                           ),

@@ -405,7 +405,8 @@ class _ServiceCardState extends State<ServiceCard> {
               scale: DeviceConfig.liftSelectorScale(),
               child: LiftSelectorPanel(
                 initialText: _serial,
-                emptyTextSize: 18, 
+                emptyTextSize: 18,
+                ipadEmptyTextSize: 30,
                 colors: const LiftSelectorColorScheme(
                   ball: AppColors.green,
                   border: AppColors.green,
@@ -434,6 +435,7 @@ class _ServiceCardState extends State<ServiceCard> {
             scale: DeviceConfig.liftSelectorScale(),
             child: LiftSelectorPanel(
               emptyTextSize: 18,
+              ipadEmptyTextSize: 30,
               initialText: _stop.serialNumber ?? '',
               readOnly: true,
               colors: LiftSelectorColorScheme(
@@ -464,6 +466,7 @@ class _ServiceCardState extends State<ServiceCard> {
                   scale: DeviceConfig.liftSelectorScale(),
                   child: LiftSelectorPanel(
                     emptyTextSize: 18,
+                    ipadEmptyTextSize: 30,
                     initialText: _selectedSerial!,
                     readOnly: true,
                     colors: const LiftSelectorColorScheme(
@@ -491,6 +494,7 @@ class _ServiceCardState extends State<ServiceCard> {
           scale: DeviceConfig.liftSelectorScale(),
           child: LiftSelectorPanel(
             emptyTextSize: 18,
+            ipadEmptyTextSize: 30,
             initialText: text,
             readOnly: true,
             colors: const LiftSelectorColorScheme(
