@@ -94,4 +94,14 @@ class DeviceConfig {
         return 1.0;
     }
   }
+
+  // Growth factor for the maintenance workspace's curved-border boxes
+  // (needs-PM/needs-repair/record-repair) - phone and tablet screens both
+  // have plenty of spare room around those cards, so their text and
+  // elements scale up rather than sitting at moto_g's baseline size.
+  static double get maintenanceBoxScale {
+    if (isIphone) return 1.4;
+    if (isIpad) return 1.8;
+    return 1.0;
+  }
 }

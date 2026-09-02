@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/device_config.dart';
 import '../../models/lift.dart';
 import '../../models/lift_maintenance_snapshot.dart';
 import '../../theme/app_colors.dart';
@@ -23,6 +24,8 @@ class SnapshotPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = DeviceConfig.maintenanceBoxScale;
+
     final needsAnnual = snapshot.needsAnnual == true;
     final needsPm = snapshot.upToDate != true;
 
@@ -51,7 +54,7 @@ class SnapshotPanel extends StatelessWidget {
         final buttonBoxWidthFactor =
             RepairCard.cardWidthFactor * RepairCard.notesRowWidthFactor;
         final buttonBoxWidth = constraints.maxWidth * buttonBoxWidthFactor;
-        const buttonClearance = 44.0;
+        final buttonClearance = 44.0 * scale;
 
         return Stack(
           children: [
@@ -64,6 +67,10 @@ class SnapshotPanel extends StatelessWidget {
                   child: CurvedStackCard(
                     color: color,
                     position: position,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: 18 * scale,
+                      vertical: 16 * scale,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -72,30 +79,35 @@ class SnapshotPanel extends StatelessWidget {
                           glyph: good
                               ? Icons.check_circle_outline
                               : Icons.warning_amber_outlined,
-                          glyphSize: 80,
+                          glyphSize: 80 * scale,
                           glyphAlignment: const Alignment(-1.3, -0.4),
+                          fontSize: 16 * scale,
                         ),
                         if (snapshot.pmId != null) ...[
-                          const SizedBox(height: 6),
+                          SizedBox(height: 6 * scale),
                           Wrap(
                             alignment: WrapAlignment.center,
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               UserAvatar(
                                 initials: snapshot.pmCompletedByInitials,
-                                radius: 10,
+                                radius: 10 * scale,
                                 color: AppColors.yellow,
                                 textColor: AppColors.main,
                               ),
-                              const SizedBox(width: 6),
-                              const Text(
+                              SizedBox(width: 6 * scale),
+                              Text(
                                 'on',
-                                style: TextStyle(color: AppColors.yellow),
+                                style: TextStyle(
+                                  color: AppColors.yellow,
+                                  fontSize: 14 * scale,
+                                ),
                               ),
-                              const SizedBox(width: 4),
+                              SizedBox(width: 4 * scale),
                               DateLabel(
                                 date: snapshot.pmCompletedAt,
                                 color: color,
+                                fontSize: 14 * scale,
                               ),
                             ],
                           ),
@@ -120,10 +132,10 @@ class SnapshotPanel extends StatelessWidget {
                         ),
                       );
                     },
-                    child: const Icon(
+                    child: Icon(
                       Icons.checklist,
                       color: AppColors.yellow,
-                      size: 26,
+                      size: 26 * scale,
                     ),
                   ),
                 ),

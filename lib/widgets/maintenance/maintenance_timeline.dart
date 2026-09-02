@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:timelines_plus/timelines_plus.dart';
 import 'timeline/timeline_event.dart';
+import '../../config/device_config.dart';
 import '../../theme/app_colors.dart';
 import '../date_label.dart';
 
@@ -70,6 +71,43 @@ class MaintenanceTimeline extends StatelessWidget {
     );
   }
 
+  // iPhone screens are narrow enough that the left-hand date column ate
+  // meaningfully into the card's own width, so on iPhone (DeviceConfig.
+  // isIphone) the date sits in its own row above the card instead - other
+  // devices (iPad, moto_g) keep the side-by-side layout since their extra
+  // width doesn't have that problem.
+  Widget _dateHeader(TimelineEvent event) {
+    final dates = event.displayDates;
+
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 4),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (var i = 0; i < dates.length; i++) ...[
+            if (i > 0) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6),
+                child: Text(
+                  'to',
+                  style: TextStyle(
+                    color: AppColors.yellow.withOpacity(.7),
+                    fontSize: _dateFontSize,
+                  ),
+                ),
+              ),
+            ],
+            DateLabel(
+              date: dates[i],
+              color: AppColors.yellow,
+              fontSize: _dateFontSize,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _indicatorIcon(TimelineEventType type) {
     const style = TextStyle(
       fontSize: 14,
@@ -87,11 +125,21 @@ class MaintenanceTimeline extends StatelessWidget {
       case TimelineEventType.annual:
         return const Text('AN', style: style);
       case TimelineEventType.rental:
-        return const Text('\$', style: TextStyle(
+        // The glyph sits visibly low in the fixed 30px circle on iPad
+        // specifically - nudge it back up rather than touching the shared
+        // vertical centering every other node relies on.
+        final dollarSign = const Text('\$', style: TextStyle(
           fontSize: 20,
           fontWeight: FontWeight.bold,
           color: AppColors.main,
         ));
+
+        return DeviceConfig.isIpad
+            ? Transform.translate(
+                offset: const Offset(0, -2),
+                child: dollarSign,
+              )
+            : dollarSign;
       case TimelineEventType.issue:
         return const Icon(Icons.build, size: 17, color: AppColors.main);
     }
@@ -143,8 +191,21 @@ class MaintenanceTimeline extends StatelessWidget {
                     ],
                 ),
 
-                child: Center(
-                    child: _indicatorIcon(events[index].type),
+                // iOS's "Bold Text" accessibility setting (on by default on
+                // the iPads this app is tested on) silently merges
+                // FontWeight.bold and a larger text scale onto every Text
+                // widget - "PM" then no longer fits this fixed 30px circle
+                // and gets clipped down to just "P". Same fix as
+                // base_card.dart's _noAccessibilityTextStyling: force both
+                // off for this node's label.
+                child: MediaQuery(
+                  data: MediaQuery.of(context).copyWith(
+                    textScaler: TextScaler.noScaling,
+                    boldText: false,
+                  ),
+                  child: Center(
+                      child: _indicatorIcon(events[index].type),
+                  ),
                 ),
                 );
             },
@@ -158,6 +219,17 @@ class MaintenanceTimeline extends StatelessWidget {
             contentsBuilder: (context,index) {
                 final event = events[index];
 
+                if (DeviceConfig.isIphone) {
+                  return Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                          _dateHeader(event),
+                          event.build(context),
+                      ],
+                  );
+                }
+
                 return Row(
                     mainAxisSize: MainAxisSize.min,
                     // The timeline node sits vertically centered within this
@@ -168,7 +240,11 @@ class MaintenanceTimeline extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                         _dateColumn(event),
-                        const SizedBox(width: 6),
+                        // iPad's date text runs wider than the 6px gap
+                        // leaves room for, so the card content starts too
+                        // soon and crowds the date node's right edge -
+                        // give iPad specifically more breathing room here.
+                        SizedBox(width: DeviceConfig.isIpad ? 18 : 6),
                         // A plain (non-flex) Row child gets an unbounded max
                         // width to measure its natural size, which breaks
                         // cards - like RentalTile - that use Expanded

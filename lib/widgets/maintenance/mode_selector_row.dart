@@ -37,10 +37,12 @@ class _ModeSelectorRowState<T> extends State<ModeSelectorRow<T>> {
 
   // "Rentals" is one of the longer labels and only just fits at the
   // regular size on the devices whose circles/text run bigger — shrink it
-  // there specifically rather than shrinking every label.
+  // there specifically rather than shrinking every label. "Annuals" gets
+  // the same treatment but on every device, not just those.
   double _fontSizeFor(String label) {
-    final needsShrink =
-        label == 'Rentals' && (DeviceConfig.isIpad || DeviceConfig.device == 'moto_g');
+    final needsShrink = label == 'Annuals' ||
+        (label == 'Rentals' &&
+            (DeviceConfig.isIpad || DeviceConfig.device == 'moto_g'));
     return needsShrink ? fontSize * 0.8 : fontSize;
   }
 

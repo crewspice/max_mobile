@@ -37,12 +37,15 @@ class UserAvatar extends StatelessWidget {
     return CircleAvatar(
       radius: radius,
       backgroundColor: color,
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: fontSize,
-          fontWeight: FontWeight.bold,
-          color: textColor,
+      child: Transform.translate(
+        offset: const Offset(0, -1),
+        child: Text(
+          text,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.bold,
+            color: textColor,
+          ),
         ),
       ),
     );

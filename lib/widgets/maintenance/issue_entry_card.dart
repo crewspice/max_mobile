@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../config/device_config.dart';
 import '../../services/api_service.dart';
 import '../../theme/app_colors.dart';
 import '../curved_stack_card.dart';
@@ -86,9 +87,9 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
     }
   }
 
-  Widget _buildNotesInput(Color color) {
+  Widget _buildNotesInput(Color color, double scale) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: EdgeInsets.symmetric(vertical: 8 * scale),
       child: Center(
         child: FractionallySizedBox(
           // Now that this card is narrowed to RepairCard.cardWidthFactor
@@ -106,13 +107,14 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
                   style: TextStyle(
                     color: color,
                     fontStyle: FontStyle.italic,
+                    fontSize: 14 * scale,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: 8 * scale),
               SizedBox(
-                width: 22,
-                height: 22,
+                width: 22 * scale,
+                height: 22 * scale,
                 child: GestureDetector(
                   onTap: () async {
                     final controller = TextEditingController(
@@ -195,8 +197,8 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
                   },
                   child: Image.asset(
                     'assets/notes.png',
-                    width: 20,
-                    height: 20,
+                    width: 20 * scale,
+                    height: 20 * scale,
                     color: color,
                   ),
                 ),
@@ -210,6 +212,7 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
 
   @override
   Widget build(BuildContext context) {
+    final scale = DeviceConfig.maintenanceBoxScale;
     final title = isRepair ? 'New Repair' : 'New Issue';
 
     final hasNotes = _notesController.text.trim().isNotEmpty;
@@ -231,20 +234,22 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
                 glyph: isRepair
                     ? Icons.build_outlined
                     : Icons.report_problem_outlined,
-                glyphSize: 130,
+                glyphSize: 130 * scale,
                 glyphAlignment: const Alignment(0, -1.0),
+                fontSize: 16 * scale,
               ),
-              const SizedBox(height: 12),
-              _buildNotesInput(AppColors.yellow),
-              const SizedBox(height: 12),
+              SizedBox(height: 12 * scale),
+              _buildNotesInput(AppColors.yellow, scale),
+              SizedBox(height: 12 * scale),
               FractionallySizedBox(
                 widthFactor: 0.8,
                 child: HoldToConfirmButton(
-                  icon: hasNotes ? const Icon(Icons.check) : null,
+                  icon: hasNotes ? Icon(Icons.check, size: 20 * scale) : null,
                   label: hasNotes ? 'Record' : 'Notes required',
                   baseColor: AppColors.main,
                   textColor: AppColors.yellow,
                   progressColor: AppColors.yellow,
+                  textSize: 14 * scale,
                   holdDuration: const Duration(seconds: 2),
                   enabled: hasNotes,
                   onConfirmed: _submit,

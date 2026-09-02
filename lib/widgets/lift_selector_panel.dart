@@ -549,7 +549,13 @@ class _LiftSelectorPanelState extends State<LiftSelectorPanel> {
             child:ConstrainedBox(
               constraints:BoxConstraints(
                 maxHeight:250,
-                maxWidth:MediaQuery.of(context).size.width * 0.6,
+                // Each pill is an Expanded child of a 2-per-row Row, so its
+                // width comes entirely from this container's width, not its
+                // own padding - iPhone has the screen room to spare, so
+                // widening this by 1.6x is what actually widens the pills
+                // and lets the longer serial labels stop truncating.
+                maxWidth:MediaQuery.of(context).size.width *
+                    (DeviceConfig.isIphone ? 0.6 * 1.6 : 0.6),
               ),
               child:Container(
                 margin:const EdgeInsets.only(top:8),

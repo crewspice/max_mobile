@@ -211,6 +211,8 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         backgroundColor: AppColors.mainBackground,
         foregroundColor: AppColors.red,
+        surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         centerTitle: true,
         title: ShaderMask(
           shaderCallback: (bounds) {
