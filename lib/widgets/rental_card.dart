@@ -85,6 +85,23 @@ class _RentalCardState extends State<RentalCard> {
       widget.stop.status == 'Called Off' &&
       (widget.stop.serialNumber?.trim() == 'noPref');
 
+  // Dispatch appends "?" to a designated pickup's serialNumber when the
+  // lift's proximity group still has other unresolved (Active) siblings at
+  // the site — the customer asked for a specific lift, but the driver may
+  // still find themselves grabbing the other one. Never shown on screen.
+  bool get _hasDesignatedAmbiguity =>
+      !widget.completedView &&
+      !widget.unassignedView &&
+      widget.stop.status == 'Called Off' &&
+      (widget.stop.serialNumber?.trim().endsWith('?') ?? false);
+
+  String _stripAmbiguityMarker(String? raw) {
+    final serial = (raw ?? '').trim();
+    return serial.endsWith('?')
+        ? serial.substring(0, serial.length - 1)
+        : serial;
+  }
+
   Future<File?> _pickImage({bool camera = true}) async {
     final picker = ImagePicker();
     final pickedFile = await picker.pickImage(
@@ -212,7 +229,10 @@ class _RentalCardState extends State<RentalCard> {
     if (success) await widget.onRefresh();
   }
 
-  Future<void> _openLiftOptionPicker(BuildContext context) async {
+  Future<void> _openLiftOptionPicker(
+    BuildContext context, {
+    String? requestedSerial,
+  }) async {
     final api = ApiService();
     final options = await api.fetchLiftOptionsForRental(widget.stop.id);
 
@@ -279,6 +299,20 @@ class _RentalCardState extends State<RentalCard> {
                           fontSize: 16,
                         ),
                       ),
+                      if (requestedSerial != null && requestedSerial.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: Text(
+                            'Customer requested lift $requestedSerial — tap it '
+                            'again to confirm, or choose a different one below.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: elementColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
                       const SizedBox(height: 12),
                       SizedBox(
                         width: double.infinity,
@@ -292,6 +326,7 @@ class _RentalCardState extends State<RentalCard> {
                                 dialogContext,
                                 option,
                                 elementColor,
+                                isRequested: option.serialNumber == requestedSerial,
                               ),
                           ],
                         ),
@@ -324,8 +359,9 @@ class _RentalCardState extends State<RentalCard> {
   Widget _buildLiftOptionTile(
     BuildContext context,
     LiftOption option,
-    Color color,
-  ) {
+    Color color, {
+    bool isRequested = false,
+  }) {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.pop(context, option),
@@ -333,9 +369,14 @@ class _RentalCardState extends State<RentalCard> {
         width: 92,
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
         decoration: BoxDecoration(
-          color: AppColors.mainBackground.withOpacity(0.5),
+          color: isRequested
+              ? color.withOpacity(0.18)
+              : AppColors.mainBackground.withOpacity(0.5),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: color.withOpacity(0.6)),
+          border: Border.all(
+            color: isRequested ? color : color.withOpacity(0.6),
+            width: isRequested ? 2 : 1,
+          ),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -358,6 +399,17 @@ class _RentalCardState extends State<RentalCard> {
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
             ),
+            if (isRequested) ...[
+              const SizedBox(height: 2),
+              Text(
+                'Requested',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -594,7 +646,7 @@ class _RentalCardState extends State<RentalCard> {
               child: LiftSelectorPanel(
                 emptyTextSize: 18,
                 ipadEmptyTextSize: 30,
-                initialText: widget.stop.serialNumber ?? '',
+                initialText: _stripAmbiguityMarker(widget.stop.serialNumber),
                 readOnly: true,
                 colors: LiftSelectorColorScheme(
                   ball: elementColor,
@@ -641,6 +693,10 @@ class _RentalCardState extends State<RentalCard> {
               ),
             );
     } else if (!requiresSerial && widget.stop.status != "Upcoming") {
+      // Covers the designated-but-ambiguous case too — the serial always
+      // stays visible read-only here (no disambiguation is required), and
+      // reflects a corrected pick if the driver used the optional Select
+      // action in the ribbon.
       serialInput = Padding(
         padding: const EdgeInsets.symmetric(vertical: 6.0),
         child: Center(
@@ -651,7 +707,8 @@ class _RentalCardState extends State<RentalCard> {
               child: LiftSelectorPanel(
                 emptyTextSize: 18,
                 ipadEmptyTextSize: 30,
-                initialText: widget.stop.serialNumber ?? '',
+                initialText: _selectedSerial ??
+                    _stripAmbiguityMarker(widget.stop.serialNumber),
                 readOnly: true,
                 colors: LiftSelectorColorScheme(
                   ball: elementColor,
@@ -781,6 +838,25 @@ class _RentalCardState extends State<RentalCard> {
               : Icons.rule,
           color: elementColor,
           onPressed: () => _openLiftOptionPicker(context),
+        ),
+      );
+    }
+
+    // A specific lift was designated, but its proximity group still has an
+    // unresolved sibling nearby — offer the same picker, just optional and
+    // tucked at the end of the ribbon instead of required up front.
+    if (_hasDesignatedAmbiguity) {
+      actions.add(
+        ActionItem(
+          label: _selectedRentalId == null ? "Select" : "Selected",
+          icon: _selectedRentalId == null
+              ? Icons.question_mark
+              : Icons.rule,
+          color: elementColor,
+          onPressed: () => _openLiftOptionPicker(
+            context,
+            requestedSerial: _stripAmbiguityMarker(widget.stop.serialNumber),
+          ),
         ),
       );
     }

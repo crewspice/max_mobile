@@ -26,11 +26,16 @@ class ActionItem {
 class ActionRibbon extends StatefulWidget {
   final List<ActionItem> actions;
   final Color color;
+  // Multiplier on DeviceConfig.actionButtonWidth(), for callers that need
+  // narrower buttons than the app-wide default without changing every other
+  // ActionRibbon on the device.
+  final double buttonWidthScale;
 
   const ActionRibbon({
     super.key,
     required this.actions,
     required this.color,
+    this.buttonWidthScale = 1.0,
   });
 
   @override
@@ -72,7 +77,7 @@ class _ActionRibbonState extends State<ActionRibbon> {
 
                   // reserve space for two buttons + gap
                   final calculatedButtonWidth =
-                      DeviceConfig.actionButtonWidth();
+                      DeviceConfig.actionButtonWidth() * widget.buttonWidthScale;
 
                   final groupWidth = visible.length == 2
                       ? calculatedButtonWidth * 2 + dynamicGap

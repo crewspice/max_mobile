@@ -13,6 +13,7 @@ import '../models/inventory_item.dart';
 import '../models/lift_option.dart';
 import '../models/chat_message.dart';
 import '../models/site_resource_photos.dart';
+import '../models/photo_analysis_score.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:flutter/foundation.dart';
 
@@ -680,6 +681,23 @@ class ApiService {
       return SiteResourcePhotos.fromJson(decoded);
     } catch (e) {
       return SiteResourcePhotos(hasHelpfulPhotos: false, photos: []);
+    }
+  }
+
+  /// The previously-computed delivery-photo usefulness score for a rental,
+  /// or null if it hasn't been scored yet (or on any error). Never triggers
+  /// a new analysis - see ImageController's /images/deliveries/score/{id}.
+  Future<PhotoAnalysisScore?> fetchDeliveryImageScore(int rentalId) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$photoAnalysisUrl/score/$rentalId'));
+      if (response.statusCode != 200) {
+        return null;
+      }
+      final decoded = json.decode(utf8.decode(response.bodyBytes));
+      return PhotoAnalysisScore.fromJson(decoded);
+    } catch (e) {
+      return null;
     }
   }
 

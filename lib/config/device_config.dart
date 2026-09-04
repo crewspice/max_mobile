@@ -109,4 +109,13 @@ class DeviceConfig {
   // user-avatar circles inside its event cards - iPad only, since that's
   // the only device with enough spare width for bigger nodes.
   static double get timelineNodeScale => isIpad ? 1.5 : 1.0;
+
+  // Growth factor for the yard list pull-up's item rows (serial number +
+  // status label) - phone and tablet both have room to make these easier to
+  // read at a glance than moto_g's baseline size.
+  static double get yardListRowTextScale {
+    if (isIphone) return 1.5;
+    if (isIpad) return 2.2;
+    return 1.0;
+  }
 }

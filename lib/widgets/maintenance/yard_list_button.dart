@@ -123,9 +123,10 @@ class _YardListSheet extends StatefulWidget {
 
 class _YardListSheetState extends State<_YardListSheet> {
   // Fixed row heights let the scroll position map directly to a section
-  // index without measuring rendered widgets.
+  // index without measuring rendered widgets. The row height grows with
+  // DeviceConfig.yardListRowTextScale so the bigger row text still fits.
   static const double _headerHeight = 40;
-  static const double _rowHeight = 52;
+  static double get _rowHeight => 52 * DeviceConfig.yardListRowTextScale;
 
   // The remaining lift types top out at a handful of units each, so their
   // scroll position is close enough to a neighboring type here that they
@@ -280,6 +281,7 @@ class _YardListSheetState extends State<_YardListSheet> {
                 ? ActionRibbon(
                     key: const ValueKey('options'),
                     color: AppColors.yellow,
+                    buttonWidthScale: DeviceConfig.isIpad ? 0.75 : 1.0,
                     actions: [
                       ActionItem(
                         label: 'Yard List',
@@ -438,6 +440,7 @@ class _YardListSheetState extends State<_YardListSheet> {
                     final statusLabel = item.needsRepair
                         ? 'Needs Repair'
                         : (item.upToDate ? 'Up to date' : 'Needs PM');
+                    final rowTextScale = DeviceConfig.yardListRowTextScale;
 
                     return SizedBox(
                       height: _rowHeight,
@@ -456,18 +459,21 @@ class _YardListSheetState extends State<_YardListSheet> {
                             dense: true,
                             leading: Icon(
                               Icons.circle,
-                              size: 12,
+                              size: 12 * rowTextScale,
                               color: flagged ? AppColors.red : AppColors.green,
                             ),
                             title: Text(
                               item.serialNumber ?? '',
-                              style: const TextStyle(color: AppColors.yellow),
+                              style: TextStyle(
+                                color: AppColors.yellow,
+                                fontSize: 16 * rowTextScale,
+                              ),
                             ),
                             trailing: Text(
                               statusLabel,
                               style: TextStyle(
                                 color: flagged ? AppColors.red : AppColors.green,
-                                fontSize: 12,
+                                fontSize: 12 * rowTextScale,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),

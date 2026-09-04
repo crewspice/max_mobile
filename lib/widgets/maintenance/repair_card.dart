@@ -15,7 +15,11 @@ class RepairCard extends StatefulWidget {
   // exposed so SnapshotPanel's checklist button and IssueEntryCard's notes
   // row can size themselves to x-align with this card's notes line instead
   // of guessing a matching fraction.
-  static const double cardWidthFactor = 0.68;
+  // iPhone gets these boxes 4/3x wider than the moto_g/iPad baseline - the
+  // narrower screen otherwise leaves the record/repair cards looking
+  // cramped relative to maintenanceBoxScale's already-enlarged text.
+  static double get cardWidthFactor =>
+      DeviceConfig.isIphone ? 0.68 * 4 / 3 : 0.68;
   // How much of this card's own (already narrowed) width the notes/resolve
   // controls occupy - combined with cardWidthFactor above, this is the
   // fraction of the full stack width other cards should match to x-align
@@ -256,6 +260,19 @@ class _RepairCardState extends State<RepairCard> {
                     textSize: 14 * scale,
                     holdDuration: const Duration(seconds: 2),
                     onConfirmed: () async {
+                      if (!_noRepairNeeded &&
+                          (_repairNotes ?? '').isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              "Either record repair notes or check "
+                              "'No Repair Needed'",
+                            ),
+                          ),
+                        );
+                        return;
+                      }
+
                       await ApiService().resolveMaintenanceAction(
                         actionId: widget.action.actionId!,
                         resolvedByInitial: widget.currentUserId,

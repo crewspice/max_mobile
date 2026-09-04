@@ -46,6 +46,22 @@ class _ServiceCardState extends State<ServiceCard> {
       !widget.unassignedView &&
       (_stop.serialNumber?.trim() == 'noPref');
 
+  // Dispatch appends "?" to a designated lift's serialNumber when its
+  // proximity group still has other unresolved (Active) siblings at the
+  // site — the customer asked for a specific lift, but the driver may still
+  // find themselves working on the other one. Never shown on screen.
+  bool get _hasDesignatedAmbiguity =>
+      !widget.completedView &&
+      !widget.unassignedView &&
+      (_stop.serialNumber?.trim().endsWith('?') ?? false);
+
+  String _stripAmbiguityMarker(String? raw) {
+    final serial = (raw ?? '').trim();
+    return serial.endsWith('?')
+        ? serial.substring(0, serial.length - 1)
+        : serial;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -127,7 +143,10 @@ class _ServiceCardState extends State<ServiceCard> {
     }
   }
 
-  Future<void> _openLiftOptionPicker(BuildContext context) async {
+  Future<void> _openLiftOptionPicker(
+    BuildContext context, {
+    String? requestedSerial,
+  }) async {
     final api = ApiService();
     final options = await api.fetchLiftOptionsForService(_stop.id);
 
@@ -171,9 +190,27 @@ class _ServiceCardState extends State<ServiceCard> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
+              if (requestedSerial != null && requestedSerial.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Text(
+                    'Customer requested you ${_noPreferenceVerb()} lift '
+                    '$requestedSerial — tap it again to confirm, or choose a '
+                    'different one below.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: AppColors.green,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
               const SizedBox(height: 4),
               for (final option in options)
                 ListTile(
+                  tileColor: option.serialNumber == requestedSerial
+                      ? AppColors.green.withOpacity(0.15)
+                      : null,
                   title: Text(
                     option.liftType,
                     style: const TextStyle(
@@ -185,6 +222,16 @@ class _ServiceCardState extends State<ServiceCard> {
                     option.serialNumber,
                     style: const TextStyle(color: AppColors.green),
                   ),
+                  trailing: option.serialNumber == requestedSerial
+                      ? const Text(
+                          'Requested',
+                          style: TextStyle(
+                            color: AppColors.green,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : null,
                   onTap: () => Navigator.pop(context, option),
                 ),
               const SizedBox(height: 10),
@@ -390,6 +437,25 @@ class _ServiceCardState extends State<ServiceCard> {
       );
     }
 
+    // A specific lift was designated, but its proximity group still has an
+    // unresolved sibling nearby — offer the same picker, just optional and
+    // tucked at the end of the ribbon instead of required up front.
+    if (_hasDesignatedAmbiguity) {
+      actions.add(
+        ActionItem(
+          label: _selectedRentalId == null ? "Select" : "Selected",
+          icon: _selectedRentalId == null
+              ? Icons.question_mark
+              : Icons.rule,
+          color: AppColors.green,
+          onPressed: () => _openLiftOptionPicker(
+            context,
+            requestedSerial: _stripAmbiguityMarker(_stop.serialNumber),
+          ),
+        ),
+      );
+    }
+
     Widget serialInput = Container();
 
     if (!widget.completedView &&
@@ -436,7 +502,8 @@ class _ServiceCardState extends State<ServiceCard> {
             child: LiftSelectorPanel(
               emptyTextSize: 18,
               ipadEmptyTextSize: 30,
-              initialText: _stop.serialNumber ?? '',
+              initialText:
+                  _selectedSerial ?? _stripAmbiguityMarker(_stop.serialNumber),
               readOnly: true,
               colors: LiftSelectorColorScheme(
                 ball: AppColors.green,

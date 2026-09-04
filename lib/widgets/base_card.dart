@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 import '../models/stop.dart';
+import '../models/photo_analysis_score.dart';
 import 'package:intl/intl.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../widgets/hold_to_confirm_button.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../config/device_config.dart';
 
 const String _deliveryMarker = '[[DELIVERED]]';
@@ -61,6 +61,12 @@ class _BaseCardState extends State<BaseCard> {
   Timer? _devToggleTimer;
   bool _showDevFields = false;
 
+  // Fetched lazily the first time dev fields are shown for this card - the
+  // score endpoint is keyed by rentalId, so this only applies to RENTAL
+  // stops (a SERVICE stop's id isn't a rentalId).
+  PhotoAnalysisScore? _imageScore;
+  bool _imageScoreLoading = false;
+
   Stop get stop => widget.stop;
   List<Widget> get extraContent => widget.extraContent;
   List<Widget> get actionButtons => widget.actionButtons;
@@ -76,6 +82,7 @@ class _BaseCardState extends State<BaseCard> {
         if (!mounted || _activePointers.length != 2) return;
         setState(() => _showDevFields = !_showDevFields);
         HapticFeedback.mediumImpact();
+        if (_showDevFields) _loadImageScore();
       });
     } else {
       _devToggleTimer?.cancel();
@@ -105,6 +112,24 @@ class _BaseCardState extends State<BaseCard> {
   void dispose() {
     _devToggleTimer?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadImageScore() async {
+    // Upcoming rentals haven't been delivered yet, so there's no photo to
+    // have scored - skip the call rather than fetching a guaranteed 404.
+    if (_imageScore != null ||
+        _imageScoreLoading ||
+        stop.type != "RENTAL" ||
+        stop.status == "Upcoming") {
+      return;
+    }
+    _imageScoreLoading = true;
+    final result = await ApiService().fetchDeliveryImageScore(stop.id);
+    if (!mounted) return;
+    setState(() {
+      _imageScore = result;
+      _imageScoreLoading = false;
+    });
   }
 
   Future<void> _launchDialer(BuildContext context, String phone) async {
@@ -375,6 +400,59 @@ class _BaseCardState extends State<BaseCard> {
     );
   }
 
+  // Dev-mode replacement for the contacts column: how the backend's AI
+  // photo analysis scored this rental's delivery photo as a future
+  // "previous site photo" resource. See ImageService.analyzePhotoAsync.
+  Widget _buildImageScoreColumn(Color elementColor) {
+    final labelStyle =
+        TextStyle(fontWeight: FontWeight.bold, color: elementColor);
+    final valueStyle = TextStyle(color: elementColor);
+
+    if (stop.type != "RENTAL") {
+      return Text("Photo score:\nN/A (service)",
+          style: valueStyle, textAlign: TextAlign.center);
+    }
+
+    if (stop.status == "Upcoming") {
+      return Text("Photo score:\nNo photo yet",
+          style: valueStyle, textAlign: TextAlign.center);
+    }
+
+    if (_imageScoreLoading) {
+      return Text("Photo score:\nLoading...",
+          style: valueStyle, textAlign: TextAlign.center);
+    }
+
+    final score = _imageScore;
+    if (score == null) {
+      return Text("Photo score:\nNot scored yet",
+          style: valueStyle, textAlign: TextAlign.center);
+    }
+
+    final helpful = score.isHelpfulSiteResource;
+    final verdict = helpful == null
+        ? score.status ?? 'Unknown'
+        : (helpful ? 'Helpful' : 'Not helpful');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text("Photo score:", style: labelStyle),
+        Text(
+          score.confidence != null
+              ? '$verdict (${score.confidence}%)'
+              : verdict,
+          style: valueStyle,
+        ),
+        if ((score.reason ?? '').isNotEmpty)
+          Text(
+            score.reason!,
+            style: valueStyle.copyWith(fontStyle: FontStyle.italic, fontSize: 12),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Listener(
@@ -528,7 +606,18 @@ class _BaseCardState extends State<BaseCard> {
                             fontWeight: FontWeight.bold,
                             color: elementColor,
                           )),
-                      if (stop.time != null && stop.time!.isNotEmpty)
+                      if (_showDevFields)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Text(
+                            'PO: ${stop.poNumber ?? "none"}',
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: elementColor),
+                          ),
+                        )
+                      else if (stop.time != null && stop.time!.isNotEmpty)
                         Padding(
                           padding: const EdgeInsets.only(left: 8.0),
                           child: Text(
@@ -717,10 +806,12 @@ class _BaseCardState extends State<BaseCard> {
                           ),
                           const SizedBox(width: 12),
 
-                          // Contacts
+                          // Contacts (dev mode: photo usefulness score instead)
                           Expanded(
                             flex: 5,
-                            child: Column(
+                            child: _showDevFields
+                                ? _buildImageScoreColumn(elementColor)
+                                : Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (stop.orderedByContactName != null ||

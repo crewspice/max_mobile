@@ -37,6 +37,7 @@ class Stop {
   final int? driverNumber;
   final String? truck;
   final bool hasPhoto;
+  final String? poNumber;
 
   Stop({
     required this.id,
@@ -71,6 +72,7 @@ class Stop {
     this.driverNumber,
     this.truck,
     this.hasPhoto = false, // default false
+    this.poNumber,
   });
 
 
@@ -108,6 +110,7 @@ class Stop {
     int? driverNumber,
     String? truck,
     bool? hasPhoto,
+    String? poNumber,
   }) {
     return Stop(
       id: id ?? this.id,
@@ -145,6 +148,7 @@ class Stop {
       driverNumber: driverNumber ?? this.driverNumber,
       truck: truck ?? this.truck,
       hasPhoto: hasPhoto ?? this.hasPhoto,
+      poNumber: poNumber ?? this.poNumber,
     );
   }
 
@@ -183,6 +187,7 @@ class Stop {
       driverNumber: json['driverNumber'],
       truck: json['truck'],
       hasPhoto: json['hasPhoto'] ?? false, // NEW: parse JSON or default
+      poNumber: json['poNumber'],
     );
   }
 
@@ -220,6 +225,7 @@ class Stop {
       "driverNumber": driverNumber,
       "truck": truck,
       "hasPhoto": hasPhoto, // NEW: include in JSON
+      "poNumber": poNumber,
     };
   }
 }
