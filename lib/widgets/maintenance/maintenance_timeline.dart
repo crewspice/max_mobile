@@ -13,10 +13,12 @@ class MaintenanceTimeline extends StatelessWidget {
   // Sized with headroom for the widest case at _dateFontSize (double-digit
   // month/day/year, e.g. "12·31·26") - a tighter width let that text
   // overflow into the card next to it on roughly half of all dates,
-  // whichever happened to land on double digits.
-  static const double _dateColumnWidth = 108;
+  // whichever happened to land on double digits. Scales with
+  // DeviceConfig.timelineContentScale to keep pace with the bigger date
+  // text on iPad.
+  static double get _dateColumnWidth => 108 * DeviceConfig.timelineContentScale;
 
-  static const double _dateFontSize = 18;
+  static double get _dateFontSize => 18 * DeviceConfig.timelineContentScale;
 
   const MaintenanceTimeline({
     super.key,
@@ -36,8 +38,12 @@ class MaintenanceTimeline extends StatelessWidget {
       child: Padding(
         // iPad gets more breathing room off the timeline's circle node too
         // - the default 8px reads as cramped once the node itself grows
-        // via DeviceConfig.timelineNodeScale.
-        padding: EdgeInsets.only(left: DeviceConfig.isIpad ? 16 : 8),
+        // via DeviceConfig.timelineNodeScale. Scales with the date
+        // column's own content scale so it keeps pace with the bigger
+        // date text.
+        padding: EdgeInsets.only(
+          left: DeviceConfig.isIpad ? 16 * DeviceConfig.timelineContentScale : 8,
+        ),
         // Shrink-wraps to the widest date line, so the "to" row below -
         // stretched to fill that same width - centers itself over the
         // actual date text rather than the fixed date column.
@@ -260,8 +266,13 @@ class MaintenanceTimeline extends StatelessWidget {
                         // iPad's date text runs wider than the 6px gap
                         // leaves room for, so the card content starts too
                         // soon and crowds the date node's right edge -
-                        // give iPad specifically more breathing room here.
-                        SizedBox(width: DeviceConfig.isIpad ? 32 : 6),
+                        // give iPad specifically more breathing room here,
+                        // scaling with the date column's own content scale.
+                        SizedBox(
+                          width: DeviceConfig.isIpad
+                              ? 32 * DeviceConfig.timelineContentScale
+                              : 6,
+                        ),
                         // A plain (non-flex) Row child gets an unbounded max
                         // width to measure its natural size, which breaks
                         // cards - like RentalTile - that use Expanded

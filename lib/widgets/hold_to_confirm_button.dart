@@ -14,6 +14,11 @@ class HoldToConfirmButton extends StatefulWidget {
   final bool enabled;
   final bool circular;
   final double diameter;
+  // Fires on a tap while the button is disabled - e.g. to surface why the
+  // hold didn't start, on top of (or instead of) the disabled label already
+  // communicating it. Null (the default) means "do nothing", the previous
+  // behavior for every existing caller.
+  final VoidCallback? onDisabledTap;
 
   const HoldToConfirmButton({
     super.key,
@@ -29,6 +34,7 @@ class HoldToConfirmButton extends StatefulWidget {
     this.enabled = true,
     this.circular = false,
     this.diameter = 76,
+    this.onDisabledTap,
   });
 
   @override
@@ -57,7 +63,10 @@ class _HoldToConfirmButtonState extends State<HoldToConfirmButton>
   }
 
   void _onTapDown(TapDownDetails details) {
-    if (!widget.enabled) return;
+    if (!widget.enabled) {
+      widget.onDisabledTap?.call();
+      return;
+    }
     _controller.forward();
   }
 

@@ -105,10 +105,17 @@ class DeviceConfig {
     return 1.0;
   }
 
-  // Growth factor for the maintenance timeline's circular nodes and the
-  // user-avatar circles inside its event cards - iPad only, since that's
-  // the only device with enough spare width for bigger nodes.
+  // Growth factor for the maintenance timeline's circular nodes - iPad
+  // only, since that's the only device with enough spare width for bigger
+  // nodes.
   static double get timelineNodeScale => isIpad ? 1.5 : 1.0;
+
+  // Growth factor for the maintenance timeline's date column and event
+  // cards (including the user-avatar circles inside them) - iPad only.
+  // Kept separate from timelineNodeScale above since the timeline's own
+  // circular indicator node is already a good size on iPad and shouldn't
+  // grow any further.
+  static double get timelineContentScale => isIpad ? 1.6 : 1.0;
 
   // Growth factor for the yard list pull-up's item rows (serial number +
   // status label) - phone and tablet both have room to make these easier to

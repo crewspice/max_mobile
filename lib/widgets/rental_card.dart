@@ -594,6 +594,8 @@ class _RentalCardState extends State<RentalCard> {
       context: context,
       color: elementColor,
       stopType: stopType,
+      rentalId: widget.stop.id,
+      driverId: widget.stop.driverId,
       onCancel: (onArrival) => ApiService().recordCancellation(
         rentalId: widget.stop.id.toString(),
         truck: widget.stop.truck ?? "null",

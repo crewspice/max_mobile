@@ -9,8 +9,7 @@ import 'user_selection_screen.dart';
 import 'completed_stops_screen.dart';
 import 'menu_screen.dart';
 import '../theme/app_colors.dart';
-import '../services/api_service.dart';
-import '../utils/shop_geofence.dart' as shop_geofence;
+import '../utils/driver_route_status.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
@@ -78,33 +77,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   // Unlocked only by real production conditions - active route, truck away
-  // from shop, phone GPS within range of the truck.
-  Future<bool> _computeDriverChatUnlock() async {
-    try {
-      final status = await ApiService().fetchShopStatus(widget.currentUserId);
-      final position = await shop_geofence.getCurrentPosition();
-
-      final hasActiveRoute = status['hasActiveRoute'] == true;
-      final truckNearShop = status['truckNearShop'] == true;
-      final truckLat = (status['truckLat'] as num?)?.toDouble();
-      final truckLng = (status['truckLng'] as num?)?.toDouble();
-
-      if (!hasActiveRoute || truckNearShop || position == null ||
-          truckLat == null || truckLng == null) {
-        return false;
-      }
-
-      final distance = shop_geofence.distanceBetweenMiles(
-        position.latitude,
-        position.longitude,
-        truckLat,
-        truckLng,
-      );
-
-      return distance <= shop_geofence.kNearTruckThresholdMiles;
-    } catch (_) {
-      return false;
-    }
+  // from shop, phone GPS within range of the truck. Shared with the cancel
+  // dialog's cancellation-fee display via isDriverOnRoute.
+  Future<bool> _computeDriverChatUnlock() {
+    return isDriverOnRoute(widget.currentUserId);
   }
 
   // Periodic background refresh - just keeps _driverChatUnlocked current so

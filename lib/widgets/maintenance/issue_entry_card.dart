@@ -5,6 +5,7 @@ import '../../theme/app_colors.dart';
 import '../curved_stack_card.dart';
 import '../hold_to_confirm_button.dart';
 import '../watermark_title.dart';
+import 'maintenance_dialogs.dart';
 import 'repair_card.dart';
 
 enum IssueEntryMode { issue, repair }
@@ -117,76 +118,12 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
                 height: 22 * scale,
                 child: GestureDetector(
                   onTap: () async {
-                    final controller = TextEditingController(
-                      text: _notesController.text,
-                    );
-
-                    final notes = await showDialog<String>(
-                      context: context,
-                      builder: (context) {
-                        return AlertDialog(
-                          backgroundColor: color,
-                          title: const Text(
-                            "Edit Notes",
-                            style: TextStyle(
-                              color: AppColors.main,
-                            ),
-                          ),
-                          content: SizedBox(
-                            width: 300,
-                            child: TextField(
-                              controller: controller,
-                              maxLines: 5,
-                              autofocus: true,
-                              style: const TextStyle(
-                                color: AppColors.main,
-                              ),
-                              cursorColor: AppColors.main,
-                              decoration: const InputDecoration(
-                                hintText: "Enter notes...",
-                                hintStyle: TextStyle(
-                                  color: AppColors.main,
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: AppColors.main,
-                                  ),
-                                ),
-                                focusedBorder: OutlineInputBorder(
-                                  borderSide: BorderSide(
-                                    color: AppColors.main,
-                                    width: 2,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: const Text(
-                                "Cancel",
-                                style: TextStyle(
-                                  color: AppColors.main,
-                                ),
-                              ),
-                            ),
-                            ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppColors.main,
-                                foregroundColor: color,
-                              ),
-                              onPressed: () {
-                                Navigator.pop(
-                                  context,
-                                  controller.text.trim(),
-                                );
-                              },
-                              child: const Text("Save"),
-                            ),
-                          ],
-                        );
-                      },
+                    final notes = await showNotesDialog(
+                      context,
+                      title: "Edit Notes",
+                      initialValue: _notesController.text,
+                      hintText: "Enter notes...",
+                      color: color,
                     );
 
                     if (notes == null) return;
@@ -245,13 +182,32 @@ class _IssueEntryCardState extends State<IssueEntryCard> {
                 widthFactor: 0.8,
                 child: HoldToConfirmButton(
                   icon: hasNotes ? Icon(Icons.check, size: 20 * scale) : null,
-                  label: hasNotes ? 'Record' : 'Notes required',
+                  // iPhone's narrower button has no room for "Notes
+                  // required" without crowding - it just stays labeled
+                  // "Record" (still disabled until notes are entered) and
+                  // relies on onDisabledTap below to explain why instead.
+                  label: hasNotes || DeviceConfig.isIphone
+                      ? 'Record'
+                      : 'Notes required',
                   baseColor: AppColors.main,
                   textColor: AppColors.yellow,
                   progressColor: AppColors.yellow,
                   textSize: 14 * scale,
                   holdDuration: const Duration(seconds: 2),
                   enabled: hasNotes,
+                  onDisabledTap: DeviceConfig.isIphone
+                      ? () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              backgroundColor: AppColors.mainBackground,
+                              content: Text(
+                                'Notes are required before recording',
+                                style: TextStyle(color: AppColors.red),
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
                   onConfirmed: _submit,
                 ),
               ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../config/device_config.dart';
 import '../../../models/lift_rental_history_item.dart';
 import '../../../theme/app_colors.dart';
 import '../../ornate_card.dart';
@@ -10,8 +11,10 @@ class RentalTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scale = DeviceConfig.timelineContentScale;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: EdgeInsets.symmetric(vertical: 10 * scale),
       // Without this, the card stretches to fill whatever width the
       // timeline's flexible content slot hands it instead of hugging its
       // own text.
@@ -19,20 +22,20 @@ class RentalTile extends StatelessWidget {
         child: OrnateCard(
           color: AppColors.mainLight,
           child: Padding(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(8 * scale),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   rental.customerName ?? "Rental",
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
-                    fontSize: 17,
+                    fontSize: 17 * scale,
                   ),
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: 8 * scale),
                 Text(
                   [
                     rental.siteName,
@@ -40,18 +43,20 @@ class RentalTile extends StatelessWidget {
                     rental.city,
                   ].where((e) => e != null && e!.isNotEmpty).join("\n"),
                   softWrap: true,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.yellow,
+                    fontSize: 14 * scale,
                   ),
                 ),
                 if (rental.endDate == null || rental.status != null) ...[
-                  const SizedBox(height: 8),
+                  SizedBox(height: 8 * scale),
                   Text(
                     rental.status ??
                         (rental.endDate == null ? "Still on Rent" : ""),
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: AppColors.yellow,
                       fontWeight: FontWeight.bold,
+                      fontSize: 14 * scale,
                     ),
                   ),
                 ],

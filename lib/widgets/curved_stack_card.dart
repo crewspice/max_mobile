@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import '../config/device_config.dart';
 import 'beaded_dot_border_painter.dart';
 
 // Where a card sits within a vertical stack of related cards (e.g. the
@@ -114,8 +115,16 @@ class _RoundedRectShape extends CustomClipper<Path> {
   double _effectiveRadius(Size size) {
     if (size.width <= 0) return radius;
 
-    final aspectRatio = size.height / size.width;
     final maxRadius = math.min(size.width, size.height) / 2;
+
+    // iPhone's narrower screen pushes ordinary-height boxes to a much
+    // higher height:width ratio than the same box hits on iPad/moto_g, so
+    // the ratio-driven growth below rounds them into a full pill and clips
+    // into the top/bottom border lines. Skip the growth on iPhone and hold
+    // at a flat (still rounded) radius regardless of aspect ratio.
+    if (DeviceConfig.isIphone) return math.min(radius, maxRadius);
+
+    final aspectRatio = size.height / size.width;
 
     if (aspectRatio <= _flatAspectRatio) return math.min(radius, maxRadius);
 

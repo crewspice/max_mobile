@@ -25,12 +25,15 @@ class IssueTile extends StatelessWidget {
   }
 
   Text _line(String text, {bool italic = false}) {
+    final scale = DeviceConfig.timelineContentScale;
+
     return Text(
       text,
       textAlign: TextAlign.start,
       style: TextStyle(
         color: AppColors.yellow,
         fontStyle: italic ? FontStyle.italic : FontStyle.normal,
+        fontSize: 14 * scale,
       ),
     );
   }
@@ -39,12 +42,14 @@ class IssueTile extends StatelessWidget {
   // is redundant, so the name only appears when there's no avatar to fall
   // back on.
   Widget _personRow(String text, {String? initials}) {
+    final scale = DeviceConfig.timelineContentScale;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
+      padding: EdgeInsets.symmetric(vertical: 2 * scale),
       child: initials != null
           ? UserAvatar(
               initials: initials,
-              radius: 10 * DeviceConfig.timelineNodeScale,
+              radius: 10 * scale,
               color: AppColors.yellow,
               textColor: AppColors.main,
             )
@@ -163,9 +168,11 @@ class IssueTile extends StatelessWidget {
 
     if (hasLinesBelowSeparator) {
       lines.add(
-        const Padding(
-          padding: EdgeInsets.symmetric(vertical: 6),
-          child: Divider(color: AppColors.yellow, height: 1),
+        Padding(
+          padding: EdgeInsets.symmetric(
+            vertical: 6 * DeviceConfig.timelineContentScale,
+          ),
+          child: const Divider(color: AppColors.yellow, height: 1),
         ),
       );
     }
@@ -234,15 +241,22 @@ class IssueTile extends StatelessWidget {
             ? _serviceOrderedLines()
             : _defaultOrderedLines();
 
+    final scale = DeviceConfig.timelineContentScale;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
+      padding: EdgeInsets.symmetric(vertical: 4 * scale),
       child: OrnateCard(
         color: AppColors.mainLight,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(12, 14, 12, 12),
+              padding: EdgeInsets.fromLTRB(
+                12 * scale,
+                14 * scale,
+                12 * scale,
+                12 * scale,
+              ),
               child: IntrinsicWidth(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,39 +265,39 @@ class IssueTile extends StatelessWidget {
               ),
             ),
             Positioned(
-              top: -6,
-              left: 2,
+              top: -6 * scale,
+              left: 2 * scale,
               child: Text(
                 issue.resolved ? 'Resolved' : 'Unresolved',
                 style: TextStyle(
                   color: issue.resolved ? Colors.white : AppColors.red,
-                  fontSize: 11,
+                  fontSize: 11 * scale,
                   fontWeight: FontWeight.bold,
                 ),
               ),
             ),
             if (issue.partAction != null)
               Positioned(
-                bottom: -6,
-                left: 2,
+                bottom: -6 * scale,
+                left: 2 * scale,
                 child: Text(
                   _pastParticiple(issue.partAction!),
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: 11 * scale,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             if (issue.quantity != null && issue.quantity != 0)
               Positioned(
-                bottom: -6,
-                right: 2,
+                bottom: -6 * scale,
+                right: 2 * scale,
                 child: Text(
                   'x${issue.quantity}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppColors.yellow,
-                    fontSize: 11,
+                    fontSize: 11 * scale,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

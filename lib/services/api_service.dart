@@ -168,6 +168,25 @@ class ApiService {
   /// Whether the signed-in driver has an active route, and whether their
   /// assigned truck is near the shop (with the truck's own lat/lng so the
   /// caller can compare it against the phone's current location).
+  // The rental's delivery price, used as the cancel dialog's cancellation
+  // fee - null if the rental/customer/site/pricing chain can't resolve one
+  // (missing price schedule, no matching pricing row, etc).
+  Future<double?> fetchCancellationFee(int rentalId) async {
+    try {
+      final response =
+          await http.get(Uri.parse('$baseUrl/$rentalId/cancellation-fee'));
+
+      if (response.statusCode != 200) return null;
+
+      final data =
+          json.decode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final price = data['deliveryPrice'];
+      return price == null ? null : (price as num).toDouble();
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>> fetchShopStatus(String driverId) async {
     final response = await http.get(
       Uri.parse("$routeUrl/driver/$driverId/shop-status"),
