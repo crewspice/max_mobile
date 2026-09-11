@@ -465,32 +465,6 @@ class _RentalCardState extends State<RentalCard> {
     );
   }
 
-  void _showFullImage(BuildContext context, Color elementColor, String imageUrl) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: elementColor,
-          child: Padding(
-            padding: const EdgeInsets.all(6),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: Image.network(
-                imageUrl,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Text('Image not found or failed to load.'),
-                  );
-                },
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   void _showSiteResourcePhotos(BuildContext context) {
     final Color elementColor =
         widget.stop.status == "Active"
@@ -500,80 +474,12 @@ class _RentalCardState extends State<RentalCard> {
                 : AppColors.red);
 
     final photos = _siteResourcePhotos?.photos ?? [];
+    if (photos.isEmpty) return;
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: elementColor,
-          child: Padding(
-            padding: const EdgeInsets.all(12),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 500),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      'Previous Site Photos',
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  Flexible(
-                    child: ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: photos.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final photo = photos[index];
-                        return GestureDetector(
-                          onTap: () =>
-                              _showFullImage(context, elementColor, photo.imageUrl),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  photo.imageUrl,
-                                  height: 140,
-                                  width: double.infinity,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (context, error, stackTrace) =>
-                                      const Padding(
-                                    padding: EdgeInsets.all(12),
-                                    child:
-                                        Text('Image not found or failed to load.'),
-                                  ),
-                                ),
-                              ),
-                              if (photo.reason.isNotEmpty)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    photo.reason,
-                                    style: const TextStyle(
-                                        color: Colors.black87, fontSize: 12),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
+      builder: (BuildContext context) =>
+          _SiteResourcePhotoViewer(photos: photos, color: elementColor),
     );
   }
 
@@ -987,6 +893,204 @@ class _RentalCardState extends State<RentalCard> {
               : const SizedBox.shrink(),
         ),
       ],
+    );
+  }
+}
+
+void _showFullSiteResourcePhoto(
+    BuildContext context, Color color, String imageUrl) {
+  showDialog(
+    context: context,
+    builder: (context) => Dialog(
+      backgroundColor: color,
+      child: Padding(
+        padding: const EdgeInsets.all(6),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Image.network(
+            imageUrl,
+            errorBuilder: (context, error, stackTrace) => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('Image not found or failed to load.'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+// Swipeable, one-photo-at-a-time viewer for a site's retained helpful
+// delivery photos, with the delivery's customer name captioned under each
+// one so a driver can tell whose delivery a given site reference came from.
+class _SiteResourcePhotoViewer extends StatefulWidget {
+  final List<SiteResourcePhoto> photos;
+  final Color color;
+
+  const _SiteResourcePhotoViewer({required this.photos, required this.color});
+
+  @override
+  State<_SiteResourcePhotoViewer> createState() =>
+      _SiteResourcePhotoViewerState();
+}
+
+class _SiteResourcePhotoViewerState extends State<_SiteResourcePhotoViewer> {
+  final PageController _controller = PageController();
+  int _index = 0;
+
+  void _goTo(int index) {
+    if (index < 0 || index >= widget.photos.length) return;
+    _controller.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final photos = widget.photos;
+    final current = photos[_index];
+
+    return Dialog(
+      backgroundColor: widget.color,
+      insetPadding: const EdgeInsets.all(24),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Previous Site Photos',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: Colors.black,
+                    ),
+                  ),
+                  if (photos.length > 1)
+                    Text(
+                      '${_index + 1} / ${photos.length}',
+                      style: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 340,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    PageView.builder(
+                      controller: _controller,
+                      itemCount: photos.length,
+                      onPageChanged: (i) => setState(() => _index = i),
+                      itemBuilder: (context, i) {
+                        final photo = photos[i];
+                        return GestureDetector(
+                          onTap: () => _showFullSiteResourcePhoto(
+                              context, widget.color, photo.imageUrl),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              photo.imageUrl,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) =>
+                                  const Padding(
+                                padding: EdgeInsets.all(24),
+                                child: Text(
+                                    'Image not found or failed to load.'),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    if (photos.length > 1) ...[
+                      Positioned(
+                        left: 0,
+                        child: _FlipArrow(
+                          icon: Icons.chevron_left,
+                          enabled: _index > 0,
+                          onTap: () => _goTo(_index - 1),
+                        ),
+                      ),
+                      Positioned(
+                        right: 0,
+                        child: _FlipArrow(
+                          icon: Icons.chevron_right,
+                          enabled: _index < photos.length - 1,
+                          onTap: () => _goTo(_index + 1),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                current.customerName,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (current.reason.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    current.reason,
+                    style: const TextStyle(color: Colors.black87, fontSize: 12),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _FlipArrow extends StatelessWidget {
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  const _FlipArrow({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.3,
+      child: IconButton(
+        icon: Icon(icon, color: Colors.black87, size: 32),
+        onPressed: enabled ? onTap : null,
+        style: IconButton.styleFrom(
+          backgroundColor: Colors.white.withOpacity(0.6),
+        ),
+      ),
     );
   }
 }

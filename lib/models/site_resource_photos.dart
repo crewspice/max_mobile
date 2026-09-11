@@ -3,12 +3,14 @@ class SiteResourcePhoto {
   final String imageUrl;
   final int confidence;
   final String reason;
+  final String customerName;
 
   SiteResourcePhoto({
     required this.rentalId,
     required this.imageUrl,
     required this.confidence,
     required this.reason,
+    required this.customerName,
   });
 
   factory SiteResourcePhoto.fromJson(Map<String, dynamic> json) {
@@ -17,6 +19,7 @@ class SiteResourcePhoto {
       imageUrl: json['imageUrl'] ?? '',
       confidence: json['confidence'] ?? 0,
       reason: json['reason'] ?? '',
+      customerName: json['customerName'] ?? 'Unknown',
     );
   }
 }
