@@ -464,6 +464,7 @@ class ApiService {
   Future<bool> updateRentalNotes({
     required int rentalId,
     required String notes,
+    String? driverId,
   }) async {
     print("RAW NOTES: $notes");
     print("JSON BODY: ${jsonEncode({'notes': notes})}");
@@ -483,6 +484,12 @@ class ApiService {
         },
         body: jsonEncode({
           'notes': notes,
+          // Editor identity for the contract_edits NOTES row this write logs
+          // server-side (RentalService.updateRentalNotes) - "driver" matches
+          // the field name used by the delivery/pickup/service/cancel calls
+          // above, which the API resolves to the user's contract_edits
+          // editor_initials the same way.
+          if (driverId != null) 'driver': driverId,
         }),
       );
 
@@ -499,6 +506,7 @@ class ApiService {
   Future<bool> updateServiceNotes({
     required int serviceId,
     required String notes,
+    String? driverId,
   }) async {
     final uri = Uri.parse('$baseUrl/service/$serviceId/notes');
 
@@ -510,6 +518,7 @@ class ApiService {
         },
         body: jsonEncode({
           'notes': notes,
+          if (driverId != null) 'driver': driverId,
         }),
       );
 

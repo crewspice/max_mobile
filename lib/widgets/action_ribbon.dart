@@ -11,6 +11,11 @@ class ActionItem {
   final bool holdToConfirm;
   final Duration holdDuration;
   final Color? progressColor;
+  // Swaps the leading icon for a small spinner and disables the button -
+  // for actions (like the lift picker's "Select") that kick off a network
+  // fetch before anything else on screen changes, so the tap has visible
+  // feedback instead of looking like it did nothing for a few seconds.
+  final bool loading;
 
   const ActionItem({
     required this.label,
@@ -20,6 +25,7 @@ class ActionItem {
     this.holdToConfirm = false,
     this.holdDuration = const Duration(seconds: 2),
     this.progressColor,
+    this.loading = false,
   });
 }
 
@@ -161,9 +167,10 @@ class _ActionRibbonState extends State<ActionRibbon> {
       );
     }
     return OutlinedButton(
-      onPressed: action.onPressed,
+      onPressed: action.loading ? null : action.onPressed,
       style: OutlinedButton.styleFrom(
         backgroundColor: AppColors.mainBackground,
+        disabledBackgroundColor: AppColors.mainBackground,
         side: BorderSide(
           color: action.color,
           width: 1.3,
@@ -179,7 +186,17 @@ class _ActionRibbonState extends State<ActionRibbon> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          if (action.icon != null) ...[
+          if (action.loading) ...[
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: action.color,
+              ),
+            ),
+            const SizedBox(width: 6),
+          ] else if (action.icon != null) ...[
             Icon(
               action.icon,
               size: 18,

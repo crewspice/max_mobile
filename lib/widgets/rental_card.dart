@@ -45,6 +45,7 @@ class _RentalCardState extends State<RentalCard> {
   int? _selectedRentalId;
   String? _selectedSerial;
   SiteResourcePhotos? _siteResourcePhotos;
+  bool _loadingLiftOptions = false;
 
   @override
   void initState() {
@@ -234,7 +235,13 @@ class _RentalCardState extends State<RentalCard> {
     String? requestedSerial,
   }) async {
     final api = ApiService();
-    final options = await api.fetchLiftOptionsForRental(widget.stop.id);
+    setState(() => _loadingLiftOptions = true);
+    List<LiftOption> options;
+    try {
+      options = await api.fetchLiftOptionsForRental(widget.stop.id);
+    } finally {
+      if (mounted) setState(() => _loadingLiftOptions = false);
+    }
 
     if (!context.mounted) return;
 
@@ -274,7 +281,7 @@ class _RentalCardState extends State<RentalCard> {
                   // a two-lift rental as well as a six-lift one, instead of
                   // one fixed size that's oversized for a single row or
                   // cramped against three.
-                  const tileWidth = 92.0;
+                  final tileWidth = 92.0 * DeviceConfig.liftOptionTileScale;
                   const tileSpacing = 10.0;
                   final columns = ((constraints.maxWidth + tileSpacing) /
                           (tileWidth + tileSpacing))
@@ -362,12 +369,13 @@ class _RentalCardState extends State<RentalCard> {
     Color color, {
     bool isRequested = false,
   }) {
+    final scale = DeviceConfig.liftOptionTileScale;
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.pop(context, option),
       child: Container(
-        width: 92,
-        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 2),
+        width: 92 * scale,
+        padding: EdgeInsets.symmetric(vertical: 10 * scale, horizontal: 2 * scale),
         decoration: BoxDecoration(
           color: isRequested
               ? color.withOpacity(0.18)
@@ -383,29 +391,29 @@ class _RentalCardState extends State<RentalCard> {
           children: [
             Image.asset(
               liftAssetPath(option.liftType),
-              height: 56,
+              height: 56 * scale,
               fit: BoxFit.contain,
               color: color,
               colorBlendMode: BlendMode.srcIn,
             ),
-            const SizedBox(height: 6),
+            SizedBox(height: 6 * scale),
             Text(
               option.serialNumber,
               style: TextStyle(
                 color: color,
-                fontSize: 12,
+                fontSize: 12 * scale,
                 fontWeight: FontWeight.bold,
               ),
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
             ),
             if (isRequested) ...[
-              const SizedBox(height: 2),
+              SizedBox(height: 2 * scale),
               Text(
                 'Requested',
                 style: TextStyle(
                   color: color,
-                  fontSize: 9,
+                  fontSize: 9 * scale,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -837,6 +845,7 @@ class _RentalCardState extends State<RentalCard> {
               ? Icons.question_mark
               : Icons.rule,
           color: elementColor,
+          loading: _loadingLiftOptions,
           onPressed: () => _openLiftOptionPicker(context),
         ),
       );
@@ -853,6 +862,7 @@ class _RentalCardState extends State<RentalCard> {
               ? Icons.question_mark
               : Icons.rule,
           color: elementColor,
+          loading: _loadingLiftOptions,
           onPressed: () => _openLiftOptionPicker(
             context,
             requestedSerial: _stripAmbiguityMarker(widget.stop.serialNumber),

@@ -36,6 +36,7 @@ class _ServiceCardState extends State<ServiceCard> {
   String _serial = '';
   int? _selectedRentalId;
   String? _selectedSerial;
+  bool _loadingLiftOptions = false;
 
   // Dispatch stamps a stop's serialNumber as this literal sentinel when the
   // customer had no preference between several interchangeable units at the
@@ -148,7 +149,13 @@ class _ServiceCardState extends State<ServiceCard> {
     String? requestedSerial,
   }) async {
     final api = ApiService();
-    final options = await api.fetchLiftOptionsForService(_stop.id);
+    setState(() => _loadingLiftOptions = true);
+    List<LiftOption> options;
+    try {
+      options = await api.fetchLiftOptionsForService(_stop.id);
+    } finally {
+      if (mounted) setState(() => _loadingLiftOptions = false);
+    }
 
     if (!context.mounted) return;
 
@@ -432,6 +439,7 @@ class _ServiceCardState extends State<ServiceCard> {
               ? Icons.question_mark
               : Icons.rule,
           color: AppColors.green,
+          loading: _loadingLiftOptions,
           onPressed: () => _openLiftOptionPicker(context),
         ),
       );
@@ -448,6 +456,7 @@ class _ServiceCardState extends State<ServiceCard> {
               ? Icons.question_mark
               : Icons.rule,
           color: AppColors.green,
+          loading: _loadingLiftOptions,
           onPressed: () => _openLiftOptionPicker(
             context,
             requestedSerial: _stripAmbiguityMarker(_stop.serialNumber),

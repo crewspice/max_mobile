@@ -10,6 +10,8 @@ import '../widgets/hold_to_confirm_button.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../config/device_config.dart';
+import 'ornate_card.dart';
+import 'watermark_title.dart';
 
 const String _deliveryMarker = '[[DELIVERED]]';
 
@@ -302,53 +304,108 @@ class _BaseCardState extends State<BaseCard> {
 
               final updatedNotes = await showDialog<String>(
                 context: context,
-                builder: (context) {
-                  return AlertDialog(
-                    backgroundColor: elementColor,
-                    title: const Text(
-                      "Edit Notes",
-                      style: TextStyle(color: AppColors.main),
+                builder: (dialogContext) {
+                  final cancelButton = OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      backgroundColor: AppColors.mainBackground,
+                      side: BorderSide(color: elementColor, width: 1.3),
                     ),
-                    content: TextField(
-                      controller: controller,
-                      maxLines: 5,
-                      autofocus: true,
-                      cursorColor: AppColors.main,
-                      style: const TextStyle(
-                        color: AppColors.main,
+                    onPressed: () => Navigator.pop(dialogContext),
+                    child: Text(
+                      "Cancel",
+                      style: TextStyle(color: elementColor),
+                    ),
+                  );
+
+                  final saveButton = ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: elementColor,
+                      foregroundColor: AppColors.mainBackground,
+                    ),
+                    onPressed: () => Navigator.pop(
+                      dialogContext,
+                      controller.text.trim(),
+                    ),
+                    child: const Text('Save'),
+                  );
+
+                  final buttons = DeviceConfig.isIphone
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            saveButton,
+                            const SizedBox(height: 10),
+                            cancelButton,
+                          ],
+                        )
+                      : Row(
+                          children: [
+                            Expanded(child: cancelButton),
+                            const SizedBox(width: 10),
+                            Expanded(child: saveButton),
+                          ],
+                        );
+
+                  return Dialog(
+                    backgroundColor: Colors.transparent,
+                    insetPadding: const EdgeInsets.all(24),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: DeviceConfig.isIpad
+                            ? MediaQuery.of(dialogContext).size.width * 0.6
+                            : double.infinity,
                       ),
-                      decoration: const InputDecoration(
-                        hintText: 'Enter notes here...',
-                        hintStyle: TextStyle(color: AppColors.main),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: AppColors.main),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(
-                            color: AppColors.main,
-                            width: 2,
+                      child: OrnateCard(
+                        color: elementColor,
+                        backgroundColor: AppColors.mainBackground,
+                        padding: EdgeInsets.zero,
+                        child: Container(
+                          color: AppColors.mainBackground,
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Center(
+                                child: WatermarkTitle(
+                                  text: "Edit Notes",
+                                  glyph: Icons.edit_note,
+                                  glyphSize: 190,
+                                  glyphAlignment: const Alignment(0, -0.6),
+                                  textColor: elementColor,
+                                  fontSize: 16,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              TextField(
+                                controller: controller,
+                                maxLines: 5,
+                                autofocus: true,
+                                cursorColor: elementColor,
+                                style: TextStyle(color: elementColor),
+                                decoration: InputDecoration(
+                                  hintText: 'Enter notes here...',
+                                  hintStyle: TextStyle(
+                                    color: elementColor.withValues(alpha: 0.55),
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: elementColor),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(
+                                      color: elementColor,
+                                      width: 2,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              buttons,
+                            ],
                           ),
                         ),
                       ),
                     ),
-                    actions: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        child: const Text(
-                          'Cancel',
-                          style: TextStyle(color: AppColors.main),
-                        ),
-                      ),
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.main,
-                          foregroundColor: elementColor,
-                        ),
-                        onPressed: () =>
-                            Navigator.pop(context, controller.text.trim()),
-                        child: const Text('Save'),
-                      ),
-                    ],
                   );
                 },
               );
@@ -372,14 +429,20 @@ class _BaseCardState extends State<BaseCard> {
 
               final api = ApiService();
 
+              // stop.driverId is the same "who's doing this" identity every
+              // other action in this card (deliver/pickup/cancel) already
+              // sends as "driver" - the API resolves it to a contract_edits
+              // editor_initials value for the NOTES row this write logs.
               final success = stop.type == "SERVICE"
                   ? await api.updateServiceNotes(
                       serviceId: stop.id,
                       notes: reconstructed,
+                      driverId: stop.driverId,
                     )
                   : await api.updateRentalNotes(
                       rentalId: stop.id,
                       notes: reconstructed,
+                      driverId: stop.driverId,
                     );
 
               if (success && onNotesUpdated != null) {

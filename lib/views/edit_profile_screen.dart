@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image/image.dart' as img;
 import 'package:google_fonts/google_fonts.dart';
-import '../config/device_config.dart';
 import '../services/api_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/user_avatar.dart';
@@ -25,21 +24,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   File? _pickedFile;
   bool _uploading = false;
   int _cacheBust = 0;
-  bool _hasCustomImage = false;
-
-  double get _avatarDiameter => DeviceConfig.isIpad ? 260 : 160;
-
-  @override
-  void initState() {
-    super.initState();
-    _refreshHasCustomImage();
-  }
-
-  Future<void> _refreshHasCustomImage() async {
-    final hasImage = await ApiService().hasProfilePicture(widget.currentUserId);
-    if (!mounted) return;
-    setState(() => _hasCustomImage = hasImage);
-  }
 
   Future<File?> _pickImage({bool camera = true}) async {
     final picker = ImagePicker();
@@ -97,10 +81,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
     if (!context.mounted) return;
 
-    setState(() {
-      _uploading = false;
-      if (success) _hasCustomImage = true;
-    });
+    setState(() => _uploading = false);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -127,7 +108,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       _pickedFile = null;
       _uploading = false;
       _cacheBust++;
-      if (success) _hasCustomImage = false;
     });
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +138,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ).createShader(bounds);
           },
           child: Text(
-            DeviceConfig.isIphone ? "Profile Pic" : "Profile Picture",
+            "Profile Picture",
             style: GoogleFonts.permanentMarker(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -176,14 +156,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? ClipOval(
                     child: Image.file(
                       _pickedFile!,
-                      width: _avatarDiameter,
-                      height: _avatarDiameter,
+                      width: 160,
+                      height: 160,
                       fit: BoxFit.cover,
                     ),
                   )
                 : UserAvatar(
                     initials: widget.currentUserId,
-                    radius: _avatarDiameter / 2,
+                    radius: 80,
                     color: AppColors.yellow,
                     cacheBust: _cacheBust,
                   ),
@@ -211,7 +191,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              width: DeviceConfig.isIpad ? 220 * 1.7 : 220,
+              width: 220,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.main,
@@ -225,22 +205,20 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 label: const Text("Choose from Gallery"),
               ),
             ),
-            if (_hasCustomImage) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: 220,
-                child: TextButton.icon(
-                  style: TextButton.styleFrom(
-                    foregroundColor: AppColors.yellow,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                  ),
-                  onPressed:
-                      _uploading ? null : () => _resetToDefault(context),
-                  icon: const Icon(Icons.restart_alt),
-                  label: const Text("Reset"),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: 220,
+              child: TextButton.icon(
+                style: TextButton.styleFrom(
+                  foregroundColor: AppColors.yellow,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
+                onPressed:
+                    _uploading ? null : () => _resetToDefault(context),
+                icon: const Icon(Icons.restart_alt),
+                label: const Text("Reset"),
               ),
-            ],
+            ),
           ],
         ),
       ),

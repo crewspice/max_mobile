@@ -118,4 +118,9 @@ class DeviceConfig {
     if (isIpad) return 2.2;
     return 1.0;
   }
+
+  // Growth factor for the deambiguator popup's lift option tiles (image +
+  // serial label) - iPad has enough spare space in that dialog to make the
+  // tap targets noticeably bigger.
+  static double get liftOptionTileScale => isIpad ? 1.6 : 1.0;
 }
