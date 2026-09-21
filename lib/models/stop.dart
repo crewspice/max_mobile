@@ -32,12 +32,15 @@ class Stop {
   final String? notes;
   final double? latitude;
   final double? longitude;
+  final double? deliveryLatitude;
+  final double? deliveryLongitude;
   final String? arrivalTime;
   final String? departedTime;
   final int? driverNumber;
   final String? truck;
   final bool hasPhoto;
   final String? poNumber;
+  final bool hasHelpfulPhotos;
 
   Stop({
     required this.id,
@@ -67,12 +70,15 @@ class Stop {
     this.notes,
     this.latitude,
     this.longitude,
+    this.deliveryLatitude,
+    this.deliveryLongitude,
     this.arrivalTime,
     this.departedTime,
     this.driverNumber,
     this.truck,
     this.hasPhoto = false, // default false
     this.poNumber,
+    this.hasHelpfulPhotos = false,
   });
 
 
@@ -105,12 +111,15 @@ class Stop {
     String? notes,
     double? latitude,
     double? longitude,
+    double? deliveryLatitude,
+    double? deliveryLongitude,
     String? arrivalTime,
     String? departedTime,
     int? driverNumber,
     String? truck,
     bool? hasPhoto,
     String? poNumber,
+    bool? hasHelpfulPhotos,
   }) {
     return Stop(
       id: id ?? this.id,
@@ -143,12 +152,15 @@ class Stop {
           notes ?? this.notes,
       latitude: latitude ?? this.latitude,
       longitude: longitude ?? this.longitude,
+      deliveryLatitude: deliveryLatitude ?? this.deliveryLatitude,
+      deliveryLongitude: deliveryLongitude ?? this.deliveryLongitude,
       arrivalTime: arrivalTime ?? this.arrivalTime,
       departedTime: departedTime ?? this.departedTime,
       driverNumber: driverNumber ?? this.driverNumber,
       truck: truck ?? this.truck,
       hasPhoto: hasPhoto ?? this.hasPhoto,
       poNumber: poNumber ?? this.poNumber,
+      hasHelpfulPhotos: hasHelpfulPhotos ?? this.hasHelpfulPhotos,
     );
   }
 
@@ -182,12 +194,15 @@ class Stop {
       notes: json['notes'],
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
+      deliveryLatitude: (json['deliveryLatitude'] as num?)?.toDouble(),
+      deliveryLongitude: (json['deliveryLongitude'] as num?)?.toDouble(),
       arrivalTime: json['arrivalTime'],
       departedTime: json['departedTime'],
       driverNumber: json['driverNumber'],
       truck: json['truck'],
       hasPhoto: json['hasPhoto'] ?? false, // NEW: parse JSON or default
       poNumber: json['poNumber'],
+      hasHelpfulPhotos: json['hasHelpfulPhotos'] ?? false,
     );
   }
 
@@ -220,12 +235,15 @@ class Stop {
       "notes": notes,
       "latitude": latitude,
       "longitude": longitude,
+      "deliveryLatitude": deliveryLatitude,
+      "deliveryLongitude": deliveryLongitude,
       "arrivalTime": arrivalTime,
       "departedTime": departedTime,
       "driverNumber": driverNumber,
       "truck": truck,
       "hasPhoto": hasPhoto, // NEW: include in JSON
       "poNumber": poNumber,
+      "hasHelpfulPhotos": hasHelpfulPhotos,
     };
   }
 }

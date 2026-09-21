@@ -130,4 +130,9 @@ class DeviceConfig {
   // serial label) - iPad has enough spare space in that dialog to make the
   // tap targets noticeably bigger.
   static double get liftOptionTileScale => isIpad ? 1.6 : 1.0;
+
+  // Growth factor for the maintenance notes-input dialogs' text (title,
+  // field, hint, buttons) - iPad only, since its dialog is wide enough to
+  // hold noticeably larger type without crowding.
+  static double get notesDialogTextScale => isIpad ? 1.5 : 1.0;
 }

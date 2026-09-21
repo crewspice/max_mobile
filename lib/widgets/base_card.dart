@@ -183,6 +183,46 @@ class _BaseCardState extends State<BaseCard> {
     );
   }
 
+  Future<void> _launchMapsForCoordinates(double lat, double lng) async {
+    final geoUrl = 'geo:0,0?q=$lat,$lng';
+    final webUrl =
+        'https://www.google.com/maps/search/?api=1&query=$lat,$lng';
+
+    if (await canLaunchUrlString(geoUrl)) {
+      await launchUrlString(geoUrl, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    if (await canLaunchUrlString(webUrl)) {
+      await launchUrlString(webUrl, mode: LaunchMode.externalApplication);
+      return;
+    }
+
+    debugPrint('No app or browser available to launch maps for: $lat,$lng');
+  }
+
+  // Long-press on the address only makes sense once a stop's rental has
+  // actually been delivered - a pickup (non-Upcoming RENTAL) or a SERVICE
+  // call (always against an already-delivered rental) - vs. an upcoming
+  // delivery, which has no captured point yet.
+  bool get _canUseDeliveryCoords =>
+      stop.type == "SERVICE" ||
+      (stop.type == "RENTAL" && stop.status != "Upcoming");
+
+  void _handleAddressLongPress(BuildContext context) {
+    if (!_canUseDeliveryCoords) return;
+
+    final lat = stop.deliveryLatitude;
+    final lng = stop.deliveryLongitude;
+    if (lat != null && lng != null) {
+      _launchMapsForCoordinates(lat, lng);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No captured location for this delivery')),
+      );
+    }
+  }
+
   String get stopAddress {
     final parts = [
       stop.streetAddress,
@@ -808,6 +848,9 @@ class _BaseCardState extends State<BaseCard> {
                                           if (stopAddress.isNotEmpty)
                                             _launchMaps(stopAddress);
                                         },
+                                        onLongPress: _canUseDeliveryCoords
+                                            ? () => _handleAddressLongPress(context)
+                                            : null,
                                         child: Text(
                                           stop.siteName!,
                                           textAlign: TextAlign.center,
@@ -824,6 +867,9 @@ class _BaseCardState extends State<BaseCard> {
                                           if (stopAddress.isNotEmpty)
                                             _launchMaps(stopAddress);
                                         },
+                                        onLongPress: _canUseDeliveryCoords
+                                            ? () => _handleAddressLongPress(context)
+                                            : null,
                                         child: Text(
                                           stop.streetAddress!,
                                           textAlign: TextAlign.center,
@@ -851,6 +897,9 @@ class _BaseCardState extends State<BaseCard> {
                                           if (stopAddress.isNotEmpty)
                                             _launchMaps(stopAddress);
                                         },
+                                        onLongPress: _canUseDeliveryCoords
+                                            ? () => _handleAddressLongPress(context)
+                                            : null,
                                         child: Text(
                                           stop.city!,
                                           textAlign: TextAlign.center,

@@ -12,6 +12,9 @@ import 'cancel_dialog.dart';
 import 'lift_selector_panel.dart';
 import 'action_ribbon.dart';
 import '../config/device_config.dart';
+import '../utils/lift_assets.dart';
+import 'ornate_card.dart';
+import 'watermark_title.dart';
 
 class ServiceCard extends StatefulWidget {
   final Stop stop;
@@ -168,81 +171,94 @@ class _ServiceCardState extends State<ServiceCard> {
       return;
     }
 
-    final selected = await showModalBottomSheet<LiftOption>(
+    const Color elementColor = AppColors.green;
+
+    // Same ornate-card dialog shape as the rental card's lift picker (and
+    // the inspection prompt / cancel dialog), so this popup reads as the
+    // same family instead of a plain bottom sheet.
+    final selected = await showDialog<LiftOption>(
       context: context,
-      backgroundColor: AppColors.main,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.green.withOpacity(0.4),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Which lift did you ${_noPreferenceVerb()}?',
-                style: const TextStyle(
-                  color: AppColors.green,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              if (requestedSerial != null && requestedSerial.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Text(
-                    'Customer requested you ${_noPreferenceVerb()} lift '
-                    '$requestedSerial — tap it again to confirm, or choose a '
-                    'different one below.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: AppColors.green,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 4),
-              for (final option in options)
-                ListTile(
-                  tileColor: option.serialNumber == requestedSerial
-                      ? AppColors.green.withOpacity(0.15)
-                      : null,
-                  title: Text(
-                    option.liftType,
-                    style: const TextStyle(
-                      color: AppColors.green,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    option.serialNumber,
-                    style: const TextStyle(color: AppColors.green),
-                  ),
-                  trailing: option.serialNumber == requestedSerial
-                      ? const Text(
-                          'Requested',
-                          style: TextStyle(
-                            color: AppColors.green,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
+      builder: (dialogContext) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: const EdgeInsets.all(24),
+          child: OrnateCard(
+            color: elementColor,
+            backgroundColor: AppColors.mainBackground,
+            padding: EdgeInsets.zero,
+            child: Container(
+              color: AppColors.mainBackground,
+              padding: const EdgeInsets.all(16),
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  // The watermark scales with how many tile rows the grid
+                  // actually wraps to, so it still reads as sized-to-fit on
+                  // a two-lift job as well as a six-lift one, instead of one
+                  // fixed size that's oversized for a single row or cramped
+                  // against three.
+                  final tileWidth = 92.0 * DeviceConfig.liftOptionTileScale;
+                  const tileSpacing = 10.0;
+                  final columns = ((constraints.maxWidth + tileSpacing) /
+                          (tileWidth + tileSpacing))
+                      .floor()
+                      .clamp(1, options.length);
+                  final rows = (options.length / columns).ceil();
+                  final glyphSize = (190 + (rows - 1) * 50)
+                      .toDouble()
+                      .clamp(190.0, 300.0);
+
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: WatermarkTitle(
+                          text: 'Which lift did you ${_noPreferenceVerb()}?',
+                          glyph: Icons.search,
+                          glyphSize: glyphSize,
+                          glyphAlignment: const Alignment(0, -0.65),
+                          textColor: elementColor,
+                          fontSize: 16,
+                        ),
+                      ),
+                      if (requestedSerial != null && requestedSerial.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: Text(
+                            'Customer requested you ${_noPreferenceVerb()} lift '
+                            '$requestedSerial — tap it again to confirm, or '
+                            'choose a different one below.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: elementColor,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        )
-                      : null,
-                  onTap: () => Navigator.pop(context, option),
-                ),
-              const SizedBox(height: 10),
-            ],
+                        ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: tileSpacing,
+                          runSpacing: tileSpacing,
+                          children: [
+                            for (final option in options)
+                              _buildLiftOptionTile(
+                                dialogContext,
+                                option,
+                                elementColor,
+                                isRequested: option.serialNumber == requestedSerial,
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         );
       },
@@ -254,6 +270,70 @@ class _ServiceCardState extends State<ServiceCard> {
         _selectedSerial = selected.serialNumber;
       });
     }
+  }
+
+  // Matches the inventory markers on the truck view: the lift-type asset
+  // image standing in for the plain type string, tiled instead of listed one
+  // per row.
+  Widget _buildLiftOptionTile(
+    BuildContext context,
+    LiftOption option,
+    Color color, {
+    bool isRequested = false,
+  }) {
+    final scale = DeviceConfig.liftOptionTileScale;
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => Navigator.pop(context, option),
+      child: Container(
+        width: 92 * scale,
+        padding: EdgeInsets.symmetric(vertical: 10 * scale, horizontal: 2 * scale),
+        decoration: BoxDecoration(
+          color: isRequested
+              ? color.withOpacity(0.18)
+              : AppColors.mainBackground.withOpacity(0.5),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isRequested ? color : color.withOpacity(0.6),
+            width: isRequested ? 2 : 1,
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              liftAssetPath(option.liftType),
+              height: 56 * scale,
+              fit: BoxFit.contain,
+              color: color,
+              colorBlendMode: BlendMode.srcIn,
+            ),
+            SizedBox(height: 6 * scale),
+            Text(
+              option.serialNumber,
+              style: TextStyle(
+                color: color,
+                fontSize: 12 * scale,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (isRequested) ...[
+              SizedBox(height: 2 * scale),
+              Text(
+                'Requested',
+                style: TextStyle(
+                  color: color,
+                  fontSize: 9 * scale,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
   }
 
   Future<void> _handlePhotoUpload(

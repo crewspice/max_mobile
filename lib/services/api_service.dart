@@ -141,6 +141,7 @@ class ApiService {
           driverNumber: stop.driverNumber,
           truck: stop.truck,
           hasPhoto: stop.hasPhoto,
+          hasHelpfulPhotos: stop.hasHelpfulPhotos,
           driverId: driverId,
         );
       }).toList();
@@ -201,7 +202,7 @@ class ApiService {
 
   Future<bool> recordDeliveryWithPhoto(File imageFile, int rentalId,
       String serialNumber, String truck, String driver,
-      {String? nullRouteId}) async {
+      {String? nullRouteId, double? deliveryLat, double? deliveryLng}) async {
     final String url = routeUrl;
 
     var request = http.MultipartRequest('POST', Uri.parse(url))
@@ -213,6 +214,16 @@ class ApiService {
     // Only send nullRouteId if it actually exists (same as pickup)
     if (nullRouteId != null) {
       request.fields['nullRouteId'] = nullRouteId;
+    }
+
+    // Only send the captured GPS point if it was actually available -
+    // location off/denied at delivery time just means no precise pickup
+    // point later, not a failed upload.
+    if (deliveryLat != null) {
+      request.fields['deliveryLat'] = deliveryLat.toString();
+    }
+    if (deliveryLng != null) {
+      request.fields['deliveryLng'] = deliveryLng.toString();
     }
 
     request.files.add(await http.MultipartFile.fromPath(

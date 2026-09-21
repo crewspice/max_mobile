@@ -15,6 +15,7 @@ import '../models/lift.dart';
 import 'action_ribbon.dart';
 import '../config/device_config.dart';
 import '../utils/lift_assets.dart';
+import '../utils/shop_geofence.dart';
 import 'ornate_card.dart';
 import 'watermark_title.dart';
 
@@ -44,14 +45,8 @@ class RentalCard extends StatefulWidget {
 class _RentalCardState extends State<RentalCard> {
   int? _selectedRentalId;
   String? _selectedSerial;
-  SiteResourcePhotos? _siteResourcePhotos;
+  bool _loadingSiteResourcePhotos = false;
   bool _loadingLiftOptions = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSiteResourcePhotos();
-  }
 
   @override
   void didUpdateWidget(RentalCard oldWidget) {
@@ -59,21 +54,6 @@ class _RentalCardState extends State<RentalCard> {
 
     if (oldWidget.stop.id != widget.stop.id) {
       setState(() {});
-    }
-    if (oldWidget.stop.siteId != widget.stop.siteId) {
-      _loadSiteResourcePhotos();
-    }
-  }
-
-  // Backend answers "does this site have previous helpful delivery photos" -
-  // the mobile side never does its own address matching, it just consumes
-  // the result to decide whether to show the "Previous Site Photos" button.
-  Future<void> _loadSiteResourcePhotos() async {
-    final result = await ApiService().fetchSiteResourcePhotos(widget.stop.siteId);
-    if (mounted) {
-      setState(() {
-        _siteResourcePhotos = result;
-      });
     }
   }
 
@@ -160,9 +140,17 @@ class _RentalCardState extends State<RentalCard> {
     final file = await _pickImage();
     if (file != null) {
       final compressed = await _compressImage(file);
+      final position = await getCurrentPosition();
       final api = ApiService();
-      final success =
-          await api.recordDeliveryWithPhoto(compressed, widget.stop.id, serial, widget.stop.truck ?? "null", widget.stop.driverId ?? "null");
+      final success = await api.recordDeliveryWithPhoto(
+        compressed,
+        widget.stop.id,
+        serial,
+        widget.stop.truck ?? "null",
+        widget.stop.driverId ?? "null",
+        deliveryLat: position?.latitude,
+        deliveryLng: position?.longitude,
+      );
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(success ? 'Photo uploaded!' : 'Upload failed')));
       if (success) await widget.onRefresh();
@@ -182,6 +170,7 @@ class _RentalCardState extends State<RentalCard> {
     final file = await _pickImage(camera: false);
     if (file != null) {
       final compressed = await _compressImage(file);
+      final position = await getCurrentPosition();
       final api = ApiService();
       final success = await api.recordDeliveryWithPhoto(
         compressed,
@@ -189,6 +178,8 @@ class _RentalCardState extends State<RentalCard> {
         serial,
         widget.stop.truck ?? "null",
         widget.stop.driverId ?? "null",
+        deliveryLat: position?.latitude,
+        deliveryLng: position?.longitude,
       );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -465,7 +456,12 @@ class _RentalCardState extends State<RentalCard> {
     );
   }
 
-  void _showSiteResourcePhotos(BuildContext context) {
+  // widget.stop.hasHelpfulPhotos just gates whether the button shows - it's
+  // precomputed server-side onto the stop itself (see RouteService.
+  // populateHasHelpfulPhotos) so every card on this screen doesn't have to
+  // fetch it individually. The actual photos are only worth fetching once
+  // the driver taps through, so that call stays lazy here.
+  Future<void> _showSiteResourcePhotos(BuildContext context) async {
     final Color elementColor =
         widget.stop.status == "Active"
             ? AppColors.green
@@ -473,8 +469,12 @@ class _RentalCardState extends State<RentalCard> {
                 ? AppColors.yellow
                 : AppColors.red);
 
-    final photos = _siteResourcePhotos?.photos ?? [];
-    if (photos.isEmpty) return;
+    setState(() => _loadingSiteResourcePhotos = true);
+    final result = await ApiService().fetchSiteResourcePhotos(widget.stop.siteId);
+    if (mounted) setState(() => _loadingSiteResourcePhotos = false);
+
+    final photos = result.photos;
+    if (photos.isEmpty || !context.mounted) return;
 
     showDialog(
       context: context,
@@ -686,17 +686,21 @@ class _RentalCardState extends State<RentalCard> {
             onPressed: () => _showCancelDialog(context),
           ),
         );
+      }
 
-        if (_siteResourcePhotos?.hasHelpfulPhotos == true) {
-          actions.add(
-            ActionItem(
-              label: "Previous Site Photos",
-              icon: Icons.photo_library,
-              color: elementColor,
-              onPressed: () => _showSiteResourcePhotos(context),
-            ),
-          );
-        }
+      // Shown on both the assigned route and the unassigned stops view -
+      // knowing a site has helpful reference photos is useful before a
+      // rental is even assigned to a driver.
+      if (widget.stop.hasHelpfulPhotos) {
+        actions.add(
+          ActionItem(
+            label: "Previous Site Photos",
+            icon: Icons.photo_library,
+            color: elementColor,
+            loading: _loadingSiteResourcePhotos,
+            onPressed: () => _showSiteResourcePhotos(context),
+          ),
+        );
       }
     }
 
