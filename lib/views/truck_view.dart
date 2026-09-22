@@ -201,9 +201,11 @@ class _TruckViewState extends State<TruckView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final scale = DeviceConfig.isIpad ? 1.5 : 1.0;
-            final address = [currentItem.streetAddress, currentItem.city]
-                .where((s) => s != null && s.isNotEmpty)
-                .join(', ');
+            final address = [
+              currentItem.siteName,
+              currentItem.streetAddress,
+              currentItem.city,
+            ].where((s) => s != null && s.isNotEmpty).join('\n');
             final hasJobSite = currentItem.customerName != null &&
                 currentItem.customerName!.isNotEmpty;
             final pmColor =

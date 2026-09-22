@@ -109,41 +109,7 @@ class ApiService {
 
       return stopsJson.map((json) {
         final stop = Stop.fromJson(json);
-        return Stop(
-          id: stop.id,
-          siteId: stop.siteId,
-          type: stop.type,
-          name: stop.name,
-          status: stop.status,
-          deliveryDate: stop.deliveryDate,
-          serviceDate: stop.serviceDate,
-          serviceType: stop.serviceType,
-          reason: stop.reason,
-          siteName: stop.siteName,
-          streetAddress: stop.streetAddress,
-          city: stop.city,
-          liftType: stop.liftType,
-          serialNumber: stop.serialNumber,
-          newSiteName: stop.newSiteName,
-          newStreetAddress: stop.newStreetAddress,
-          newCity: stop.newCity,
-          newLiftType: stop.newLiftType,
-          time: stop.time,
-          orderedByContactName: stop.orderedByContactName,
-          orderedByContactPhone: stop.orderedByContactPhone,
-          siteContactName: stop.siteContactName,
-          siteContactPhone: stop.siteContactPhone,
-          notes: stop.notes,
-          latitude: stop.latitude,
-          longitude: stop.longitude,
-          arrivalTime: stop.arrivalTime,
-          departedTime: stop.departedTime,
-          driverNumber: stop.driverNumber,
-          truck: stop.truck,
-          hasPhoto: stop.hasPhoto,
-          hasHelpfulPhotos: stop.hasHelpfulPhotos,
-          driverId: driverId,
-        );
+        return stop.copyWith(driverId: driverId);
       }).toList();
     } else {
       throw 'No route';

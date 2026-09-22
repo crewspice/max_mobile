@@ -158,6 +158,5 @@ Future<String?> showRepairNotesDialog(
     initialValue: initialValue,
     hintText: 'Enter repair notes...',
     color: color,
-    barrierDismissible: false,
   );
 }
